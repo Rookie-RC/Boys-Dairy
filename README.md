@@ -1,82 +1,90 @@
 # Boys Dairy（Daily Calc）
 
-一款**完全离线**的原生 Android 私人日记应用，使用 Kotlin 与 Jetpack Compose 编写。应用在桌面上显示为「Daily Calc」（伪装名称），打开后需输入 4 位密码才能进入。所有数据只保存在本机，应用不申请任何网络权限。
+桌面上，它是一个叫「Daily Calc」、图标是计算器的普通工具；点开之后，它要你先报 4 位暗号，因为里面住着一本**私人小本本**：记录每一次「个人修行」的时间、心情和战绩，附带日历、统计和一点毒舌点评。数据只躺在你自己的手机里；整个 App 唯一会联网的地方是可选的 **AI 锐评**，你不点按钮，它一个字节都不会发。
 
-> 本仓库此前是一个 React Web 应用，现已由原生 Android 应用完全取代。
+原生 Android 应用（Kotlin + Jetpack Compose）。本仓库此前是一个 React 网页应用，现已被完全取代。
 
 ## 功能
 
-- **首页**：显示距离上次记录已过去的天数（按日历日计算，而非 24 小时取整）以及上次记录的日期；月历视图可翻月，周一为每周第一天，有记录的日期显示彩色圆点（含伴侣记录的日期为红色，否则为蓝色），今天会高亮。
-- **新增记录**：时间（默认现在，不允许选择未来）、类型（单人 / 伴侣）、持续时间（1–120 分钟）、事前情绪、事后情绪、愉悦度（1–10）、笔记。
-- **历史**：按时间倒序列出所有记录，支持按笔记内容搜索（不区分大小写），每条记录可删除（需二次确认）。
-- **设置**：修改密码、主题（跟随系统 / 浅色 / 深色）、语言（跟随系统 / 中文 / English）、版本号。
+- **伪装**：启动器名称「Daily Calc」+ 计算器图标；锁屏副标题每次随机一句「这只是个计算器」。
+- **暗号锁**：4 位 PIN（加盐 SHA-256），首次启动设置并确认；切到后台立即上锁。连续输错 5 次关小黑屋 30 秒，锁定状态持久化保存（杀进程、重启都不会重置），并能识别系统时间被往回拨。
+- **首页**：距上次记录的天数（按日历日计算，分 7 档文案）、连续天数提醒、近 7 / 30 天次数与平均愉悦度、每日养生贴士、月历（周一为每周第一天，单人 / 双人用不同颜色标记，点日期查看当天战绩）。
+- **打卡**（底栏中央按钮）：时间（不能选未来）、类型（单人副本 / 双人成行）、时长 1–120 分钟、事前 / 事后心情、愉悦度 1–10、笔记；时长和愉悦度会得到一句吐槽式点评。
+- **战绩**：按时间倒序列出所有记录，按笔记搜索；删除需二次确认，删完还有「撤销」。
+- **AI 锐评**（可选）：自备 API Key，在设置的 AI 卡片或 AI 页的「谁来锐评」里选服务商——DeepSeek（默认）或 Claude——只需填所选那家的 Key；模型、推理强度和提示词都固定在代码里，没有模型选项。温柔 / 狠狠两档语气。发给 AI 的是统计摘要和最近的精简记录，笔记原文默认不发（需手动打开）；点按钮前可展开预览，原样看到会发出的全部提示词（固定指令 + 数据摘要）。
+- **备份**：把所有战绩导出为 JSON 文件（系统文件选择器，自己决定存哪），导入时可选「合并」或「覆盖」。备份只含战绩，不含 PIN、API Key 和设置。
+- **设置**：主题（跟随系统 / 白天 / 夜猫子）、语言（跟随系统 / 中文 / English）、改暗号、导出 / 导入、AI 服务商与对应的 API Key、版本号。
+- **界面**：新粗野主义 + 搞怪文案；浅色奶油 / 深色暗紫两套主题；文案中英双语，emoji 随处可见。
 
-## 隐私与安全设计
+## 隐私一览
 
-- **纯本地存储**：数据保存在应用私有目录的 Room（SQLite）数据库中，应用不包含任何联网代码，也没有 `INTERNET` 权限。
-- **禁止备份与迁移**：`allowBackup="false"`，并通过 `data_extraction_rules.xml` 将所有数据域从云备份和设备间迁移中排除。
-- **防截屏、隐藏最近任务预览**：Release 版主界面窗口设置了 `FLAG_SECURE`，无法截屏或录屏，最近任务列表中也不会显示应用内容。Debug 版关闭此项，方便在模拟器上镜像画面调试（见 `tools/device-preview/`）。
-- **4 位密码**：首次启动设置并确认密码。密码不会明文保存，而是保存 16 字节随机盐（Base64）和 `SHA-256(盐 + 密码)` 的十六进制摘要（DataStore），校验时使用 `MessageDigest.isEqual` 做恒定时间比较。
-- **自动上锁**：应用进入后台（进程生命周期 `ON_STOP`）立即上锁；锁定期间只会组合锁屏界面，主界面（导航、页面、列表）根本不在组合树中。
-- **防暴力破解**：连续输错 5 次后锁定 30 秒，并显示倒计时（仅保存在内存中）。
-- **应用伪装**：应用名称为「Daily Calc」，图标为计算器。
+- 日记保存在应用私有目录的 Room（SQLite）数据库里，不上传、不进云备份（`allowBackup="false"`，数据提取规则排除所有域）。
+- `INTERNET` 权限只为 AI 锐评而存在，应用里没有其他联网代码；只有你点下锐评按钮，数据才会发给你选的那一家（`api.deepseek.com` 或 `api.anthropic.com`），另一家什么也收不到。
+- API Key（每家服务商一把）用 Android Keystore 里的 AES-256/GCM 密钥加密后保存；PIN 只保存加盐哈希。
+- Release 版开启 `FLAG_SECURE`：不能截屏 / 录屏，最近任务里不显示内容。
+- 4 位数字 PIN 的熵很低，它防的是旁人随手翻看，不是专业取证。
 
-> 说明：4 位数字密码的熵很低，设计目标是防止旁人随手翻看，而不是抵御获取了设备存储内容的专业攻击者。
+完整说明（存了什么、存在哪、哪些会离开设备、已知局限）见 [docs/PRIVACY.md](docs/PRIVACY.md)。
 
-## 如何构建
+## 快速开始
 
-环境要求：
-
-- JDK 17
-- Android SDK 35（`platforms;android-35` 与对应 build-tools）
-
-在仓库根目录执行：
+需要 JDK 17 和 Android SDK 35。macOS 上可以一键装好（用户级安装，不需要 sudo 和 Homebrew）：
 
 ```bash
-./gradlew assembleDebug
+scripts/setup-macos.sh --with-emulator --accept-licenses   # 一次性：JDK 17 + Android SDK + 模拟器（会代你接受 SDK 许可）
+./gradlew testDebugUnitTest                                 # 跑单元测试
+./gradlew assembleDebug                                     # 构建 → app/build/outputs/apk/debug/app-debug.apk
+scripts/emulator.sh --install                               # 启动模拟器，安装并打开应用
 ```
 
-生成的 APK 位于：
+其他平台、`local.properties`、调试技巧、CI 与发布构建见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 
-```
-app/build/outputs/apk/debug/app-debug.apk
-```
-
-运行单元测试：
-
-```bash
-./gradlew testDebugUnitTest
-```
-
-首次构建前请在仓库根目录创建 `local.properties`，写入 `sdk.dir=<你的 Android SDK 路径>`（或设置 `ANDROID_HOME` 环境变量）。该文件已被 `.gitignore` 忽略。
-
-主要技术栈：Kotlin 2.1.0、AGP 8.7.3、Compose BOM 2024.12.01（Material 3，未启用动态取色）、Navigation Compose、Room 2.6.1（KSP）、DataStore Preferences。最低支持 Android 8.0（API 26）。
+技术栈：Kotlin 2.1.0、AGP 8.7.3、Gradle 8.11.1、Compose BOM 2024.12.01（Material 3，未启用动态取色）、Navigation Compose、Room 2.6.1（KSP）、DataStore Preferences。最低支持 Android 8.0（API 26），目标 API 35。AI：Claude 走官方 Anthropic Java SDK，DeepSeek 直接用 OkHttp 调它的 OpenAI 兼容接口；依赖版本见 `gradle/libs.versions.toml`。
 
 ## 项目结构
 
 ```
 .
-├── build.gradle.kts / settings.gradle.kts / gradle/libs.versions.toml   # Gradle 根配置与版本目录
+├── README.md  AGENTS.md  CLAUDE.md  CHANGELOG.md
+├── docs/                            # ARCHITECTURE / PRIVACY / DEVELOPMENT
+├── scripts/
+│   ├── setup-macos.sh               # 安装 JDK 17 + Android SDK（+ 模拟器），写 local.properties
+│   └── emulator.sh                  # 启动模拟器，可选安装并打开应用
+├── .github/
+│   ├── workflows/android.yml        # CI：单元测试 + debug 构建 + lint
+│   └── pull_request_template.md
+├── build.gradle.kts  settings.gradle.kts  gradle.properties
+├── gradle/libs.versions.toml        # 版本目录
 └── app/
-    ├── schemas/                      # Room 导出的数据库 schema
+    ├── build.gradle.kts  proguard-rules.pro
+    ├── schemas/                     # Room 导出的数据库 schema
     └── src/
         ├── main/
         │   ├── AndroidManifest.xml
-        │   ├── res/                  # 字符串（values 为中文，values-en 为英文）、主题、图标、xml 配置
+        │   ├── res/                 # values（中文，默认）/ values-en / values-night / xml / drawable / mipmap
         │   └── java/com/rookierc/boysdairy/
-        │       ├── BoysDairyApp.kt   # Application + 手动依赖注入容器 + 进程生命周期上锁
-        │       ├── MainActivity.kt   # AppCompatActivity，FLAG_SECURE，edge-to-edge
-        │       ├── data/             # Room 实体 / DAO / 数据库、仓库、DataStore 设置
-        │       ├── domain/           # 纯 Kotlin 领域模型与日期逻辑（距今天数、月历网格、分组、搜索）
-        │       ├── security/         # 密码哈希、尝试次数限制、锁定状态 LockManager
+        │       ├── BoysDairyApp.kt  # Application + AppContainer（手动依赖注入）+ 进程级自动上锁
+        │       ├── MainActivity.kt  # FLAG_SECURE（仅 release）、edge-to-edge
+        │       ├── domain/          # 纯 Kotlin：Entry、日期逻辑、Stats
+        │       ├── data/            # Room 实体 / DAO / 仓库、DataStore 设置
+        │       │   └── backup/      # JSON 导出 / 导入（编码、合并、引擎、SAF 管理器）
+        │       ├── security/        # PinHasher、PinAttemptLimiter、LockManager、持久化锁定记录
+        │       ├── ai/              # AI 锐评：提示词、服务编排、AiProvider（固定模型）、各服务商实现、Key 加密存储
         │       └── ui/
-        │           ├── AppRoot.kt        # 锁屏闸门（未解锁只显示锁屏）与主题
-        │           ├── MainNavigation.kt # 底部导航与路由
-        │           ├── theme/ common/    # Material3 主题与通用组件
-        │           ├── lock/ home/ add/ history/ settings/
-        └── test/                     # JUnit4 单元测试（密码哈希、日期逻辑、月历网格等）
+        │           ├── AppRoot.kt  SessionStores.kt  MainNavigation.kt  FunBottomBar.kt
+        │           ├── theme/       # FunColors / FunShapes / Material3 主题
+        │           ├── common/      # Fun* 设计系统组件
+        │           └── lock/ home/ add/ history/ ai/ backup/ settings/
+        └── test/                    # JVM 单元测试（约 215 个）
 ```
 
-## 语言切换
+## 文档
 
-应用内语言通过 `AppCompatDelegate.setApplicationLocales()` 实现（Android 13+ 与系统的「应用语言」设置同步，旧版本由 AppCompat 自动保存），不保存在 DataStore 中。
+| 文档 | 内容 |
+| --- | --- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 分层、依赖容器、锁与会话生命周期、导航、数据模型、备份格式、AI 请求流程、设计系统 |
+| [docs/PRIVACY.md](docs/PRIVACY.md) | 存了什么、存在哪、什么会离开设备、4 位 PIN 的诚实局限 |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 环境搭建、命令、模拟器、调试、CI、加文案、换 AI 模型、发布构建 |
+| [AGENTS.md](AGENTS.md) | 给编码 Agent 的项目指南（命令、代码地图、硬性规则） |
+| [CLAUDE.md](CLAUDE.md) | Claude Code 专用补充说明 |
+| [CHANGELOG.md](CHANGELOG.md) | 版本变更记录 |
