@@ -2,16 +2,20 @@ package com.rookierc.boysdairy
 
 import android.app.Application
 import android.content.Context
-import android.os.SystemClock
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.rookierc.boysdairy.ai.AiAnalysisService
+import com.rookierc.boysdairy.ai.ApiKeyStore
+import com.rookierc.boysdairy.ai.ClaudeTextGenerator
 import com.rookierc.boysdairy.data.AppDatabase
 import com.rookierc.boysdairy.data.EntryRepository
 import com.rookierc.boysdairy.data.SettingsRepository
+import com.rookierc.boysdairy.data.backup.BackupManager
 import com.rookierc.boysdairy.data.settingsDataStore
+import com.rookierc.boysdairy.security.DataStorePinLockoutStore
 import com.rookierc.boysdairy.security.LockManager
 import com.rookierc.boysdairy.security.PinAttemptLimiter
 import kotlinx.coroutines.CoroutineScope
@@ -33,8 +37,23 @@ class AppContainer(context: Context) {
     val lockManager: LockManager = LockManager(
         settings = settingsRepository,
         scope = applicationScope,
-        limiter = PinAttemptLimiter(now = { SystemClock.elapsedRealtime() }),
+        // Wall-clock time + DataStore: the lockout must survive process death and reboots.
+        limiter = PinAttemptLimiter(
+            store = DataStorePinLockoutStore(appContext.settingsDataStore),
+            now = System::currentTimeMillis,
+        ),
     )
+
+    val backupManager: BackupManager by lazy {
+        BackupManager(appContext.contentResolver, entryRepository)
+    }
+
+    val apiKeyStore: ApiKeyStore by lazy { ApiKeyStore(appContext) }
+
+    /** Talks to the network only when analyze() is called on explicit user action. */
+    val aiAnalysisService: AiAnalysisService by lazy {
+        AiAnalysisService(entryRepository, apiKeyStore, ClaudeTextGenerator())
+    }
 }
 
 class BoysDairyApp : Application() {

@@ -45,6 +45,9 @@ class LockManager(
 
     init {
         scope.launch {
+            // Load the persisted lockout first so the countdown is already correct when the
+            // lock screen appears (lockoutRemainingMillis() reads the in-memory copy).
+            limiter.load()
             val hasPin = settings.loadPinCredentials() != null
             _state.update { current ->
                 when {
@@ -78,6 +81,7 @@ class LockManager(
 
     /** Checks [pin] without changing the lock state. Counts toward the lockout limit. */
     suspend fun verifyPin(pin: String): PinCheckResult = mutex.withLock {
+        limiter.load()
         val lockout = limiter.remainingLockoutMillis()
         if (lockout > 0L) {
             return@withLock PinCheckResult.LockedOut(lockout)
@@ -97,6 +101,7 @@ class LockManager(
         }
     }
 
+    /** Remaining lockout, read from the limiter's in-memory copy of the persisted state. */
     fun lockoutRemainingMillis(): Long = limiter.remainingLockoutMillis()
 
     /** Locks the app if it is currently unlocked (which implies a PIN exists). */

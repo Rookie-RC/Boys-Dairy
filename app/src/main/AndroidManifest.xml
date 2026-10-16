@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Used only by the optional Claude analysis, and only after an explicit user action. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".BoysDairyApp"
         android:allowBackup="false"
