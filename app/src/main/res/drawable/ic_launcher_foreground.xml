@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simple calculator glyph, kept inside the 66dp adaptive-icon safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Calculator body -->
+    <path
+        android:fillColor="#F1F5F9"
+        android:pathData="M42,30 h24 a6,6 0 0 1 6,6 v36 a6,6 0 0 1 -6,6 h-24 a6,6 0 0 1 -6,-6 v-36 a6,6 0 0 1 6,-6 z" />
+
+    <!-- Display -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M41,35 h26 v10 h-26 z" />
+
+    <!-- Key row 1 -->
+    <path
+        android:fillColor="#94A3B8"
+        android:pathData="M41,50 h7 v6 h-7 z M50.5,50 h7 v6 h-7 z M60,50 h7 v6 h-7 z" />
+    <!-- Key row 2 -->
+    <path
+        android:fillColor="#94A3B8"
+        android:pathData="M41,59 h7 v6 h-7 z M50.5,59 h7 v6 h-7 z" />
+    <!-- Key row 3 -->
+    <path
+        android:fillColor="#94A3B8"
+        android:pathData="M41,68 h7 v6 h-7 z M50.5,68 h7 v6 h-7 z" />
+    <!-- Accent "equals" key spanning rows 2-3 -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M60,59 h7 v15 h-7 z" />
+</vector>
