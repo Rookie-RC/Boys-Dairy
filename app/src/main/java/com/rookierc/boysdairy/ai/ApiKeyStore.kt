@@ -13,13 +13,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
 import java.util.Base64
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -29,73 +32,122 @@ import javax.crypto.spec.GCMParameterSpec
 private val Context.secureDataStore: DataStore<Preferences> by preferencesDataStore(name = "secure")
 
 /**
- * Holds the user's Claude API key. The key is encrypted with an AES-256/GCM key that lives in the
- * AndroidKeyStore (alias [KEY_ALIAS], non-exportable); the stored value is Base64 of
- * `iv || ciphertext || tag` in the `secure` DataStore file. The plain key is never logged and
- * exists only transiently in memory.
+ * Holds the user's API keys, one per [AiProvider]. Each key is encrypted with an AES-256/GCM key
+ * that lives in the AndroidKeyStore (alias [KEY_ALIAS], non-exportable) and stored as Base64 of
+ * `iv || ciphertext || tag` under a per-provider name (`api_key_<provider id>`) in the `secure`
+ * DataStore file. The plain keys are never logged and exist only transiently in memory.
+ *
+ * Before multiple providers existed there was a single blob (`claudeApiKeyBlob`); the first access
+ * moves it to the Claude slot and deletes it. The ciphertext is untouched, so it still decrypts.
  */
-class ApiKeyStore(context: Context) {
-    private val dataStore: DataStore<Preferences> = context.applicationContext.secureDataStore
+class ApiKeyStore internal constructor(
+    private val dataStore: DataStore<Preferences>,
+    private val crypto: ApiKeyCrypto,
+) {
+    constructor(context: Context) : this(
+        dataStore = context.applicationContext.secureDataStore,
+        crypto = ApiKeyCrypto { androidKeystoreKey() },
+    )
 
-    private val crypto = ApiKeyCrypto { androidKeystoreKey() }
+    private val migrated = AtomicBoolean(false)
 
-    /** True while an encrypted key is stored (does not decrypt it). */
-    val hasKey: Flow<Boolean> = dataStore.data
-        .catch { error -> if (error is IOException) emit(emptyPreferences()) else throw error }
-        .map { prefs -> prefs[KEY_BLOB] != null }
-        .distinctUntilChanged()
+    /** True while an encrypted key is stored for [provider] (does not decrypt it). */
+    fun hasKey(provider: AiProvider): Flow<Boolean> {
+        val slot = slotOf(provider)
+        return flow {
+            migrateLegacyBlob()
+            emitAll(
+                dataStore.data
+                    .catch { error -> if (error is IOException) emit(emptyPreferences()) else throw error }
+                    .map { prefs -> prefs[slot] != null }
+                    .distinctUntilChanged(),
+            )
+        }
+    }
 
-    /** Stores [key] (trimmed). A blank key clears the stored one. */
-    suspend fun save(key: String) {
+    /** Stores [key] (trimmed) for [provider]. A blank key clears the stored one. */
+    suspend fun save(provider: AiProvider, key: String) {
         val trimmed = key.trim()
         if (trimmed.isEmpty()) {
-            clear()
+            clear(provider)
             return
         }
+        migrateLegacyBlob()
         val blob = withContext(Dispatchers.IO) { crypto.encrypt(trimmed) }
-        dataStore.edit { prefs -> prefs[KEY_BLOB] = blob }
+        dataStore.edit { prefs -> prefs[slotOf(provider)] = blob }
     }
 
     /**
-     * The plain key, or null when none is stored or it can no longer be decrypted (for example the
-     * Keystore key was lost). An undecryptable blob is deleted so [hasKey] turns false.
+     * The plain key for [provider], or null when none is stored or it can no longer be decrypted
+     * (for example the Keystore key was lost). An undecryptable blob is deleted so [hasKey] turns
+     * false.
      */
-    suspend fun load(): String? {
+    suspend fun load(provider: AiProvider): String? {
         val blob = try {
-            dataStore.data.first()[KEY_BLOB]
+            migrateLegacyBlob()
+            dataStore.data.first()[slotOf(provider)]
         } catch (_: IOException) {
             null
         } ?: return null
         val key = withContext(Dispatchers.IO) { crypto.decryptOrNull(blob) }
-        if (key == null) clear()
+        if (key == null) clear(provider)
         return key
     }
 
-    suspend fun clear() {
-        dataStore.edit { prefs -> prefs.remove(KEY_BLOB) }
+    suspend fun clear(provider: AiProvider) {
+        migrateLegacyBlob()
+        dataStore.edit { prefs -> prefs.remove(slotOf(provider)) }
     }
 
-    private fun androidKeystoreKey(): SecretKey {
-        val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
-        (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
-        val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
-        generator.init(
-            KeyGenParameterSpec.Builder(
-                KEY_ALIAS,
-                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
-            )
-                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setKeySize(256)
-                .build(),
-        )
-        return generator.generateKey()
+    /**
+     * Moves the pre-multi-provider blob to the Claude slot (unless that already has a key). Runs
+     * once per process; after a disk error it is simply retried on the next access.
+     */
+    private suspend fun migrateLegacyBlob() {
+        if (migrated.get()) return
+        try {
+            dataStore.edit { prefs ->
+                val legacy = prefs[LEGACY_KEY_BLOB] ?: return@edit
+                val claudeSlot = slotOf(AiProvider.CLAUDE)
+                if (prefs[claudeSlot] == null) prefs[claudeSlot] = legacy
+                prefs.remove(LEGACY_KEY_BLOB)
+            }
+            migrated.set(true)
+        } catch (_: IOException) {
+            // Leave the legacy blob where it is; the next call tries again.
+        }
     }
 
     private companion object {
         const val ANDROID_KEYSTORE = "AndroidKeyStore"
+
+        /**
+         * Keystore alias of the AES key. It was created for the Claude key and now protects every
+         * provider's key. Do not rename it: existing ciphertext would become undecryptable.
+         */
         const val KEY_ALIAS = "boysdairy_claude_key"
-        val KEY_BLOB = stringPreferencesKey("claudeApiKeyBlob")
+
+        /** Name of the single blob stored before there were multiple providers. */
+        val LEGACY_KEY_BLOB = stringPreferencesKey("claudeApiKeyBlob")
+
+        fun slotOf(provider: AiProvider) = stringPreferencesKey("api_key_${provider.id}")
+
+        fun androidKeystoreKey(): SecretKey {
+            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+            (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
+            val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
+            generator.init(
+                KeyGenParameterSpec.Builder(
+                    KEY_ALIAS,
+                    KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+                )
+                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                    .setKeySize(256)
+                    .build(),
+            )
+            return generator.generateKey()
+        }
     }
 }
 

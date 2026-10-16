@@ -8,10 +8,15 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.rookierc.boysdairy.ai.AiAnalysisService
 import com.rookierc.boysdairy.ai.AiError
 import com.rookierc.boysdairy.ai.AiOptions
+import com.rookierc.boysdairy.ai.AiPreview
+import com.rookierc.boysdairy.ai.AiProvider
 import com.rookierc.boysdairy.ai.AiResult
+import com.rookierc.boysdairy.ai.AiSelection
 import com.rookierc.boysdairy.ai.ApiKeyStore
 import com.rookierc.boysdairy.ai.RoastLevel
+import com.rookierc.boysdairy.ai.aiSelectionFlow
 import com.rookierc.boysdairy.appContainer
+import com.rookierc.boysdairy.data.SettingsRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,8 +32,8 @@ sealed interface PreviewState {
     data object Idle : PreviewState
     data object Loading : PreviewState
 
-    /** [text] is `null` when there is nothing to send (no entries yet). */
-    data class Ready(val text: String?) : PreviewState
+    /** [preview] is `null` when there is nothing to send (no entries yet). */
+    data class Ready(val preview: AiPreview?) : PreviewState
 }
 
 /** Where the analysis currently is. */
@@ -36,7 +41,9 @@ sealed interface AiPhase {
     data object Idle : AiPhase
     data object Loading : AiPhase
     data class Result(val text: String, val model: String) : AiPhase
-    data class Failed(val error: AiError) : AiPhase
+
+    /** [provider] is the one that was asked, so the message names the right service even if the selection changes later. */
+    data class Failed(val error: AiError, val provider: AiProvider) : AiPhase
 }
 
 data class AiUiState(
@@ -54,14 +61,18 @@ data class AiUiState(
  */
 class AiViewModel(
     private val service: AiAnalysisService,
+    private val settings: SettingsRepository,
     apiKeyStore: ApiKeyStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AiUiState())
     val uiState: StateFlow<AiUiState> = _uiState.asStateFlow()
 
-    /** `null` until the first read, so the UI does not flash a "no key" hint. */
-    val hasKey: StateFlow<Boolean?> = apiKeyStore.hasKey.stateIn<Boolean?>(
+    /**
+     * The provider / model / effort the next analysis will use and whether its key is set; `null`
+     * until the first read, so the UI does not flash a "no key" hint.
+     */
+    val selection: StateFlow<AiSelection?> = aiSelectionFlow(settings, apiKeyStore).stateIn<AiSelection?>(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = null,
@@ -69,6 +80,11 @@ class AiViewModel(
 
     private var previewJob: Job? = null
     private var analyzeJob: Job? = null
+
+    /** Same setting as in Settings, which stays the source of truth. */
+    fun setProvider(provider: AiProvider) {
+        viewModelScope.launch { settings.setAiProvider(provider) }
+    }
 
     fun setRoastLevel(level: RoastLevel) = _uiState.update { it.copy(roastLevel = level) }
 
@@ -82,14 +98,14 @@ class AiViewModel(
         val options = currentOptions(languageTag)
         _uiState.update { it.copy(preview = PreviewState.Loading) }
         previewJob = viewModelScope.launch {
-            val text = try {
+            val preview = try {
                 service.previewPayload(options)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
                 null
             }
-            _uiState.update { it.copy(preview = PreviewState.Ready(text)) }
+            _uiState.update { it.copy(preview = PreviewState.Ready(preview)) }
         }
     }
 
@@ -97,6 +113,7 @@ class AiViewModel(
     fun analyze(languageTag: String) {
         if (_uiState.value.phase is AiPhase.Loading) return
         val options = currentOptions(languageTag)
+        val provider = selection.value?.provider ?: AiProvider.DEFAULT
         _uiState.update { it.copy(phase = AiPhase.Loading) }
         analyzeJob = viewModelScope.launch {
             val result = try {
@@ -108,7 +125,7 @@ class AiViewModel(
             }
             val phase = when (result) {
                 is AiResult.Success -> AiPhase.Result(text = result.text, model = result.model)
-                is AiResult.Failure -> AiPhase.Failed(result.error)
+                is AiResult.Failure -> AiPhase.Failed(result.error, provider)
             }
             _uiState.update { it.copy(phase = phase) }
         }
@@ -139,7 +156,7 @@ class AiViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = appContainer()
-                AiViewModel(container.aiAnalysisService, container.apiKeyStore)
+                AiViewModel(container.aiAnalysisService, container.settingsRepository, container.apiKeyStore)
             }
         }
     }

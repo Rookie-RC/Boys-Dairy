@@ -8,8 +8,10 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.rookierc.boysdairy.ai.AiAnalysisService
+import com.rookierc.boysdairy.ai.AiProvider
 import com.rookierc.boysdairy.ai.ApiKeyStore
 import com.rookierc.boysdairy.ai.ClaudeTextGenerator
+import com.rookierc.boysdairy.ai.DeepSeekTextGenerator
 import com.rookierc.boysdairy.data.AppDatabase
 import com.rookierc.boysdairy.data.EntryRepository
 import com.rookierc.boysdairy.data.SettingsRepository
@@ -52,7 +54,15 @@ class AppContainer(context: Context) {
 
     /** Talks to the network only when analyze() is called on explicit user action. */
     val aiAnalysisService: AiAnalysisService by lazy {
-        AiAnalysisService(entryRepository, apiKeyStore, ClaudeTextGenerator())
+        AiAnalysisService(
+            entryRepository = entryRepository,
+            settingsRepository = settingsRepository,
+            apiKeyStore = apiKeyStore,
+            generators = mapOf(
+                AiProvider.DEEPSEEK to DeepSeekTextGenerator(),
+                AiProvider.CLAUDE to ClaudeTextGenerator(),
+            ),
+        )
     }
 }
 

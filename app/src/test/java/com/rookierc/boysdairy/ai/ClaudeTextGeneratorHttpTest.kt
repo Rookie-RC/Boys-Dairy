@@ -50,8 +50,14 @@ class ClaudeTextGeneratorHttpTest {
         server.enqueue(MockResponse().setResponseCode(code).setHeader("Content-Type", "application/json").setBody(body))
     }
 
-    private fun call(useRefusalFallback: Boolean = true): AiResult = runBlocking {
-        generator(useRefusalFallback).generate(apiKey = KEY, system = "SYSTEM-PROMPT", user = "USER-MESSAGE")
+    private fun call(
+        useRefusalFallback: Boolean = true,
+        model: String = HAIKU,
+        effort: AiEffort = AiEffort.HIGH,
+    ): AiResult = runBlocking {
+        generator(useRefusalFallback).generate(
+            AiRequest(apiKey = KEY, model = model, effort = effort, system = "SYSTEM-PROMPT", user = "USER-MESSAGE"),
+        )
     }
 
     private fun takeRequest(): RecordedRequest =
@@ -72,11 +78,10 @@ class ClaudeTextGeneratorHttpTest {
         assertEquals(KEY, request.getHeader("x-api-key"))
 
         val json = JSONObject(request.body.readUtf8())
-        assertEquals(ClaudeConfig.MODEL, json.getString("model"))
-        assertEquals("claude-opus-5-5", json.getString("model"))
+        assertEquals(HAIKU, json.getString("model"))
         assertEquals(16_000, json.getInt("max_tokens"))
         assertEquals("SYSTEM-PROMPT", json.getString("system"))
-        assertEquals("medium", json.getJSONObject("output_config").getString("effort"))
+        assertEquals("high", json.getJSONObject("output_config").getString("effort"))
 
         val messages = json.getJSONArray("messages")
         assertEquals("exactly one user turn, no assistant prefill", 1, messages.length())
@@ -97,9 +102,25 @@ class ClaudeTextGeneratorHttpTest {
     }
 
     @Test
-    fun requestsServerSideFallbackByDefault() {
+    fun modelAndEffortComeFromTheRequest() {
+        for ((model, effort, wire) in listOf(
+            Triple("claude-custom-x", AiEffort.LOW, "low"),
+            Triple(HAIKU, AiEffort.MEDIUM, "medium"),
+            Triple("claude-other-y", AiEffort.MAX, "max"),
+        )) {
+            reply(200, successBody(listOf("ok")))
+            call(model = model, effort = effort)
+
+            val json = JSONObject(takeRequest().body.readUtf8())
+            assertEquals(model, json.getString("model"))
+            assertEquals(wire, json.getJSONObject("output_config").getString("effort"))
+        }
+    }
+
+    @Test
+    fun requestsServerSideFallbackForModelsThatSupportIt() {
         reply(200, successBody(listOf("ok")))
-        call()
+        call(model = OPUS)
 
         val request = takeRequest()
         assertTrue(request.getHeader("anthropic-beta").orEmpty().contains("server-side-fallback-2026-07-01"))
@@ -107,9 +128,19 @@ class ClaudeTextGeneratorHttpTest {
     }
 
     @Test
+    fun haikuNeverGetsTheFallbackRequest() {
+        reply(200, successBody(listOf("ok")))
+        call(model = HAIKU)
+
+        val request = takeRequest()
+        assertFalse(request.getHeader("anthropic-beta").orEmpty().contains("server-side-fallback"))
+        assertFalse(JSONObject(request.body.readUtf8()).has("fallbacks"))
+    }
+
+    @Test
     fun fallbackCanBeSwitchedOff() {
         reply(200, successBody(listOf("ok")))
-        call(useRefusalFallback = false)
+        call(useRefusalFallback = false, model = OPUS)
 
         val request = takeRequest()
         assertFalse(request.getHeader("anthropic-beta").orEmpty().contains("server-side-fallback"))
@@ -158,13 +189,16 @@ class ClaudeTextGeneratorHttpTest {
     fun httpErrorsAreMapped() {
         val cases = listOf(
             Triple(401, "authentication_error", AiError.INVALID_API_KEY),
+            Triple(402, "billing_error", AiError.INSUFFICIENT_BALANCE),
             Triple(403, "permission_error", AiError.INVALID_API_KEY),
             Triple(429, "rate_limit_error", AiError.RATE_LIMITED),
             Triple(529, "overloaded_error", AiError.OVERLOADED),
             Triple(500, "api_error", AiError.SERVER),
             Triple(503, "api_error", AiError.SERVER),
-            Triple(400, "invalid_request_error", AiError.UNKNOWN),
-            Triple(404, "not_found_error", AiError.UNKNOWN),
+            Triple(400, "invalid_request_error", AiError.BAD_REQUEST),
+            Triple(404, "not_found_error", AiError.BAD_REQUEST),
+            Triple(422, "invalid_request_error", AiError.BAD_REQUEST),
+            Triple(413, "request_too_large", AiError.UNKNOWN),
         )
         for ((code, type, expected) in cases) {
             reply(code, errorBody(type))
@@ -188,6 +222,8 @@ class ClaudeTextGeneratorHttpTest {
 
     private companion object {
         const val KEY = "sk-ant-test-0123456789"
+        const val HAIKU = "claude-haiku-5-5"
+        const val OPUS = "claude-opus-5-5"
 
         fun successBody(
             texts: List<String>,

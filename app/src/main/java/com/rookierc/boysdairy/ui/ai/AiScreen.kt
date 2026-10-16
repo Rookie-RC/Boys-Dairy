@@ -1,6 +1,5 @@
 package com.rookierc.boysdairy.ui.ai
 
-import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -52,14 +51,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.ai.AiError
+import com.rookierc.boysdairy.ai.AiProvider
+import com.rookierc.boysdairy.ai.AiSelection
 import com.rookierc.boysdairy.ai.RoastLevel
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.ChoiceCard
 import com.rookierc.boysdairy.ui.common.ChunkyButton
+import com.rookierc.boysdairy.ui.common.EmojiChip
 import com.rookierc.boysdairy.ui.common.FunCard
 import com.rookierc.boysdairy.ui.common.ScreenTitle
 import com.rookierc.boysdairy.ui.common.SectionHeader
 import com.rookierc.boysdairy.ui.common.StickerBadge
+import com.rookierc.boysdairy.ui.common.emoji
+import com.rookierc.boysdairy.ui.common.nameRes
 import com.rookierc.boysdairy.ui.theme.FunTheme
 import kotlinx.coroutines.delay
 import kotlin.random.Random
@@ -77,10 +81,12 @@ fun AiScreen(
     viewModel: AiViewModel = viewModel(factory = AiViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val hasKey by viewModel.hasKey.collectAsStateWithLifecycle()
+    val selection by viewModel.selection.collectAsStateWithLifecycle()
     val languageTag = LocalConfiguration.current.locales.get(0).toLanguageTag()
     val scrollState = rememberScrollState()
     val colors = FunTheme.colors
+    val providerOrDefault = selection?.provider ?: AiProvider.DEFAULT
+    val providerName = stringResource(providerOrDefault.nameRes())
 
     // Keep the preview in sync while it is open (still nothing is sent).
     LaunchedEffect(state.previewExpanded, state.includeNotes, state.roastLevel, languageTag) {
@@ -124,6 +130,12 @@ fun AiScreen(
                 style = MaterialTheme.typography.bodyLarge,
             )
         }
+
+        // Who answers: a shortcut for the setting that lives in Settings.
+        ProviderCard(
+            selection = selection,
+            onSelect = viewModel::setProvider,
+        )
 
         // Roast level
         FunCard(modifier = Modifier.fillMaxWidth()) {
@@ -188,9 +200,11 @@ fun AiScreen(
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                text = stringResource(
-                    if (state.includeNotes) R.string.ai_notes_on_note else R.string.ai_notes_off_note,
-                ),
+                text = if (state.includeNotes) {
+                    stringResource(R.string.ai_notes_on_note, stringResource(providerOrDefault.nameRes()))
+                } else {
+                    stringResource(R.string.ai_notes_off_note)
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -203,15 +217,15 @@ fun AiScreen(
             onToggle = { viewModel.setPreviewExpanded(!state.previewExpanded) },
         )
 
-        if (hasKey == false) {
+        if (selection?.hasKey == false) {
             FunCard(
                 modifier = Modifier.fillMaxWidth(),
                 containerColor = colors.lemonTint,
             ) {
-                SectionHeader(emoji = "🔑", title = stringResource(R.string.ai_no_key_title))
+                SectionHeader(emoji = "🔑", title = stringResource(R.string.ai_no_key_title, providerName))
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = stringResource(R.string.ai_no_key_body),
+                    text = stringResource(R.string.ai_no_key_body, providerName),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(12.dp))
@@ -235,7 +249,11 @@ fun AiScreen(
                     minHeight = 64.dp,
                 )
                 Text(
-                    text = stringResource(R.string.ai_privacy_footer),
+                    text = stringResource(
+                        R.string.ai_privacy_footer,
+                        providerName,
+                        providerOrDefault.spec.endpointHost,
+                    ),
                     style = MaterialTheme.typography.labelMedium,
                     color = colors.textSecondary,
                     textAlign = TextAlign.Center,
@@ -254,6 +272,7 @@ fun AiScreen(
 
             is AiPhase.Failed -> ErrorCard(
                 error = phase.error,
+                providerName = stringResource(phase.provider.nameRes()),
                 onRetry = { viewModel.analyze(languageTag) },
                 onOpenAiKeySettings = onOpenAiKeySettings,
                 onDismiss = viewModel::reset,
@@ -261,6 +280,41 @@ fun AiScreen(
         }
 
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+/** Two chips to switch provider; the selected chip is the one the next roast will use. */
+@Composable
+private fun ProviderCard(
+    selection: AiSelection?,
+    onSelect: (AiProvider) -> Unit,
+) {
+    val colors = FunTheme.colors
+    FunCard(modifier = Modifier.fillMaxWidth()) {
+        SectionHeader(emoji = "🎤", title = stringResource(R.string.ai_provider_label))
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            AiProvider.entries.forEach { provider ->
+                EmojiChip(
+                    label = stringResource(provider.nameRes()),
+                    emoji = provider.emoji(),
+                    selected = selection?.provider == provider,
+                    onClick = { onSelect(provider) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        if (selection != null) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.ai_provider_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textSecondary,
+            )
+        }
     }
 }
 
@@ -342,27 +396,21 @@ private fun PreviewCard(
                     )
 
                     is PreviewState.Ready -> {
-                        val text = preview.text
-                        if (text == null) {
+                        val payload = preview.preview
+                        if (payload == null) {
                             Text(
                                 text = stringResource(R.string.ai_preview_empty),
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                         } else {
-                            SelectionContainer {
-                                Text(
-                                    text = text,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = FontFamily.Monospace,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = 260.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(colors.surfaceAlt)
-                                        .verticalScroll(rememberScrollState())
-                                        .padding(12.dp),
-                                )
-                            }
+                            PreviewBlock(
+                                label = stringResource(R.string.ai_preview_system_label),
+                                text = payload.system,
+                            )
+                            PreviewBlock(
+                                label = stringResource(R.string.ai_preview_user_label),
+                                text = payload.user,
+                            )
                             Text(
                                 text = stringResource(R.string.ai_preview_footer),
                                 style = MaterialTheme.typography.labelMedium,
@@ -373,6 +421,31 @@ private fun PreviewCard(
                 }
             }
         }
+    }
+}
+
+/** One labelled, scrollable, selectable monospace box of the preview. */
+@Composable
+private fun PreviewBlock(label: String, text: String) {
+    val colors = FunTheme.colors
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelLarge,
+        color = colors.textSecondary,
+    )
+    SelectionContainer {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 260.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(colors.surfaceAlt)
+                .verticalScroll(rememberScrollState())
+                .padding(12.dp),
+        )
     }
 }
 
@@ -476,6 +549,7 @@ private fun ResultCard(
 @Composable
 private fun ErrorCard(
     error: AiError,
+    providerName: String,
     onRetry: () -> Unit,
     onOpenAiKeySettings: () -> Unit,
     onDismiss: () -> Unit,
@@ -491,7 +565,7 @@ private fun ErrorCard(
             EmojiText(text = error.emoji(), fontSize = 40.sp)
             Spacer(Modifier.width(12.dp))
             Text(
-                text = stringResource(error.messageRes()),
+                text = error.message(providerName),
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f),
             )
@@ -523,23 +597,28 @@ private fun ErrorCard(
     }
 }
 
-@StringRes
-private fun AiError.messageRes(): Int = when (this) {
-    AiError.NO_API_KEY -> R.string.ai_error_no_key
-    AiError.NO_DATA -> R.string.ai_error_no_data
-    AiError.INVALID_API_KEY -> R.string.ai_error_invalid_key
-    AiError.RATE_LIMITED -> R.string.ai_error_rate_limited
-    AiError.OVERLOADED -> R.string.ai_error_overloaded
-    AiError.NETWORK -> R.string.ai_error_network
-    AiError.REFUSED -> R.string.ai_error_refused
-    AiError.SERVER -> R.string.ai_error_server
-    AiError.UNKNOWN -> R.string.ai_error_unknown
+/** The localized message; the key- and request-related ones name the provider that was asked. */
+@Composable
+private fun AiError.message(providerName: String): String = when (this) {
+    AiError.NO_API_KEY -> stringResource(R.string.ai_error_no_key, providerName)
+    AiError.NO_DATA -> stringResource(R.string.ai_error_no_data)
+    AiError.INVALID_API_KEY -> stringResource(R.string.ai_error_invalid_key, providerName)
+    AiError.INSUFFICIENT_BALANCE -> stringResource(R.string.ai_error_insufficient_balance)
+    AiError.BAD_REQUEST -> stringResource(R.string.ai_error_bad_request, providerName)
+    AiError.RATE_LIMITED -> stringResource(R.string.ai_error_rate_limited)
+    AiError.OVERLOADED -> stringResource(R.string.ai_error_overloaded)
+    AiError.NETWORK -> stringResource(R.string.ai_error_network)
+    AiError.REFUSED -> stringResource(R.string.ai_error_refused)
+    AiError.SERVER -> stringResource(R.string.ai_error_server)
+    AiError.UNKNOWN -> stringResource(R.string.ai_error_unknown)
 }
 
 private fun AiError.emoji(): String = when (this) {
     AiError.NO_API_KEY -> "🔑"
     AiError.NO_DATA -> "📭"
     AiError.INVALID_API_KEY -> "🔐"
+    AiError.INSUFFICIENT_BALANCE -> "💸"
+    AiError.BAD_REQUEST -> "🔍"
     AiError.RATE_LIMITED -> "⏳"
     AiError.OVERLOADED -> "🚇"
     AiError.NETWORK -> "📡"

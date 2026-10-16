@@ -83,6 +83,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
 
     implementation(libs.anthropic.java)
+    implementation(libs.okhttp)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

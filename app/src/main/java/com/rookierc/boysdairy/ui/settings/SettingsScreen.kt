@@ -39,14 +39,18 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rookierc.boysdairy.BuildConfig
 import com.rookierc.boysdairy.R
+import com.rookierc.boysdairy.ai.AiProvider
+import com.rookierc.boysdairy.ai.AiSelection
 import com.rookierc.boysdairy.data.ThemeMode
 import com.rookierc.boysdairy.ui.backup.FileActions
+import com.rookierc.boysdairy.ui.common.ChoiceCard
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.ChunkyButton
 import com.rookierc.boysdairy.ui.common.EmojiChip
@@ -57,6 +61,9 @@ import com.rookierc.boysdairy.ui.common.FunTextField
 import com.rookierc.boysdairy.ui.common.ScreenTitle
 import com.rookierc.boysdairy.ui.common.SectionHeader
 import com.rookierc.boysdairy.ui.common.StickerBadge
+import com.rookierc.boysdairy.ui.common.emoji
+import com.rookierc.boysdairy.ui.common.nameRes
+import com.rookierc.boysdairy.ui.common.taglineRes
 import com.rookierc.boysdairy.ui.theme.FunTheme
 
 /**
@@ -75,7 +82,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
-    val hasApiKey by viewModel.hasApiKey.collectAsStateWithLifecycle()
+    val ai by viewModel.ai.collectAsStateWithLifecycle()
     var language by remember { mutableStateOf(currentAppLanguage()) }
     var showKeyDialog by remember { mutableStateOf(false) }
     var showClearKeyConfirm by remember { mutableStateOf(false) }
@@ -185,54 +192,14 @@ fun SettingsScreen(
 
         // AI
         SettingsSection(emoji = "🤖", title = stringResource(R.string.settings_ai)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.settings_ai_key),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                }
-                when (hasApiKey) {
-                    true -> StickerBadge(
-                        text = stringResource(R.string.settings_ai_key_set),
-                        containerColor = FunTheme.colors.mint,
-                        rotation = 2f,
-                    )
-                    false -> StickerBadge(
-                        text = stringResource(R.string.settings_ai_key_unset),
-                        containerColor = FunTheme.colors.surfaceAlt,
-                        contentColor = FunTheme.colors.textPrimary,
-                        rotation = 2f,
-                    )
-                    null -> Unit
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            ChunkyButton(
-                text = stringResource(
-                    if (hasApiKey == true) R.string.settings_ai_key_change else R.string.settings_ai_key_set_action,
-                ),
-                emoji = "🔑",
-                onClick = { showKeyDialog = true },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (hasApiKey == true) {
-                Spacer(Modifier.height(10.dp))
-                ChunkyButton(
-                    text = stringResource(R.string.settings_ai_key_clear),
-                    emoji = "🧹",
-                    onClick = { showClearKeyConfirm = true },
-                    containerColor = FunTheme.colors.surface,
-                    contentColor = FunTheme.colors.textPrimary,
-                    modifier = Modifier.fillMaxWidth(),
+            ai?.let { selection ->
+                AiSettingsContent(
+                    selection = selection,
+                    onSelectProvider = viewModel::selectProvider,
+                    onSetKey = { showKeyDialog = true },
+                    onClearKey = { showClearKeyConfirm = true },
                 )
             }
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = stringResource(R.string.settings_ai_note),
-                style = MaterialTheme.typography.bodyMedium,
-                color = FunTheme.colors.textSecondary,
-            )
         }
 
         // About
@@ -252,31 +219,135 @@ fun SettingsScreen(
         Spacer(Modifier.height(8.dp))
     }
 
-    if (showKeyDialog) {
-        ApiKeyDialog(
-            onDismiss = { showKeyDialog = false },
-            onSave = { key ->
-                viewModel.saveApiKey(key)
-                showKeyDialog = false
-            },
+    // The AI card is only shown once the selection has loaded, so the dialogs wait for it too.
+    ai?.let { selection ->
+        val providerName = stringResource(selection.provider.nameRes())
+
+        if (showKeyDialog) {
+            ApiKeyDialog(
+                providerName = providerName,
+                onDismiss = { showKeyDialog = false },
+                onSave = { key ->
+                    viewModel.saveApiKey(selection.provider, key)
+                    showKeyDialog = false
+                },
+            )
+        }
+
+        if (showClearKeyConfirm) {
+            FunConfirmDialog(
+                title = stringResource(R.string.settings_ai_key_clear_title, providerName),
+                emoji = "🧹",
+                message = stringResource(R.string.settings_ai_key_clear_message, providerName),
+                confirmText = stringResource(R.string.settings_ai_key_clear_confirm),
+                confirmColor = FunTheme.colors.danger,
+                onConfirm = {
+                    viewModel.clearApiKey(selection.provider)
+                    showClearKeyConfirm = false
+                },
+                dismissText = stringResource(R.string.action_cancel),
+                onDismiss = { showClearKeyConfirm = false },
+            )
+        }
+    }
+}
+
+/** Provider picker, then the selected provider's key, then where data goes. */
+@Composable
+private fun AiSettingsContent(
+    selection: AiSelection,
+    onSelectProvider: (AiProvider) -> Unit,
+    onSetKey: () -> Unit,
+    onClearKey: () -> Unit,
+) {
+    val colors = FunTheme.colors
+    val provider = selection.provider
+    val providerName = stringResource(provider.nameRes())
+
+    Text(
+        text = stringResource(R.string.settings_ai_provider),
+        style = MaterialTheme.typography.labelLarge,
+        color = colors.textSecondary,
+    )
+    Spacer(Modifier.height(8.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AiProvider.entries.forEach { option ->
+            ChoiceCard(
+                selected = option == provider,
+                onClick = { onSelectProvider(option) },
+                modifier = Modifier.weight(1f),
+            ) {
+                EmojiText(text = option.emoji(), fontSize = 34.sp)
+                Text(
+                    text = stringResource(option.nameRes()),
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = stringResource(option.taglineRes()),
+                    style = MaterialTheme.typography.labelSmall,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+
+    Spacer(Modifier.height(16.dp))
+    RowDivider()
+    Spacer(Modifier.height(16.dp))
+
+    // Key
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = stringResource(R.string.settings_ai_key, providerName),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f),
+        )
+        if (selection.hasKey) {
+            StickerBadge(
+                text = stringResource(R.string.settings_ai_key_set),
+                containerColor = colors.mint,
+                rotation = 2f,
+            )
+        } else {
+            StickerBadge(
+                text = stringResource(R.string.settings_ai_key_unset),
+                containerColor = colors.surfaceAlt,
+                contentColor = colors.textPrimary,
+                rotation = 2f,
+            )
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    ChunkyButton(
+        text = stringResource(
+            if (selection.hasKey) R.string.settings_ai_key_change else R.string.settings_ai_key_set_action,
+        ),
+        emoji = "🔑",
+        onClick = onSetKey,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    if (selection.hasKey) {
+        Spacer(Modifier.height(10.dp))
+        ChunkyButton(
+            text = stringResource(R.string.settings_ai_key_clear),
+            emoji = "🧹",
+            onClick = onClearKey,
+            containerColor = colors.surface,
+            contentColor = colors.textPrimary,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 
-    if (showClearKeyConfirm) {
-        FunConfirmDialog(
-            title = stringResource(R.string.settings_ai_key_clear_title),
-            emoji = "🧹",
-            message = stringResource(R.string.settings_ai_key_clear_message),
-            confirmText = stringResource(R.string.settings_ai_key_clear_confirm),
-            confirmColor = FunTheme.colors.danger,
-            onConfirm = {
-                viewModel.clearApiKey()
-                showClearKeyConfirm = false
-            },
-            dismissText = stringResource(R.string.action_cancel),
-            onDismiss = { showClearKeyConfirm = false },
-        )
-    }
+    Spacer(Modifier.height(12.dp))
+    Text(
+        text = stringResource(R.string.settings_ai_note, provider.spec.endpointHost),
+        style = MaterialTheme.typography.bodyMedium,
+        color = colors.textSecondary,
+    )
 }
 
 @Composable
@@ -327,9 +398,10 @@ private fun RowDivider() {
     HorizontalDivider(color = FunTheme.colors.ink.copy(alpha = 0.15f), thickness = 1.dp)
 }
 
-/** Password-style input for the Claude API key. The text only lives in this dialog's state. */
+/** Password-style input for the selected provider's API key. The text only lives in this dialog's state. */
 @Composable
 private fun ApiKeyDialog(
+    providerName: String,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
 ) {
@@ -339,7 +411,7 @@ private fun ApiKeyDialog(
 
     FunDialog(
         onDismissRequest = onDismiss,
-        title = stringResource(R.string.settings_key_dialog_title),
+        title = stringResource(R.string.settings_key_dialog_title, providerName),
         emoji = "🔑",
         buttons = {
             ChunkyButton(
@@ -359,7 +431,7 @@ private fun ApiKeyDialog(
         },
     ) {
         Text(
-            text = stringResource(R.string.settings_key_dialog_body),
+            text = stringResource(R.string.settings_key_dialog_body, providerName),
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(12.dp))

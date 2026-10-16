@@ -7,8 +7,10 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.rookierc.boysdairy.ai.AiProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.IOException
@@ -40,6 +42,15 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { prefs -> prefs[KEY_THEME_MODE] = mode.name }
     }
 
+    /** The provider the AI tab talks to; DeepSeek until the user picks another. Not secret, not backed up. */
+    val aiProvider: Flow<AiProvider> = preferences
+        .map { prefs -> providerOf(prefs) }
+        .distinctUntilChanged()
+
+    suspend fun setAiProvider(provider: AiProvider) {
+        dataStore.edit { prefs -> prefs[KEY_AI_PROVIDER] = provider.id }
+    }
+
     suspend fun loadPinCredentials(): PinCredentials? {
         val prefs = preferences.first()
         val salt = prefs[KEY_PIN_SALT]
@@ -54,7 +65,13 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    private fun providerOf(prefs: Preferences): AiProvider =
+        AiProvider.fromId(prefs[KEY_AI_PROVIDER]) ?: AiProvider.DEFAULT
+
     private companion object {
+        // Holds an AiProvider.id, which is a stable persistence key.
+        val KEY_AI_PROVIDER = stringPreferencesKey("aiProvider")
+
         val KEY_PIN_SALT = stringPreferencesKey("pinSalt")
         val KEY_PIN_HASH = stringPreferencesKey("pinHash")
         val KEY_THEME_MODE = stringPreferencesKey("themeMode")

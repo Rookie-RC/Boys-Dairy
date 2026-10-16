@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.rookierc.boysdairy.ai.AiProvider
+import com.rookierc.boysdairy.ai.AiSelection
 import com.rookierc.boysdairy.ai.ApiKeyStore
+import com.rookierc.boysdairy.ai.aiSelectionFlow
 import com.rookierc.boysdairy.appContainer
 import com.rookierc.boysdairy.data.SettingsRepository
 import com.rookierc.boysdairy.data.ThemeMode
@@ -25,8 +28,11 @@ class SettingsViewModel(
         initialValue = ThemeMode.SYSTEM,
     )
 
-    /** `null` until the first read. The key itself never reaches the UI layer. */
-    val hasApiKey: StateFlow<Boolean?> = apiKeyStore.hasKey.stateIn<Boolean?>(
+    /**
+     * The selected AI provider and its key status; `null` until the first read. The key itself
+     * never reaches the UI layer.
+     */
+    val ai: StateFlow<AiSelection?> = aiSelectionFlow(settings, apiKeyStore).stateIn<AiSelection?>(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = null,
@@ -36,12 +42,16 @@ class SettingsViewModel(
         viewModelScope.launch { settings.setThemeMode(mode) }
     }
 
-    fun saveApiKey(key: String) {
-        viewModelScope.launch { apiKeyStore.save(key.trim()) }
+    fun selectProvider(provider: AiProvider) {
+        viewModelScope.launch { settings.setAiProvider(provider) }
     }
 
-    fun clearApiKey() {
-        viewModelScope.launch { apiKeyStore.clear() }
+    fun saveApiKey(provider: AiProvider, key: String) {
+        viewModelScope.launch { apiKeyStore.save(provider, key.trim()) }
+    }
+
+    fun clearApiKey(provider: AiProvider) {
+        viewModelScope.launch { apiKeyStore.clear(provider) }
     }
 
     companion object {

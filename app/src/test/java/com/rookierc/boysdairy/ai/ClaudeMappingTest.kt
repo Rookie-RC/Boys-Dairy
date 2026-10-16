@@ -5,10 +5,13 @@ import com.anthropic.core.http.Headers
 import com.anthropic.errors.AnthropicException
 import com.anthropic.errors.AnthropicIoException
 import com.anthropic.errors.AnthropicRetryableException
+import com.anthropic.errors.BadRequestException
+import com.anthropic.errors.NotFoundException
 import com.anthropic.errors.InternalServerException
 import com.anthropic.errors.PermissionDeniedException
 import com.anthropic.errors.RateLimitException
 import com.anthropic.errors.UnauthorizedException
+import com.anthropic.errors.UnprocessableEntityException
 import com.anthropic.errors.UnexpectedStatusCodeException
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -65,15 +68,17 @@ class ClaudeMappingTest {
     fun statusCodesMapToErrors() {
         assertEquals(AiError.INVALID_API_KEY, ClaudeErrors.fromStatus(401))
         assertEquals(AiError.INVALID_API_KEY, ClaudeErrors.fromStatus(403))
+        assertEquals(AiError.INSUFFICIENT_BALANCE, ClaudeErrors.fromStatus(402))
         assertEquals(AiError.RATE_LIMITED, ClaudeErrors.fromStatus(429))
         assertEquals(AiError.OVERLOADED, ClaudeErrors.fromStatus(529))
         assertEquals(AiError.SERVER, ClaudeErrors.fromStatus(500))
         assertEquals(AiError.SERVER, ClaudeErrors.fromStatus(502))
         assertEquals(AiError.SERVER, ClaudeErrors.fromStatus(503))
         assertEquals(AiError.SERVER, ClaudeErrors.fromStatus(504))
-        assertEquals(AiError.UNKNOWN, ClaudeErrors.fromStatus(400))
-        assertEquals(AiError.UNKNOWN, ClaudeErrors.fromStatus(404))
-        assertEquals(AiError.UNKNOWN, ClaudeErrors.fromStatus(422))
+        assertEquals(AiError.BAD_REQUEST, ClaudeErrors.fromStatus(400))
+        assertEquals(AiError.BAD_REQUEST, ClaudeErrors.fromStatus(404))
+        assertEquals(AiError.BAD_REQUEST, ClaudeErrors.fromStatus(422))
+        assertEquals(AiError.UNKNOWN, ClaudeErrors.fromStatus(413))
         assertEquals(AiError.UNKNOWN, ClaudeErrors.fromStatus(200))
     }
 
@@ -85,6 +90,16 @@ class ClaudeMappingTest {
         val forbidden = PermissionDeniedException.builder().headers(headers).body(body).build()
         assertEquals(AiError.INVALID_API_KEY, ClaudeErrors.map(unauthorized))
         assertEquals(AiError.INVALID_API_KEY, ClaudeErrors.map(forbidden))
+    }
+
+    @Test
+    fun badRequestNotFoundAndUnprocessableMeanBadRequest() {
+        val badRequest = BadRequestException.builder().headers(headers).body(body).build()
+        val notFound = NotFoundException.builder().headers(headers).body(body).build()
+        val unprocessable = UnprocessableEntityException.builder().headers(headers).body(body).build()
+        assertEquals(AiError.BAD_REQUEST, ClaudeErrors.map(badRequest))
+        assertEquals(AiError.BAD_REQUEST, ClaudeErrors.map(notFound))
+        assertEquals(AiError.BAD_REQUEST, ClaudeErrors.map(unprocessable))
     }
 
     @Test
@@ -115,6 +130,8 @@ class ClaudeMappingTest {
         fun unexpected(status: Int) =
             UnexpectedStatusCodeException.builder().statusCode(status).headers(headers).body(body).build()
 
+        assertEquals(AiError.INSUFFICIENT_BALANCE, ClaudeErrors.map(unexpected(402)))
+        assertEquals(AiError.BAD_REQUEST, ClaudeErrors.map(unexpected(422)))
         assertEquals(AiError.OVERLOADED, ClaudeErrors.map(unexpected(529)))
         assertEquals(AiError.SERVER, ClaudeErrors.map(unexpected(504)))
         assertEquals(AiError.UNKNOWN, ClaudeErrors.map(unexpected(418)))

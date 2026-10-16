@@ -13,7 +13,8 @@ datastore = "1.1.1"
 junit = "4.13.2"
 anthropic = "2.34.0"
 orgJson = "20240303"
-# Must match the OkHttp version the Anthropic SDK pulls in (checked with :app:dependencies).
+# Must match the OkHttp version the Anthropic SDK pulls in (checked with :app:dependencies); the
+# DeepSeek client uses OkHttp directly, so the app and the SDK share one copy.
 okhttp = "4.12.0"
 
 [libraries]
@@ -47,6 +48,9 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
 # JVM unit tests only: loopback HTTP server to verify the exact request the SDK sends.
 okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
+
+# DeepSeek analysis (explicit user action only): plain HTTPS JSON call.
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 
 # Claude analysis (explicit user action only). Official Anthropic Java SDK with the OkHttp transport.
 anthropic-java = { group = "com.anthropic", name = "anthropic-java", version.ref = "anthropic" }
