@@ -26,6 +26,11 @@ class HistoryViewModel(private val repository: EntryRepository) : ViewModel() {
         viewModelScope.launch { repository.delete(id) }
     }
 
+    /** Undo of [delete]: stores the entry again under a fresh id. */
+    fun restore(entry: Entry) {
+        viewModelScope.launch { repository.add(entry.copy(id = 0)) }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer { HistoryViewModel(appContainer().entryRepository) }

@@ -1,36 +1,46 @@
 package com.rookierc.boysdairy.ui
 
+import android.app.Application
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.rookierc.boysdairy.appContainer
 import com.rookierc.boysdairy.data.SettingsRepository
 import com.rookierc.boysdairy.data.ThemeMode
+import com.rookierc.boysdairy.data.backup.BackupManager
 import com.rookierc.boysdairy.security.LockManager
 import com.rookierc.boysdairy.security.LockState
+import com.rookierc.boysdairy.ui.backup.BackupViewModel
+import com.rookierc.boysdairy.ui.backup.FileActions
 import com.rookierc.boysdairy.ui.lock.LockScreen
 import com.rookierc.boysdairy.ui.theme.BoysDairyTheme
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import java.time.LocalDate
 
 class RootViewModel(
     settings: SettingsRepository,
@@ -59,13 +69,41 @@ class RootViewModel(
 /**
  * Lock gate: unless the app is [LockState.Unlocked] only the lock screen is composed, so no
  * navigation graph, view model or screen content of the main UI exists while locked.
+ *
+ * Three things deliberately live *here* (outside the unlocked session) so they survive a lock:
+ *  - the system file-picker launchers: the picker backgrounds the app, which locks it and tears
+ *    the main UI down. A launcher registered inside it would be unregistered by the time the
+ *    result arrives; registered here it always receives it;
+ *  - [BackupViewModel] (Activity scoped): keeps the picked Uri / a running export or import;
+ *  - [SessionStoreHolder]: the store that the unlocked UI's ViewModels live in.
  */
 @Composable
 fun BoysDairyRoot(
     viewModel: RootViewModel = viewModel(factory = RootViewModel.Factory),
+    backupViewModel: BackupViewModel = viewModel(factory = BackupViewModel.Factory),
+    sessionStores: SessionStoreHolder = viewModel(factory = SessionStoreHolder.Factory),
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val lockState by viewModel.lockState.collectAsStateWithLifecycle()
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument(BackupManager.MIME_TYPE),
+        onResult = { uri -> backupViewModel.onExportPicked(uri) },
+    )
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+        onResult = { uri -> backupViewModel.onImportPicked(uri) },
+    )
+    val fileActions = remember(exportLauncher, importLauncher) {
+        FileActions(
+            launchExport = {
+                exportLauncher.launch(BackupManager.suggestedFileName(LocalDate.now()))
+            },
+            launchImport = {
+                importLauncher.launch(arrayOf("application/json", "*/*"))
+            },
+        )
+    }
 
     val mode = themeMode ?: return
     val darkTheme = when (mode) {
@@ -84,9 +122,44 @@ fun BoysDairyRoot(
             when (lockState) {
                 LockState.Loading -> Unit
                 LockState.NeedsSetup, LockState.Locked -> LockScreen()
-                LockState.Unlocked -> MainNavigation()
+                LockState.Unlocked -> UnlockedSession(sessionStores) {
+                    MainNavigation(
+                        backupViewModel = backupViewModel,
+                        fileActions = fileActions,
+                    )
+                }
             }
         }
+    }
+}
+
+/**
+ * Hosts [content] in a per-unlock-session [androidx.lifecycle.ViewModelStoreOwner]. When this
+ * composable leaves the composition because the app locked, every ViewModel created inside is
+ * destroyed ([SessionStoreHolder.end]); a configuration change (rotation, language switch) keeps
+ * them.
+ */
+@Composable
+private fun UnlockedSession(
+    holder: SessionStoreHolder,
+    content: @Composable () -> Unit,
+) {
+    val context = LocalContext.current
+    val application = context.applicationContext as Application
+    val activity = context.findComponentActivity()
+
+    val owner = remember(holder.store) { SessionViewModelStoreOwner(holder.store, application) }
+
+    DisposableEffect(holder) {
+        onDispose {
+            if (activity?.isChangingConfigurations != true) {
+                holder.end()
+            }
+        }
+    }
+
+    CompositionLocalProvider(LocalViewModelStoreOwner provides owner) {
+        content()
     }
 }
 
@@ -95,6 +168,7 @@ fun BoysDairyRoot(
 private fun SystemBarsEffect(darkTheme: Boolean) {
     val activity = LocalContext.current.findComponentActivity() ?: return
     DisposableEffect(activity, darkTheme) {
+        // Both bars are transparent: the app draws its own (cream / purple) colors behind them.
         activity.enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(
                 lightScrim = android.graphics.Color.TRANSPARENT,
@@ -102,8 +176,8 @@ private fun SystemBarsEffect(darkTheme: Boolean) {
                 detectDarkMode = { darkTheme },
             ),
             navigationBarStyle = SystemBarStyle.auto(
-                lightScrim = android.graphics.Color.argb(0xe6, 0xFF, 0xFF, 0xFF),
-                darkScrim = android.graphics.Color.argb(0x80, 0x1b, 0x1b, 0x1b),
+                lightScrim = android.graphics.Color.TRANSPARENT,
+                darkScrim = android.graphics.Color.TRANSPARENT,
                 detectDarkMode = { darkTheme },
             ),
         )

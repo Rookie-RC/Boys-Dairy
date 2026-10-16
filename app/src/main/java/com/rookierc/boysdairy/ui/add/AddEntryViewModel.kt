@@ -13,6 +13,7 @@ import com.rookierc.boysdairy.data.EntryRepository
 import com.rookierc.boysdairy.domain.Entry
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.Mood
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +31,8 @@ data class AddEntryUiState(
     val moodAfter: Mood = Mood.RELAXED,
     val pleasure: Int = DEFAULT_PLEASURE,
     val saving: Boolean = false,
+    /** True after the last save attempt threw; the form stays editable and the button is enabled. */
+    val saveFailed: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_DURATION_MINUTES = 10
@@ -71,11 +74,18 @@ class AddEntryViewModel(private val repository: EntryRepository) : ViewModel() {
     fun setPleasure(value: Int) =
         _uiState.update { it.copy(pleasure = value.coerceIn(MIN_PLEASURE, MAX_PLEASURE)) }
 
-    /** Stores the entry and calls [onSaved] on the main thread once it is persisted. */
+    /** Hides the "could not save" message. */
+    fun dismissSaveError() = _uiState.update { it.copy(saveFailed = false) }
+
+    /**
+     * Stores the entry and calls [onSaved] on the main thread once it is persisted. If storing
+     * throws, the form is kept, [AddEntryUiState.saving] is reset and [AddEntryUiState.saveFailed]
+     * is raised so the user can retry.
+     */
     fun save(onSaved: () -> Unit) {
         val snapshot = _uiState.value
         if (snapshot.saving) return
-        _uiState.update { it.copy(saving = true) }
+        _uiState.update { it.copy(saving = true, saveFailed = false) }
 
         val now = System.currentTimeMillis()
         val timestamp = snapshot.dateTime
@@ -85,17 +95,26 @@ class AddEntryViewModel(private val repository: EntryRepository) : ViewModel() {
             .coerceAtMost(now)
 
         viewModelScope.launch {
-            repository.add(
-                Entry(
-                    timestamp = timestamp,
-                    type = snapshot.type,
-                    durationMinutes = snapshot.durationMinutes,
-                    moodBefore = snapshot.moodBefore,
-                    moodAfter = snapshot.moodAfter,
-                    pleasure = snapshot.pleasure,
-                    note = note.trim(),
-                ),
-            )
+            try {
+                repository.add(
+                    Entry(
+                        timestamp = timestamp,
+                        type = snapshot.type,
+                        durationMinutes = snapshot.durationMinutes,
+                        moodBefore = snapshot.moodBefore,
+                        moodAfter = snapshot.moodAfter,
+                        pleasure = snapshot.pleasure,
+                        note = note.trim(),
+                    ),
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _uiState.update { it.copy(saving = false, saveFailed = true) }
+                return@launch
+            }
+            // `saving` intentionally stays true: the screen is being closed and a second tap
+            // on "save" during the exit transition must not create a duplicate.
             onSaved()
         }
     }

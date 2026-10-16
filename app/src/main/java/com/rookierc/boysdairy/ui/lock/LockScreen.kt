@@ -4,11 +4,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rookierc.boysdairy.R
+import kotlin.random.Random
 
 /** Full-screen PIN screen used for first-run setup and for unlocking. */
 @Composable
@@ -18,17 +21,33 @@ fun LockScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val titleRes = when (state.step) {
-        LockViewModel.Step.SETUP_ENTER -> R.string.lock_title_setup
-        LockViewModel.Step.SETUP_CONFIRM -> R.string.lock_title_confirm
-        LockViewModel.Step.UNLOCK -> R.string.lock_title_unlock
+    val unlockSubtitles = stringArrayResource(R.array.lock_unlock_subtitles)
+    val subtitleSeed = remember { Random.nextInt(1_000) }
+
+    val title = when (state.step) {
+        LockViewModel.Step.SETUP_ENTER -> stringResource(R.string.lock_title_setup)
+        LockViewModel.Step.SETUP_CONFIRM -> stringResource(R.string.lock_title_confirm)
+        LockViewModel.Step.UNLOCK -> stringResource(R.string.lock_title_unlock)
+    }
+    val subtitle = when (state.step) {
+        LockViewModel.Step.SETUP_ENTER -> stringResource(R.string.lock_sub_setup)
+        LockViewModel.Step.SETUP_CONFIRM -> stringResource(R.string.lock_sub_confirm)
+        LockViewModel.Step.UNLOCK -> unlockSubtitles[subtitleSeed % unlockSubtitles.size]
+    }
+    val hero = when (state.step) {
+        LockViewModel.Step.SETUP_ENTER -> "🔐"
+        LockViewModel.Step.SETUP_CONFIRM -> "🔁"
+        LockViewModel.Step.UNLOCK -> "🧮"
     }
 
     PinEntryContent(
-        title = stringResource(titleRes),
+        title = title,
+        subtitle = subtitle,
+        heroEmoji = hero,
         enteredCount = state.enteredCount,
         messageText = pinMessageText(state.message, state.lockoutSeconds),
         enabled = state.inputEnabled,
+        shakeTrigger = state.shake,
         onDigit = viewModel::onDigit,
         onBackspace = viewModel::onBackspace,
         modifier = modifier

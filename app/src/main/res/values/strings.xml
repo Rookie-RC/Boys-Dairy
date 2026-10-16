@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Launcher disguise: must stay "Daily Calc" -->
     <string name="app_name">Daily Calc</string>
 
     <!-- Navigation -->
     <string name="tab_home">首页</string>
-    <string name="tab_history">历史</string>
+    <string name="tab_history">战绩</string>
+    <string name="tab_ai">AI 锐评</string>
     <string name="tab_settings">设置</string>
+    <string name="tab_add">打卡</string>
+    <string name="add_entry_cd">新增战绩</string>
 
     <!-- Common actions -->
     <string name="action_close">关闭</string>
@@ -13,7 +17,8 @@
     <string name="action_cancel">取消</string>
     <string name="action_confirm">确定</string>
     <string name="action_next">下一步</string>
-    <string name="action_delete">删除</string>
+    <string name="action_ok">好的</string>
+    <string name="action_undo">撤销</string>
 
     <!-- Date / time patterns (java.time DateTimeFormatter) -->
     <string name="pattern_month_year">yyyy年M月</string>
@@ -22,10 +27,12 @@
     <string name="pattern_time">HH:mm</string>
 
     <!-- Entry types -->
-    <string name="entry_type_solo">单人</string>
-    <string name="entry_type_partner">伴侣</string>
+    <string name="entry_type_solo">单人副本</string>
+    <string name="entry_type_solo_hint">自己动手，丰衣足食</string>
+    <string name="entry_type_partner">双人成行</string>
+    <string name="entry_type_partner_hint">两个人的快乐</string>
 
-    <!-- Moods -->
+    <!-- Moods (emoji are added in code) -->
     <string name="mood_anxious">焦虑</string>
     <string name="mood_bored">无聊</string>
     <string name="mood_excited">兴奋</string>
@@ -36,75 +43,328 @@
     <string name="mood_empty">空虚</string>
     <string name="mood_energetic">精力充沛</string>
 
+    <!-- Reactive labels (duration / pleasure) -->
+    <string name="duration_tier_flash">闪电侠 ⚡</string>
+    <string name="duration_tier_standard">标准操作 👌</string>
+    <string name="duration_tier_endurance">持久战 🛡️</string>
+    <string name="duration_tier_marathon">马拉松选手 🏃</string>
+    <string name="pleasure_tier_meh">就这？😑</string>
+    <string name="pleasure_tier_ok">还行吧 🙂</string>
+    <string name="pleasure_tier_nice">有点东西 😏</string>
+    <string name="pleasure_tier_great">爽到 😆</string>
+    <string name="pleasure_tier_peak">直接升天 🎆</string>
+
     <!-- Lock screen -->
-    <string name="lock_title_setup">设置 4 位密码</string>
-    <string name="lock_title_confirm">再次输入以确认</string>
-    <string name="lock_title_unlock">输入密码</string>
-    <string name="lock_error_mismatch">两次输入不一致，请重新设置</string>
-    <string name="lock_error_wrong">密码错误，还可尝试 %1$d 次</string>
-    <string name="lock_lockout">错误次数过多，请 %1$d 秒后重试</string>
+    <string name="lock_title_setup">设个 4 位暗号 🔐</string>
+    <string name="lock_sub_setup">防止被室友偷看 👀</string>
+    <string name="lock_title_confirm">再输一次，别手滑 ✋</string>
+    <string name="lock_sub_confirm">两次一样才算数</string>
+    <string name="lock_title_unlock">请输入暗号 🤫</string>
+    <string-array name="lock_unlock_subtitles">
+        <item>这只是个普通的计算器 🧮（才怪）</item>
+        <item>里面只有数学，绝对没有别的 📐</item>
+        <item>低调，再低调，你就是一台计算器 🤐</item>
+        <item>友情提示：计算器不会说话，请保持安静 🤫</item>
+    </string-array>
+    <string name="lock_error_mismatch">两次不一样，手滑了吧？重来 🙃</string>
+    <plurals name="lock_error_wrong">
+        <item quantity="other">暗号不对，你是谁？👀 还剩 %1$d 次</item>
+    </plurals>
+    <string name="lock_lockout">关小黑屋冷静 %1$d 秒 🧊</string>
     <string name="lock_backspace">退格</string>
 
     <!-- Home -->
-    <string name="home_streak_label">距离上次记录</string>
+    <string name="home_title">男孩的小本本</string>
+    <string name="home_subtitle">每一次发射，都值得被记录</string>
+    <string name="home_cooldown_label">距离上次发射</string>
     <plurals name="home_days_unit">
         <item quantity="other">天</item>
     </plurals>
-    <string name="home_last_entry">上次记录：%1$s</string>
-    <string name="home_empty">还没有任何记录，点击右下角的 + 添加第一条。</string>
+    <string name="home_last_entry">上次发射：%1$s</string>
+    <string name="home_empty_hint">点下面的 ➕ 打卡，写下第一条战绩</string>
     <string name="home_prev_month">上个月</string>
     <string name="home_next_month">下个月</string>
-    <string name="home_legend_solo">单人</string>
-    <string name="home_legend_partner">伴侣</string>
-    <string name="add_entry_cd">新增记录</string>
+    <string name="home_legend_solo">单人副本</string>
+    <string name="home_legend_partner">双人成行</string>
+    <string name="home_legend_today">今天</string>
+    <string name="home_open_day">查看这天的战绩</string>
+
+    <!-- Cooldown tiers (days since last entry) -->
+    <string name="cooldown_none_title">一片空白，你是圣人吗？</string>
+    <string name="cooldown_fresh_title">贤者模式</string>
+    <string name="cooldown_recovering_title">回血中</string>
+    <string name="cooldown_reloading_title">弹药装填中</string>
+    <string name="cooldown_ascetic_title">禁欲系选手</string>
+    <string name="cooldown_serene_title">清心寡欲</string>
+    <string name="cooldown_monk_title">得道高僧</string>
+    <string-array name="cooldown_none_subtitles">
+        <item>一条记录都没有，可以直接上岗当圣人了 😇</item>
+        <item>你的小本本比图书馆还安静 📚</item>
+        <item>要么是圣人，要么是忘了记账——请选择一个 🤔</item>
+    </string-array>
+    <string-array name="cooldown_fresh_subtitles">
+        <item>刚刚完事，适合思考人生 🧘</item>
+        <item>贤者时间：此刻你看透了一切（大概五分钟）🔮</item>
+        <item>世界和平，万物皆空，先喝口水 💧</item>
+    </string-array>
+    <string-array name="cooldown_recovering_subtitles">
+        <item>正在回血，请勿催促 🔋</item>
+        <item>电量见底，充电中，请勿打扰 🔌</item>
+        <item>还在冷却，别急，让子弹再飞一会儿 ⏳</item>
+    </string-array>
+    <string-array name="cooldown_reloading_subtitles">
+        <item>弹药装填中，请耐心等待 💪</item>
+        <item>蓄力中，随时可能再次出击 ⚡</item>
+        <item>枪已上膛，就差一个契机 🎯</item>
+    </string-array>
+    <string-array name="cooldown_ascetic_subtitles">
+        <item>已经一周了，你在修炼什么神功？🧊</item>
+        <item>意志力拉满，佛祖都想向你取经 🙏</item>
+        <item>禁欲系 Buff 已叠满，请继续保持 🛡️</item>
+    </string-array>
+    <string-array name="cooldown_serene_subtitles">
+        <item>喝茶养生，心静自然凉 🍵</item>
+        <item>两周以上了，你大概已经开始研究园艺了 🌱</item>
+        <item>保温杯和枸杞已就位，随时开讲养生课 🍵</item>
+    </string-array>
+    <string-array name="cooldown_monk_subtitles">
+        <item>三十天起步，寺庙招人你去不去 🏯</item>
+        <item>你已超脱，凡人的快乐与你无关 ☯️</item>
+        <item>一个月以上，建议去山里开个讲座 🏔️</item>
+    </string-array>
+
+    <!-- Streak warning -->
+    <string name="streak_supplies_title">连续作战，注意补给</string>
+    <string name="streak_supplies_subtitle">多喝水，别硬撑。</string>
+    <string name="streak_sos_title">肾：救救我！建议枸杞泡水</string>
+    <string name="streak_sos_subtitle">连着好几天了，让身体歇一歇，比什么都强（此条非医嘱）。</string>
+    <string name="streak_perpetual_title">永动机认证，现在立刻去睡觉</string>
+    <string name="streak_perpetual_subtitle">连续一周以上，机器也要保养；睡个好觉比打卡重要。</string>
+    <plurals name="streak_days_badge">
+        <item quantity="other">已连续 %1$d 天</item>
+    </plurals>
+
+    <!-- Home stats -->
+    <string name="stats_last7">近 7 天</string>
+    <string name="stats_last30">近 30 天</string>
+    <string name="stats_avg_pleasure">平均愉悦度</string>
+    <string name="stats_no_value">–</string>
+
+    <!-- Daily tip -->
+    <string name="tip_title">今日养生贴士</string>
+    <string-array name="daily_tips">
+        <item>保温杯里泡枸杞，是对自己最后的温柔 🍵</item>
+        <item>早睡一小时，胜过十瓶六味地黄丸（此条非医嘱）🌙</item>
+        <item>久坐伤身，起来走两步 🚶</item>
+        <item>多喝水，肾会谢谢你的（依然不是医嘱）💧</item>
+        <item>手机放远点，床头不该是第二个战场 📱</item>
+        <item>运动是最好的补药：去跑个步，回来再自我反省 🏃</item>
+        <item>睡前泡个脚，比刷短视频更养生 🛁</item>
+        <item>今天的目标：少熬一次夜，多喝两杯水 🥛</item>
+        <item>枸杞是玄学，睡眠才是科学 😴</item>
+        <item>养生第一步：把外卖换成一顿热乎的家常饭 🍚</item>
+        <item>别憋着，有压力就找朋友聊聊，比什么都灵 💬</item>
+        <item>适度有益，过度……你自己品，你细品 🧐</item>
+        <item>站起来伸个懒腰，你的脊椎在给你点赞 🧘</item>
+        <item>一天一苹果，医生也挺忙的，别让他等你 🍎</item>
+        <item>戒掉熬夜，从放下手机开始 📵</item>
+        <item>今日宜：喝水、散步、早睡。忌：硬撑 ✅</item>
+        <item>心情不好别硬撑，出去晒晒太阳 ☀️</item>
+        <item>给自己买个好点的枕头，比任何补品都实在 🛏️</item>
+        <item>忙完正事记得洗手，讲卫生是基本礼貌 🚿</item>
+        <item>你不是铁打的，是肉长的，请适度保养 🔧</item>
+        <item>每天十分钟拉伸，比盯着数据焦虑强多了 🤸</item>
+        <item>记得吃早饭，不然能量条一直亮红灯 💪</item>
+        <item>手机相册该清理一下了，你懂的 📂</item>
+        <item>心态平和最补，别和自己较劲 🌿</item>
+        <item>少刷朋友圈，多和朋友聊聊，快乐比什么都养人 👯</item>
+    </string-array>
+
+    <!-- Day sheet (calendar) -->
+    <string name="day_sheet_title">%1$s 的战绩</string>
+    <plurals name="day_sheet_count">
+        <item quantity="other">这天一共 %1$d 条</item>
+    </plurals>
+    <string name="day_sheet_empty">这天空空如也</string>
 
     <!-- Add entry -->
-    <string name="add_title">新增记录</string>
-    <string name="add_datetime_label">时间</string>
-    <string name="add_type_label">类型</string>
+    <string name="add_title">新增战绩</string>
+    <string name="add_datetime_label">案发时间</string>
+    <string name="add_type_label">选择副本</string>
     <string name="add_duration_label">持续时间</string>
     <string name="add_duration_value">%1$d 分钟</string>
-    <string name="add_mood_before_label">事前情绪</string>
-    <string name="add_mood_after_label">事后情绪</string>
+    <string name="add_mood_before_label">事前心情</string>
+    <string name="add_mood_after_label">事后心情（贤者时刻）</string>
     <string name="add_pleasure_label">愉悦度</string>
     <string name="add_pleasure_value">%1$d / 10</string>
-    <string name="add_note_label">笔记</string>
-    <string name="add_save">保存记录</string>
-    <string name="add_pick_time_title">选择时间</string>
-    <string name="add_time_future_error">不能选择未来的时间</string>
+    <string name="add_note_label">小本本备注</string>
+    <string name="add_note_hint">写点什么？只有你能看见 🤫</string>
+    <string name="add_save">存档战绩</string>
+    <string name="add_saving">存档中……</string>
+    <string name="add_save_failed">存档失败了 😵 再点一次试试</string>
+    <string name="add_pick_time_title">几点发射的？</string>
+    <string name="add_time_future_error">不能选择未来的时间，你又不是时间旅行者</string>
+    <string-array name="save_toasts">
+        <item>战绩已存档 📼</item>
+        <item>已记录，贤者时间请开始思考人生 🧘</item>
+        <item>数据 +1，肾 -1（开玩笑的）😏</item>
+        <item>又一条黑历史入库，保密到底 🔒</item>
+        <item>存档成功！记得喝水 💧</item>
+        <item>小本本已更新，今天辛苦了 📒</item>
+    </string-array>
+
+    <!-- Entry card (history list, day sheet) -->
+    <string name="entry_when">%1$s · %2$s</string>
+    <string name="entry_duration_line">%1$d 分钟 · %2$s</string>
+    <string name="entry_pleasure_line">愉悦度 %1$d/10 · %2$s</string>
 
     <!-- History -->
-    <string name="history_search_hint">搜索笔记</string>
+    <string name="history_title">战绩回放</string>
+    <string name="history_subtitle">那些年，你的光辉战绩</string>
+    <plurals name="history_count">
+        <item quantity="other">共 %1$d 条</item>
+    </plurals>
+    <string name="history_search_hint">按备注搜索</string>
     <string name="history_search_clear">清除搜索</string>
-    <string name="history_empty">还没有任何记录</string>
-    <string name="history_no_results">没有匹配的记录</string>
-    <string name="history_duration">%1$d 分钟</string>
+    <string name="history_empty">战绩一片空白，是在修仙吗？</string>
+    <string name="history_empty_hint">点下面的 ➕ 打卡，开启你的传奇</string>
+    <string name="history_no_results">没搜到，可能被你删了 🤔</string>
     <string name="history_mood_transition">%1$s → %2$s</string>
-    <string name="history_pleasure">愉悦度 %1$d/10</string>
-    <string name="history_delete_cd">删除记录</string>
-    <string name="history_delete_title">删除这条记录？</string>
-    <string name="history_delete_message">删除后无法恢复。</string>
+    <string name="history_delete_cd">销毁这条记录</string>
+    <string name="history_delete_title">确定要销毁这条黑历史吗？</string>
+    <string name="history_delete_message">毁了就是毁了，不过刚毁完你还有几秒钟可以后悔。</string>
+    <string name="history_delete_confirm">毁尸灭迹</string>
+    <string name="history_delete_keep">留着当纪念</string>
+    <string-array name="delete_toasts">
+        <item>黑历史已销毁 🔥</item>
+        <item>毁尸灭迹完成，没人知道 🤫</item>
+        <item>这条记录从未存在过 🕵️</item>
+        <item>已删除，要后悔就趁现在 ⏳</item>
+    </string-array>
+
+    <!-- AI roast -->
+    <string name="ai_title">AI 锐评</string>
+    <string name="ai_subtitle">让 AI 看看你的战绩，再替你嘴上复盘一遍</string>
+    <string name="ai_intro">AI 会看一眼你的战绩统计，然后毒舌（或温柔）地点评几句。只有你点下面的大按钮时才会发送数据，平时一个字节都不会出门。</string>
+    <string name="ai_roast_label">毒舌程度</string>
+    <string name="ai_roast_gentle">温柔哄哄</string>
+    <string name="ai_roast_gentle_hint">夸夸模式，主打情绪价值</string>
+    <string name="ai_roast_spicy">狠狠锐评</string>
+    <string name="ai_roast_spicy_hint">不留情面，后果自负</string>
+    <string name="ai_include_notes">把笔记也发给 AI</string>
+    <string name="ai_notes_off_note">默认不发送笔记原文，只发统计类的内容。点开下面的预览，看看具体会发什么。</string>
+    <string name="ai_notes_on_note">已开启：你写的笔记原文也会发给 AI（Anthropic）。笔记里有不想让别人看到的内容，就别开哦。</string>
+    <string name="ai_preview_title">看看会发送什么</string>
+    <string name="ai_preview_hint">点开预览，一字不差</string>
+    <string name="ai_preview_loading">正在整理……</string>
+    <string name="ai_preview_empty">还没有战绩，没什么可发送的</string>
+    <string name="ai_preview_footer">↑ 这就是会发给 AI 的全部内容，一字不差。你点下锐评按钮之前，不会发送任何东西。</string>
+    <string name="ai_no_key_title">还没设置 API Key</string>
+    <string name="ai_no_key_body">AI 要用你自己的 Claude API Key 才能开口。去设置里填一个吧。</string>
+    <string name="ai_go_set_key">去设置 Key</string>
+    <string name="ai_run">让 AI 锐评一下</string>
+    <string name="ai_privacy_footer">点下按钮才会把上面的内容发给 Anthropic 的 Claude，不点就不发。</string>
+    <string-array name="ai_loading_messages">
+        <item>AI 正在憋笑……</item>
+        <item>正在计算你的肾值……</item>
+        <item>AI 在翻你的战绩，眉头越皱越紧……</item>
+        <item>正在组织毒舌语言……</item>
+        <item>AI 深吸一口气，准备开麦……</item>
+        <item>正在请教隔壁的贤者……</item>
+    </string-array>
+    <string name="ai_cancel">算了，不问了</string>
+    <string name="ai_result_title">锐评出炉</string>
+    <string name="ai_result_disclaimer">AI 瞎说的，仅供一乐，不构成任何医疗建议。</string>
+    <string name="ai_again">再来一次</string>
+    <string name="ai_done">收起来</string>
+    <string name="ai_retry">再试一次</string>
+    <string name="ai_error_no_key">还没配置 API Key，AI 没法开口。去设置里填一个吧。</string>
+    <string name="ai_error_no_data">战绩一片空白，AI 都不知道从哪下嘴。先去打个卡吧。</string>
+    <string name="ai_error_invalid_key">这个 Key 好像不对（或者过期了），去设置里检查一下。</string>
+    <string name="ai_error_rate_limited">问得太快了，AI 要喘口气，等一会儿再来。</string>
+    <string name="ai_error_overloaded">AI 那边人太多，挤爆了，稍后再试。</string>
+    <string name="ai_error_network">网络开小差了，检查一下网络再试。</string>
+    <string name="ai_error_refused">AI 看了一眼，选择保持沉默（拒绝回答）。换个温柔档试试？</string>
+    <string name="ai_error_server">AI 服务器出了点小状况，不是你的锅，稍后再试。</string>
+    <string name="ai_error_unknown">出了个说不清的错误，再试一次？</string>
 
     <!-- Settings -->
-    <string name="settings_security">安全</string>
-    <string name="settings_change_pin">修改密码</string>
-    <string name="settings_change_pin_desc">更改 4 位解锁密码</string>
+    <string name="settings_title">设置</string>
+    <string name="settings_subtitle">把小本本调成你喜欢的样子</string>
     <string name="settings_appearance">外观</string>
     <string name="settings_theme">主题</string>
     <string name="theme_system">跟随系统</string>
-    <string name="theme_light">浅色</string>
-    <string name="theme_dark">深色</string>
+    <string name="theme_light">白天模式</string>
+    <string name="theme_dark">夜猫子模式</string>
     <string name="settings_language">语言</string>
     <string name="language_system">跟随系统</string>
     <string name="language_chinese">中文</string>
     <string name="language_english">English</string>
+    <string name="settings_security">安全</string>
+    <string name="settings_change_pin">改暗号</string>
+    <string name="settings_change_pin_desc">换一个只有你知道的 4 位暗号</string>
+    <string name="settings_data">数据</string>
+    <string name="settings_export">导出备份</string>
+    <string name="settings_export_desc">把所有战绩打包成一个文件</string>
+    <string name="settings_import">导入备份</string>
+    <string name="settings_import_desc">从备份文件里把战绩找回来</string>
+    <string name="settings_data_note">数据只存在这台手机上，卸载前记得导出。</string>
+    <string name="settings_ai">AI</string>
+    <string name="settings_ai_key">Claude API Key</string>
+    <string name="settings_ai_key_set">已设置 ✅</string>
+    <string name="settings_ai_key_unset">未设置</string>
+    <string name="settings_ai_key_set_action">设置 Key</string>
+    <string name="settings_ai_key_change">更换 Key</string>
+    <string name="settings_ai_key_clear">清除 Key</string>
+    <string name="settings_ai_key_clear_title">清除 API Key？</string>
+    <string name="settings_ai_key_clear_message">清除后 AI 锐评将无法使用，直到你重新填写。</string>
+    <string name="settings_ai_key_clear_confirm">清除</string>
+    <string name="settings_ai_note">Key 加密保存在本机，只在你点锐评时发送给 Anthropic。</string>
+    <string name="settings_key_dialog_title">填写 Claude API Key</string>
+    <string name="settings_key_dialog_body">到 Anthropic 控制台创建一个 Key，然后粘贴到这里。它只会加密保存在这台手机上。</string>
+    <string name="settings_key_placeholder">sk-ant-…</string>
+    <string name="settings_key_save">保存</string>
+    <string name="settings_key_show">显示 Key</string>
+    <string name="settings_key_hide">隐藏 Key</string>
     <string name="settings_about">关于</string>
     <string name="settings_version">版本 %1$s</string>
+    <string name="settings_about_joke">本软件不含任何计算功能，仅含少量快乐。如有雷同，纯属巧合（才怪）。</string>
+
+    <!-- Backup flow -->
+    <string name="backup_import_title">导入备份</string>
+    <string name="backup_mode_merge">合并（保留现有）</string>
+    <string name="backup_mode_merge_desc">合并：把备份里的战绩加进来，重复的自动跳过，现有的原样保留。</string>
+    <string name="backup_mode_replace">覆盖（清空重来）</string>
+    <string name="backup_mode_replace_desc">覆盖：先清空现有的战绩，再换成备份里的内容。</string>
+    <string name="backup_replace_title">真的要覆盖吗？</string>
+    <string name="backup_replace_message">现有的全部战绩会被清空，换成备份里的内容。这一步不能撤销！</string>
+    <string name="backup_replace_confirm">确认覆盖，我想好了</string>
+    <string name="backup_replace_cancel">再想想</string>
+    <string name="backup_working">处理中，请稍等……</string>
+    <string name="backup_export_done_title">导出成功</string>
+    <plurals name="backup_exported_count">
+        <item quantity="other">已打包 %1$d 条战绩，收好别弄丢。</item>
+    </plurals>
+    <string name="backup_import_done_title">导入完成</string>
+    <plurals name="backup_imported_added">
+        <item quantity="other">新增 %1$d 条</item>
+    </plurals>
+    <plurals name="backup_imported_skipped">
+        <item quantity="other">跳过重复 %1$d 条</item>
+    </plurals>
+    <string name="backup_failed_title">出错了</string>
+    <string name="backup_error_io">读写文件失败了，换个位置再试试？</string>
+    <string name="backup_error_invalid_format">这个文件看着不像我们的备份，认错文件了吧？</string>
+    <string name="backup_error_unsupported_version">备份文件的版本这个 App 看不懂，可能需要更新 App。</string>
+    <string name="backup_error_empty">没有战绩可以导出（或者这个备份文件是空的）。</string>
 
     <!-- Change PIN -->
-    <string name="change_pin_title">修改密码</string>
-    <string name="change_pin_current">输入当前密码</string>
-    <string name="change_pin_new">输入新密码</string>
-    <string name="change_pin_confirm">再次输入新密码</string>
-    <string name="change_pin_success">密码已修改</string>
+    <string name="change_pin_title">改暗号</string>
+    <string name="change_pin_current">先验明正身</string>
+    <string name="change_pin_current_sub">输入当前的暗号</string>
+    <string name="change_pin_new">想个新暗号</string>
+    <string name="change_pin_new_sub">4 位数字，别用生日</string>
+    <string name="change_pin_confirm">再输一次</string>
+    <string name="change_pin_confirm_sub">确认新暗号</string>
+    <string name="change_pin_success">暗号已更新 🔐</string>
 </resources>

@@ -17,3 +17,20 @@ captures/
 
 # Kotlin compiler session data
 .kotlin/
+
+# Build outputs and signing material
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Secrets and machine-local config
+.env
+local.properties
+
+# Scratch / editors
+/tmp/
+.vscode/
+
+# Agent worktrees
+.claude/worktrees/

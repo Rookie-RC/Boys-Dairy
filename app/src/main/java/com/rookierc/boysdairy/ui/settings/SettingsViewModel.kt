@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.rookierc.boysdairy.ai.ApiKeyStore
 import com.rookierc.boysdairy.appContainer
 import com.rookierc.boysdairy.data.SettingsRepository
 import com.rookierc.boysdairy.data.ThemeMode
@@ -13,7 +14,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() {
+class SettingsViewModel(
+    private val settings: SettingsRepository,
+    private val apiKeyStore: ApiKeyStore,
+) : ViewModel() {
 
     val themeMode: StateFlow<ThemeMode> = settings.themeMode.stateIn(
         scope = viewModelScope,
@@ -21,13 +25,31 @@ class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() 
         initialValue = ThemeMode.SYSTEM,
     )
 
+    /** `null` until the first read. The key itself never reaches the UI layer. */
+    val hasApiKey: StateFlow<Boolean?> = apiKeyStore.hasKey.stateIn<Boolean?>(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = null,
+    )
+
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { settings.setThemeMode(mode) }
     }
 
+    fun saveApiKey(key: String) {
+        viewModelScope.launch { apiKeyStore.save(key.trim()) }
+    }
+
+    fun clearApiKey() {
+        viewModelScope.launch { apiKeyStore.clear() }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer { SettingsViewModel(appContainer().settingsRepository) }
+            initializer {
+                val container = appContainer()
+                SettingsViewModel(container.settingsRepository, container.apiKeyStore)
+            }
         }
     }
 }

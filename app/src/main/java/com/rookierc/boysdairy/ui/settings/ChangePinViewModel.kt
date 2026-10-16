@@ -28,6 +28,8 @@ class ChangePinViewModel(private val lockManager: LockManager) : ViewModel() {
         val message: PinMessage? = null,
         val lockoutSeconds: Int = 0,
         val finished: Boolean = false,
+        /** Bumped on every wrong PIN / mismatch so the UI can play the shake animation. */
+        val shake: Int = 0,
     ) {
         val inputEnabled: Boolean get() = lockoutSeconds == 0 && !finished
     }
@@ -85,7 +87,11 @@ class ChangePinViewModel(private val lockManager: LockManager) : ViewModel() {
                             PinCheckResult.Success ->
                                 _uiState.update { it.copy(step = Step.NEW, enteredCount = 0, message = null) }
                             is PinCheckResult.Wrong -> _uiState.update {
-                                it.copy(enteredCount = 0, message = PinMessage.WrongPin(result.attemptsLeft))
+                                it.copy(
+                                    enteredCount = 0,
+                                    message = PinMessage.WrongPin(result.attemptsLeft),
+                                    shake = it.shake + 1,
+                                )
                             }
                             is PinCheckResult.LockedOut -> {
                                 _uiState.update { it.copy(enteredCount = 0, message = null) }
@@ -119,7 +125,12 @@ class ChangePinViewModel(private val lockManager: LockManager) : ViewModel() {
                 } else {
                     newPin = null
                     _uiState.update {
-                        it.copy(step = Step.NEW, enteredCount = 0, message = PinMessage.Mismatch)
+                        it.copy(
+                            step = Step.NEW,
+                            enteredCount = 0,
+                            message = PinMessage.Mismatch,
+                            shake = it.shake + 1,
+                        )
                     }
                 }
             }

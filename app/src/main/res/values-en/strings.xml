@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Launcher disguise: must stay "Daily Calc" -->
     <string name="app_name">Daily Calc</string>
 
     <!-- Navigation -->
     <string name="tab_home">Home</string>
-    <string name="tab_history">History</string>
+    <string name="tab_history">Replay</string>
+    <string name="tab_ai">AI Roast</string>
     <string name="tab_settings">Settings</string>
+    <string name="tab_add">Log it</string>
+    <string name="add_entry_cd">Add entry</string>
 
     <!-- Common actions -->
     <string name="action_close">Close</string>
@@ -13,7 +17,8 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_confirm">OK</string>
     <string name="action_next">Next</string>
-    <string name="action_delete">Delete</string>
+    <string name="action_ok">Got it</string>
+    <string name="action_undo">Undo</string>
 
     <!-- Date / time patterns (java.time DateTimeFormatter) -->
     <string name="pattern_month_year">MMMM yyyy</string>
@@ -22,90 +27,352 @@
     <string name="pattern_time">h:mm a</string>
 
     <!-- Entry types -->
-    <string name="entry_type_solo">Solo</string>
-    <string name="entry_type_partner">Partner</string>
+    <string name="entry_type_solo">Solo Quest</string>
+    <string name="entry_type_solo_hint">Self-service, zero queue</string>
+    <string name="entry_type_partner">Co-op Mode</string>
+    <string name="entry_type_partner_hint">Player two has entered</string>
 
-    <!-- Moods -->
+    <!-- Moods (emoji are added in code) -->
     <string name="mood_anxious">Anxious</string>
     <string name="mood_bored">Bored</string>
-    <string name="mood_excited">Excited</string>
+    <string name="mood_excited">Hyped</string>
     <string name="mood_stressed">Stressed</string>
-    <string name="mood_neutral">Neutral</string>
+    <string name="mood_neutral">Meh</string>
     <string name="mood_relaxed">Relaxed</string>
     <string name="mood_guilty">Guilty</string>
     <string name="mood_empty">Empty</string>
-    <string name="mood_energetic">Energetic</string>
+    <string name="mood_energetic">Fully charged</string>
+
+    <!-- Reactive labels (duration / pleasure) -->
+    <string name="duration_tier_flash">Speedrunner ⚡</string>
+    <string name="duration_tier_standard">By the book 👌</string>
+    <string name="duration_tier_endurance">Endurance run 🛡️</string>
+    <string name="duration_tier_marathon">Marathon runner 🏃</string>
+    <string name="pleasure_tier_meh">That\'s it? 😑</string>
+    <string name="pleasure_tier_ok">Not bad 🙂</string>
+    <string name="pleasure_tier_nice">Now we\'re talking 😏</string>
+    <string name="pleasure_tier_great">Chef\'s kiss 😆</string>
+    <string name="pleasure_tier_peak">Ascended 🎆</string>
 
     <!-- Lock screen -->
-    <string name="lock_title_setup">Set a 4-digit PIN</string>
-    <string name="lock_title_confirm">Enter it again to confirm</string>
-    <string name="lock_title_unlock">Enter PIN</string>
-    <string name="lock_error_mismatch">PINs do not match. Start over.</string>
-    <string name="lock_error_wrong">Wrong PIN. %1$d attempts left</string>
-    <string name="lock_lockout">Too many attempts. Try again in %1$d s</string>
+    <string name="lock_title_setup">Pick a 4-digit secret 🔐</string>
+    <string name="lock_sub_setup">Keeps the roommates out 👀</string>
+    <string name="lock_title_confirm">Once more, no butterfingers ✋</string>
+    <string name="lock_sub_confirm">Both entries have to match</string>
+    <string name="lock_title_unlock">Secret code, please 🤫</string>
+    <string-array name="lock_unlock_subtitles">
+        <item>Just a plain old calculator 🧮 (wink wink)</item>
+        <item>Nothing in here but math. Really. 📐</item>
+        <item>Stay calm. You are a calculator. 🤐</item>
+        <item>Fun fact: calculators never talk. Neither should you. 🤫</item>
+    </string-array>
+    <string name="lock_error_mismatch">Those don\'t match. Butterfingers? Try again 🙃</string>
+    <plurals name="lock_error_wrong">
+        <item quantity="one">Wrong code. Who even are you? 👀 %1$d try left</item>
+        <item quantity="other">Wrong code. Who even are you? 👀 %1$d tries left</item>
+    </plurals>
+    <string name="lock_lockout">Cooling off in the dark room for %1$d s 🧊</string>
     <string name="lock_backspace">Backspace</string>
 
     <!-- Home -->
-    <string name="home_streak_label">Since last entry</string>
+    <string name="home_title">The Little Black Book</string>
+    <string name="home_subtitle">Every launch deserves a logbook entry</string>
+    <string name="home_cooldown_label">Since last launch</string>
     <plurals name="home_days_unit">
         <item quantity="one">day</item>
         <item quantity="other">days</item>
     </plurals>
-    <string name="home_last_entry">Last entry: %1$s</string>
-    <string name="home_empty">No entries yet. Tap + to add your first one.</string>
+    <string name="home_last_entry">Last launch: %1$s</string>
+    <string name="home_empty_hint">Hit the ➕ below to log your first entry</string>
     <string name="home_prev_month">Previous month</string>
     <string name="home_next_month">Next month</string>
-    <string name="home_legend_solo">Solo</string>
-    <string name="home_legend_partner">Partner</string>
-    <string name="add_entry_cd">Add entry</string>
+    <string name="home_legend_solo">Solo Quest</string>
+    <string name="home_legend_partner">Co-op Mode</string>
+    <string name="home_legend_today">Today</string>
+    <string name="home_open_day">Open this day</string>
+
+    <!-- Cooldown tiers (days since last entry) -->
+    <string name="cooldown_none_title">Blank slate. Are you a saint?</string>
+    <string name="cooldown_fresh_title">Sage Mode</string>
+    <string name="cooldown_recovering_title">Recharging</string>
+    <string name="cooldown_reloading_title">Reloading</string>
+    <string name="cooldown_ascetic_title">Ascetic Mode</string>
+    <string name="cooldown_serene_title">Pure of Heart</string>
+    <string name="cooldown_monk_title">Enlightened Monk</string>
+    <string-array name="cooldown_none_subtitles">
+        <item>Not a single entry. You can apply for sainthood now 😇</item>
+        <item>Your logbook is quieter than a library 📚</item>
+        <item>Either a saint or forgot to log. Pick one 🤔</item>
+    </string-array>
+    <string-array name="cooldown_fresh_subtitles">
+        <item>Just finished. Perfect time to ponder life 🧘</item>
+        <item>Sage hour: you see through everything (for about five minutes) 🔮</item>
+        <item>World peace, all is void. Drink some water first 💧</item>
+    </string-array>
+    <string-array name="cooldown_recovering_subtitles">
+        <item>Recharging. Please don\'t rush the process 🔋</item>
+        <item>Battery in the red, charging, do not disturb 🔌</item>
+        <item>Still cooling down. Let the bullets fly a little longer ⏳</item>
+    </string-array>
+    <string-array name="cooldown_reloading_subtitles">
+        <item>Reloading. Patience, grasshopper 💪</item>
+        <item>Charging up. Could strike again any moment ⚡</item>
+        <item>Locked and loaded, just waiting for the moment 🎯</item>
+    </string-array>
+    <string-array name="cooldown_ascetic_subtitles">
+        <item>A whole week. Which secret technique are you training? 🧊</item>
+        <item>Willpower maxed out. Even Buddha wants your notes 🙏</item>
+        <item>Ascetic buff fully stacked. Keep it going 🛡️</item>
+    </string-array>
+    <string-array name="cooldown_serene_subtitles">
+        <item>Tea, calm, and inner peace 🍵</item>
+        <item>Two weeks and counting. You\'ve probably taken up gardening 🌱</item>
+        <item>Thermos and goji berries ready. Wellness lecture, anyone? 🍵</item>
+    </string-array>
+    <string-array name="cooldown_monk_subtitles">
+        <item>Thirty days minimum. The temple is hiring, interested? 🏯</item>
+        <item>You have transcended. Mortal joys no longer concern you ☯️</item>
+        <item>A month or more. Time to give a talk in the mountains 🏔️</item>
+    </string-array>
+
+    <!-- Streak warning -->
+    <string name="streak_supplies_title">Back-to-back. Stock up on supplies</string>
+    <string name="streak_supplies_subtitle">Hydrate. Don\'t push it.</string>
+    <string name="streak_sos_title">Kidneys: help me! Maybe some goji tea?</string>
+    <string name="streak_sos_subtitle">Several days in a row. A little rest beats everything (this is not medical advice).</string>
+    <string name="streak_perpetual_title">Perpetual motion certified. Go to bed. Now.</string>
+    <string name="streak_perpetual_subtitle">A week or more in a row. Even machines need maintenance; sleep beats logging.</string>
+    <plurals name="streak_days_badge">
+        <item quantity="one">%1$d day in a row</item>
+        <item quantity="other">%1$d days in a row</item>
+    </plurals>
+
+    <!-- Home stats -->
+    <string name="stats_last7">Last 7 days</string>
+    <string name="stats_last30">Last 30 days</string>
+    <string name="stats_avg_pleasure">Avg. pleasure</string>
+    <string name="stats_no_value">–</string>
+
+    <!-- Daily tip -->
+    <string name="tip_title">Today\'s Wellness Tip</string>
+    <string-array name="daily_tips">
+        <item>A thermos of goji berries: the last gentle gesture you make for yourself 🍵</item>
+        <item>One extra hour of sleep beats ten bottles of tonic (not medical advice) 🌙</item>
+        <item>Sitting all day is a slow quest. Stand up, take two steps 🚶</item>
+        <item>Drink water. Your kidneys will send a thank-you card (still not medical advice) 💧</item>
+        <item>Keep the phone away from the bed. The bedroom is not a second battlefield 📱</item>
+        <item>Exercise is the best supplement. Go for a run, then reflect on your choices 🏃</item>
+        <item>A warm foot soak beats an hour of doomscrolling 🛁</item>
+        <item>Today\'s quest: one less late night, two more glasses of water 🥛</item>
+        <item>Goji berries are folklore, sleep is science 😴</item>
+        <item>Wellness step one: swap the takeout for a hot home-cooked meal 🍚</item>
+        <item>Don\'t bottle it up. Stress shared with a friend is stress halved 💬</item>
+        <item>In moderation: great. Beyond that… well, you read the room 🧐</item>
+        <item>Stand up and stretch. Your spine just gave you a thumbs up 🧘</item>
+        <item>An apple a day… the doctor is busy anyway, don\'t make them wait 🍎</item>
+        <item>Quit late nights by putting the phone down first 📵</item>
+        <item>Today: drink water, take a walk, sleep early. Skip: pushing through it ✅</item>
+        <item>Feeling low? Go stand in some sunlight ☀️</item>
+        <item>A decent pillow beats any supplement 🛏️</item>
+        <item>Wash your hands when you\'re done. Basic manners 🚿</item>
+        <item>You\'re made of flesh, not steel. Maintain accordingly 🔧</item>
+        <item>Ten minutes of stretching beats an hour of worrying about stats 🤸</item>
+        <item>Eat breakfast. Your energy bar is stuck in the red 💪</item>
+        <item>Time to clean up that photo gallery. You know the one 📂</item>
+        <item>A calm mind is the best tonic. Stop fighting yourself 🌿</item>
+        <item>Scroll less, call a friend more. Joy is the real supplement 👯</item>
+    </string-array>
+
+    <!-- Day sheet (calendar) -->
+    <string name="day_sheet_title">Entries on %1$s</string>
+    <plurals name="day_sheet_count">
+        <item quantity="one">%1$d entry that day</item>
+        <item quantity="other">%1$d entries that day</item>
+    </plurals>
+    <string name="day_sheet_empty">Nothing on this day</string>
 
     <!-- Add entry -->
     <string name="add_title">New entry</string>
-    <string name="add_datetime_label">Time</string>
-    <string name="add_type_label">Type</string>
+    <string name="add_datetime_label">When did it happen</string>
+    <string name="add_type_label">Pick your mode</string>
     <string name="add_duration_label">Duration</string>
     <string name="add_duration_value">%1$d min</string>
     <string name="add_mood_before_label">Mood before</string>
-    <string name="add_mood_after_label">Mood after</string>
+    <string name="add_mood_after_label">Mood after (sage hour)</string>
     <string name="add_pleasure_label">Pleasure</string>
     <string name="add_pleasure_value">%1$d / 10</string>
-    <string name="add_note_label">Note</string>
+    <string name="add_note_label">Notes to self</string>
+    <string name="add_note_hint">Write something. Only you can see it 🤫</string>
     <string name="add_save">Save entry</string>
-    <string name="add_pick_time_title">Select time</string>
-    <string name="add_time_future_error">The time cannot be in the future</string>
+    <string name="add_saving">Saving…</string>
+    <string name="add_save_failed">Couldn\'t save that 😵 Tap again to retry</string>
+    <string name="add_pick_time_title">What time was it?</string>
+    <string name="add_time_future_error">No future times. You\'re not a time traveler</string>
+    <string-array name="save_toasts">
+        <item>Logged. Roll the tape 📼</item>
+        <item>Saved. Sage hour: begin contemplating life 🧘</item>
+        <item>Data +1, kidneys -1 (kidding) 😏</item>
+        <item>Another classified file archived 🔒</item>
+        <item>Saved! Remember to hydrate 💧</item>
+        <item>Logbook updated. Great work today 📒</item>
+    </string-array>
+
+    <!-- Entry card (history list, day sheet) -->
+    <string name="entry_when">%1$s · %2$s</string>
+    <string name="entry_duration_line">%1$d min · %2$s</string>
+    <string name="entry_pleasure_line">Pleasure %1$d/10 · %2$s</string>
 
     <!-- History -->
-    <string name="history_search_hint">Search notes</string>
+    <string name="history_title">Replay</string>
+    <string name="history_subtitle">Your greatest hits, in order</string>
+    <plurals name="history_count">
+        <item quantity="one">%1$d entry</item>
+        <item quantity="other">%1$d entries</item>
+    </plurals>
+    <string name="history_search_hint">Search by note</string>
     <string name="history_search_clear">Clear search</string>
-    <string name="history_empty">No entries yet</string>
-    <string name="history_no_results">No matching entries</string>
-    <string name="history_duration">%1$d min</string>
+    <string name="history_empty">Blank record. Are you cultivating immortality?</string>
+    <string name="history_empty_hint">Hit the ➕ below and start your legend</string>
+    <string name="history_no_results">Nothing found. Maybe you deleted it 🤔</string>
     <string name="history_mood_transition">%1$s → %2$s</string>
-    <string name="history_pleasure">Pleasure %1$d/10</string>
     <string name="history_delete_cd">Delete entry</string>
-    <string name="history_delete_title">Delete this entry?</string>
-    <string name="history_delete_message">This cannot be undone.</string>
+    <string name="history_delete_title">Destroy this piece of dark history?</string>
+    <string name="history_delete_message">Gone is gone, though you\'ll get a few seconds to change your mind.</string>
+    <string name="history_delete_confirm">Burn the evidence</string>
+    <string name="history_delete_keep">Keep as a souvenir</string>
+    <string-array name="delete_toasts">
+        <item>Dark history destroyed 🔥</item>
+        <item>Evidence burned. Nobody knows 🤫</item>
+        <item>This entry never existed 🕵️</item>
+        <item>Deleted. Regret now or never ⏳</item>
+    </string-array>
+
+    <!-- AI roast -->
+    <string name="ai_title">AI Roast</string>
+    <string name="ai_subtitle">Let an AI read your stats and have opinions</string>
+    <string name="ai_intro">An AI glances at your stats and roasts (or comforts) you in a few lines. Data is only sent when you tap the big button below. The rest of the time, not a single byte leaves your phone.</string>
+    <string name="ai_roast_label">Roast level</string>
+    <string name="ai_roast_gentle">Gentle hug</string>
+    <string name="ai_roast_gentle_hint">Compliments only, emotional support included</string>
+    <string name="ai_roast_spicy">Savage roast</string>
+    <string name="ai_roast_spicy_hint">No mercy, no refunds</string>
+    <string name="ai_include_notes">Send my notes too</string>
+    <string name="ai_notes_off_note">Your notes are not sent by default, only stats-style info. Open the preview below to see exactly what would go out.</string>
+    <string name="ai_notes_on_note">On: your notes will be sent as written to the AI (Anthropic). If a note holds secrets, leave this off.</string>
+    <string name="ai_preview_title">See what would be sent</string>
+    <string name="ai_preview_hint">Tap to peek. Word for word.</string>
+    <string name="ai_preview_loading">Putting it together…</string>
+    <string name="ai_preview_empty">No entries yet, so there\'s nothing to send</string>
+    <string name="ai_preview_footer">↑ This is everything the AI would receive, word for word. Nothing is sent until you tap the roast button.</string>
+    <string name="ai_no_key_title">No API key yet</string>
+    <string name="ai_no_key_body">The AI speaks with your own Claude API key. Add one in Settings.</string>
+    <string name="ai_go_set_key">Go set the key</string>
+    <string name="ai_run">Roast me, AI</string>
+    <string name="ai_privacy_footer">Nothing is sent to Anthropic\'s Claude until you tap this button.</string>
+    <string-array name="ai_loading_messages">
+        <item>The AI is trying not to laugh…</item>
+        <item>Calculating your kidney score…</item>
+        <item>The AI is reading your logs, eyebrows rising…</item>
+        <item>Sharpening the roast material…</item>
+        <item>The AI takes a deep breath, mic check…</item>
+        <item>Consulting the local sage…</item>
+    </string-array>
+    <string name="ai_cancel">Never mind</string>
+    <string name="ai_result_title">Roast served</string>
+    <string name="ai_result_disclaimer">The AI makes things up. For laughs only, not medical advice.</string>
+    <string name="ai_again">Roast me again</string>
+    <string name="ai_done">Close</string>
+    <string name="ai_retry">Try again</string>
+    <string name="ai_error_no_key">No API key yet, so the AI can\'t speak. Add one in Settings.</string>
+    <string name="ai_error_no_data">Your record is blank, the AI has nothing to roast. Log something first.</string>
+    <string name="ai_error_invalid_key">That key looks wrong (or expired). Check it in Settings.</string>
+    <string name="ai_error_rate_limited">Too fast! The AI needs to catch its breath. Try again in a bit.</string>
+    <string name="ai_error_overloaded">The AI\'s servers are packed like a rush-hour train. Try again later.</string>
+    <string name="ai_error_network">The network wandered off. Check your connection and retry.</string>
+    <string name="ai_error_refused">The AI took one look and chose silence (it refused). Try the gentle level?</string>
+    <string name="ai_error_server">The AI\'s server hiccuped. Not your fault. Try again later.</string>
+    <string name="ai_error_unknown">Something odd went wrong. Try once more?</string>
 
     <!-- Settings -->
-    <string name="settings_security">Security</string>
-    <string name="settings_change_pin">Change PIN</string>
-    <string name="settings_change_pin_desc">Change the 4-digit unlock PIN</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">Make the little book yours</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
     <string name="theme_system">Follow system</string>
-    <string name="theme_light">Light</string>
-    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Day mode</string>
+    <string name="theme_dark">Night owl mode</string>
     <string name="settings_language">Language</string>
     <string name="language_system">Follow system</string>
     <string name="language_chinese">中文</string>
     <string name="language_english">English</string>
+    <string name="settings_security">Security</string>
+    <string name="settings_change_pin">Change secret code</string>
+    <string name="settings_change_pin_desc">Pick a new 4-digit code only you know</string>
+    <string name="settings_data">Data</string>
+    <string name="settings_export">Export backup</string>
+    <string name="settings_export_desc">Pack all your entries into one file</string>
+    <string name="settings_import">Import backup</string>
+    <string name="settings_import_desc">Bring your entries back from a backup file</string>
+    <string name="settings_data_note">Your data lives only on this phone. Export before you uninstall.</string>
+    <string name="settings_ai">AI</string>
+    <string name="settings_ai_key">Claude API key</string>
+    <string name="settings_ai_key_set">Set ✅</string>
+    <string name="settings_ai_key_unset">Not set</string>
+    <string name="settings_ai_key_set_action">Set key</string>
+    <string name="settings_ai_key_change">Change key</string>
+    <string name="settings_ai_key_clear">Remove key</string>
+    <string name="settings_ai_key_clear_title">Remove the API key?</string>
+    <string name="settings_ai_key_clear_message">The AI roast stops working until you enter a key again.</string>
+    <string name="settings_ai_key_clear_confirm">Remove</string>
+    <string name="settings_ai_note">The key is stored encrypted on this phone and is only sent to Anthropic when you tap Roast.</string>
+    <string name="settings_key_dialog_title">Enter your Claude API key</string>
+    <string name="settings_key_dialog_body">Create a key in the Anthropic console and paste it here. It is only stored, encrypted, on this phone.</string>
+    <string name="settings_key_placeholder">sk-ant-…</string>
+    <string name="settings_key_save">Save</string>
+    <string name="settings_key_show">Show key</string>
+    <string name="settings_key_hide">Hide key</string>
     <string name="settings_about">About</string>
     <string name="settings_version">Version %1$s</string>
+    <string name="settings_about_joke">Contains zero actual calculations and a moderate amount of joy. Any resemblance to a calculator is purely coincidental.</string>
+
+    <!-- Backup flow -->
+    <string name="backup_import_title">Import backup</string>
+    <string name="backup_mode_merge">Merge (keep what I have)</string>
+    <string name="backup_mode_merge_desc">Merge: add the backup\'s entries, skip duplicates, leave existing ones untouched.</string>
+    <string name="backup_mode_replace">Replace (start over)</string>
+    <string name="backup_mode_replace_desc">Replace: wipe the current entries first, then use the backup\'s.</string>
+    <string name="backup_replace_title">Really replace everything?</string>
+    <string name="backup_replace_message">All current entries will be wiped and swapped for the backup\'s. There is no undo!</string>
+    <string name="backup_replace_confirm">Yes, replace it all</string>
+    <string name="backup_replace_cancel">Let me think again</string>
+    <string name="backup_working">Working on it…</string>
+    <string name="backup_export_done_title">Export done</string>
+    <plurals name="backup_exported_count">
+        <item quantity="one">Packed %1$d entry. Keep it safe.</item>
+        <item quantity="other">Packed %1$d entries. Keep them safe.</item>
+    </plurals>
+    <string name="backup_import_done_title">Import done</string>
+    <plurals name="backup_imported_added">
+        <item quantity="one">Added %1$d entry</item>
+        <item quantity="other">Added %1$d entries</item>
+    </plurals>
+    <plurals name="backup_imported_skipped">
+        <item quantity="one">Skipped %1$d duplicate</item>
+        <item quantity="other">Skipped %1$d duplicates</item>
+    </plurals>
+    <string name="backup_failed_title">Something went wrong</string>
+    <string name="backup_error_io">Couldn\'t read or write that file. Try another location?</string>
+    <string name="backup_error_invalid_format">That doesn\'t look like one of our backups. Wrong file?</string>
+    <string name="backup_error_unsupported_version">This backup comes from a different app version and can\'t be read here.</string>
+    <string name="backup_error_empty">Nothing to export (or the backup file is empty).</string>
 
     <!-- Change PIN -->
-    <string name="change_pin_title">Change PIN</string>
-    <string name="change_pin_current">Enter current PIN</string>
-    <string name="change_pin_new">Enter new PIN</string>
-    <string name="change_pin_confirm">Enter new PIN again</string>
-    <string name="change_pin_success">PIN changed</string>
+    <string name="change_pin_title">Change secret code</string>
+    <string name="change_pin_current">Prove it\'s you</string>
+    <string name="change_pin_current_sub">Enter your current code</string>
+    <string name="change_pin_new">Pick a new code</string>
+    <string name="change_pin_new_sub">4 digits. Not your birthday.</string>
+    <string name="change_pin_confirm">Once more</string>
+    <string name="change_pin_confirm_sub">Confirm the new code</string>
+    <string name="change_pin_success">Secret code updated 🔐</string>
 </resources>
