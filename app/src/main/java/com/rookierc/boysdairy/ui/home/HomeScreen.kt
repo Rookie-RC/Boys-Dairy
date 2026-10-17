@@ -122,9 +122,7 @@ fun HomeScreen(
                 StreakCard(level = level, days = stats.consecutiveActiveDays)
             }
 
-            state.forecast?.let { forecast ->
-                ForecastCard(forecast = forecast, today = today)
-            }
+            TodayAdviceCard(advice = state.advice)
 
             StatsRow(
                 last7Days = stats.last7DaysCount,

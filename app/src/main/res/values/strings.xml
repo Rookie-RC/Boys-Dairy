@@ -276,61 +276,144 @@
         <item quantity="other">已连续 %1$d 天</item>
     </plurals>
 
-    <!-- Next-time forecast -->
-    <!-- Home card: a tongue-in-cheek guess at the next entry from the user's own recent rhythm
-         (domain/NextTime.kt). Never pushy, never judges how often. -->
-    <string name="forecast_title">下次预报</string>
-    <!-- %1$d = typical gap in calendar days (at least 1). Fills %1$s of forecast_upcoming /
-         forecast_today and %2$s of forecast_overdue. -->
-    <plurals name="forecast_pace">
-        <item quantity="other">大约 %1$d 天一次</item>
-    </plurals>
-    <!-- %1$s = forecast_pace, %2$s = predicted date (pattern_date_weekday), %3$s = forecast_time_*. -->
-    <string name="forecast_upcoming">按你的节奏（%1$s），下一次发射约在 %2$s，通常在%3$s。</string>
-    <string name="forecast_upcoming_girl">按你的节奏（%1$s），下一次放飞约在 %2$s，通常在%3$s。</string>
-    <!-- Predicted date is today. %1$s = forecast_pace, %2$s = forecast_time_*. -->
-    <string name="forecast_today">按你的节奏（%1$s），下一次发射就是今天，通常在%2$s。</string>
-    <string name="forecast_today_girl">按你的节奏（%1$s），下一次放飞就是今天，通常在%2$s。</string>
-    <string-array name="forecast_today_quips">
-        <item>弹药按节奏刚好装填完毕，用不用随你，水晶球不负责催 🎯</item>
-        <item>按节奏是今天，按心情随便，以你为准 😌</item>
-        <item>预报而已，又不是打卡任务，别有压力 🔮</item>
+    <!-- Today's almanac -->
+    <!-- Home card in the style of a Chinese almanac (黄历): a verdict on today (domain/TodayAdvice.kt)
+         that leans towards "better not", two 宜 and two 忌 everyday items and one calm, sincere line.
+         Never pushy: no countdowns, no "it's time", no "overdue"; the only number anywhere is the
+         streak length of almanac_verdict_avoid_streak. Quips, items and the calm line are picked by
+         date, so they stay the same all day. -->
+    <string name="almanac_title">今日宜忌</string>
+    <!-- Round stamp next to the verdict: one or two characters. -->
+    <string name="almanac_seal_avoid">忌</string>
+    <string name="almanac_seal_unfavorable">不宜</string>
+    <string name="almanac_seal_neutral">平</string>
+    <string name="almanac_seal_favorable">宜</string>
+    <!-- What screen readers say for the stamp. -->
+    <string name="almanac_seal_description_avoid">今日：忌</string>
+    <string name="almanac_seal_description_unfavorable">今日：不宜</string>
+    <string name="almanac_seal_description_neutral">今日：平</string>
+    <string name="almanac_seal_description_favorable">今日：宜</string>
+    <!-- AVOID: today already has an entry. -->
+    <string name="almanac_verdict_avoid_today">今日忌再战</string>
+    <string name="almanac_verdict_avoid_today_girl">今日忌再飞</string>
+    <string-array name="almanac_quips_avoid_today">
+        <item>弹药已清空，请勿空放 🛑</item>
+        <item>今天的战绩已入库，剩下的时间交给枕头 🛏️</item>
+        <item>贤者时间已开启，凡尘俗事一律免谈 🧘</item>
     </string-array>
-    <string-array name="forecast_today_quips_girl">
-        <item>小翅膀按节奏刚好充好电，飞不飞随你，水晶球不负责催 🦋</item>
-        <item>按节奏是今天，按心情随便，你开心最重要 🌸</item>
-        <item>预报而已，又不是打卡任务，放轻松 🔮</item>
+    <string-array name="almanac_quips_avoid_today_girl">
+        <item>小翅膀正在充电，请勿打扰 🛑</item>
+        <item>今天的快乐已存档，剩下的时间交给被窝 🧸</item>
+        <item>余韵时刻进行中，什么都不用做 ☁️</item>
     </string-array>
-    <!-- Predicted date has passed. %1$d = days since it (at least 1), %2$s = forecast_pace. -->
-    <plurals name="forecast_overdue">
-        <item quantity="other">按你的节奏（%2$s），已经超期 %1$d 天了。</item>
+    <!-- AVOID: entries on 3 or more consecutive days up to yesterday. %1$d = that streak (3 or more). -->
+    <plurals name="almanac_verdict_avoid_streak">
+        <item quantity="other">连续 %1$d 天出勤，今日忌加班</item>
     </plurals>
-    <plurals name="forecast_overdue_girl">
-        <item quantity="other">按你的节奏（%2$s），已经超出预报 %1$d 天了。</item>
+    <plurals name="almanac_verdict_avoid_streak_girl">
+        <item quantity="other">连续放飞 %1$d 天，今日忌加场</item>
     </plurals>
-    <string-array name="forecast_overdue_quips">
-        <item>不急，身体说了算 🧘</item>
-        <item>冷却久一点也挺好，就当贤者时间加长版 🍵</item>
-        <item>水晶球也会失灵，节奏是你的，不是它的 🔮</item>
+    <string-array name="almanac_quips_avoid_streak">
+        <item>再战下去，肾要递辞职信了（非医嘱）🧯</item>
+        <item>连轴转的机器也要停机保养 🔧</item>
+        <item>今天唯一的任务：睡个好觉 😴</item>
     </string-array>
-    <string-array name="forecast_overdue_quips_girl">
-        <item>不急，身体说了算 🧘‍♀️</item>
-        <item>慢一点也挺好，让余韵多留一会儿 🍵</item>
-        <item>水晶球也会失灵，节奏是你的，不是它的 🔮</item>
+    <string-array name="almanac_quips_avoid_streak_girl">
+        <item>气血在小声抗议，今天就歇歇吧（非医嘱）🧯</item>
+        <item>仙女也要放假，今天给自己批个假 🏖️</item>
+        <item>今天唯一的任务：睡个美容觉 😴</item>
     </string-array>
-    <!-- Fewer than 3 distinct entry days. %1$d = days still to log (1 or 2). -->
-    <plurals name="forecast_need_more">
-        <item quantity="other">再记 %1$d 天的战绩，水晶球就能算出你的发射节奏（同一天记多条只算一天）</item>
-    </plurals>
-    <plurals name="forecast_need_more_girl">
-        <item quantity="other">再记 %1$d 天，水晶球就能算出你的放飞节奏（同一天记多条只算一天）</item>
-    </plurals>
-    <!-- Usual time of day for "通常在…"; same split as insights_hour_*. -->
-    <string name="forecast_time_night">凌晨</string>
-    <string name="forecast_time_morning">上午</string>
-    <string name="forecast_time_afternoon">下午</string>
-    <string name="forecast_time_evening">晚上</string>
-    <string name="forecast_disclaimer">仅供一乐，不是计划也不是医嘱</string>
+    <!-- UNFAVORABLE: fewer days since the last entry than the user's usual gap, or (without enough
+         history for one) the last entry was yesterday. "Cooldown isn't over", never with a number. -->
+    <string name="almanac_verdict_unfavorable">今日不宜出击</string>
+    <string name="almanac_verdict_unfavorable_girl">今日不宜起飞</string>
+    <string-array name="almanac_quips_unfavorable">
+        <item>冷却进度条还没走完，别急着按发射键 ⏳</item>
+        <item>风向不太对，弹药先留着压箱底 🌬️</item>
+        <item>装填尚未完成，强行开火容易卡壳 🔧</item>
+    </string-array>
+    <string-array name="almanac_quips_unfavorable_girl">
+        <item>小翅膀还在充电，今天先别扑腾 🔋</item>
+        <item>余韵还没散，让它再飘一会儿 ☁️</item>
+        <item>元气条还没回满，躺平最划算 🛋️</item>
+    </string-array>
+    <!-- NEUTRAL: not enough history for a usual gap (or no entries at all). Whatever happens, happens. -->
+    <string name="almanac_verdict_neutral">今日平平，随缘就好</string>
+    <string-array name="almanac_quips_neutral">
+        <item>黄历上没什么讲究，按兵不动也是一种战术 🍵</item>
+        <item>不用特意安排，也不用特意回避，过好今天就行 🌿</item>
+        <item>弹药库今日无事，门卫在打盹 💤</item>
+    </string-array>
+    <string-array name="almanac_quips_neutral_girl">
+        <item>黄历上没什么讲究，窝着看会儿书也挺好 🍵</item>
+        <item>不用特意安排，也不用特意回避，过好今天就行 🌿</item>
+        <item>小翅膀今日休假，在云朵上打个盹 💤</item>
+    </string-array>
+    <!-- FAVORABLE: the usual gap has passed. Low-key on purpose: "allowed", never "go" or "it's time". -->
+    <string name="almanac_verdict_favorable">今日可以，但不必</string>
+    <string-array name="almanac_quips_favorable">
+        <item>想就顺其自然，不想也完全没问题 🍃</item>
+        <item>弹药库是满的，但满着也挺好 🧘</item>
+        <item>黄历只说了「可以」，没说「应该」📜</item>
+    </string-array>
+    <string-array name="almanac_quips_favorable_girl">
+        <item>想就顺其自然，不想也完全没问题 🍃</item>
+        <item>小翅膀充满了电，收着也挺好看 🦋</item>
+        <item>黄历只说了「可以」，没说「应该」📜</item>
+    </string-array>
+    <!-- 宜 / 忌 lines: %1$s = two items of almanac_good_items / almanac_bad_items joined by
+         almanac_item_separator (almanac_item_separator_spoken for screen readers). -->
+    <string name="almanac_good_line">宜：%1$s</string>
+    <string name="almanac_bad_line">忌：%1$s</string>
+    <string name="almanac_item_separator">" · "</string>
+    <string name="almanac_item_separator_spoken">、</string>
+    <!-- Small everyday things, shared by both editions. 12 / 13 items (and 11 calm lines) on purpose:
+         sizes without a common factor keep the card from repeating in lockstep. -->
+    <string-array name="almanac_good_items">
+        <item>早睡</item>
+        <item>喝杯温水</item>
+        <item>散步二十分钟</item>
+        <item>晒会儿太阳</item>
+        <item>给自己做顿饭</item>
+        <item>伸个懒腰</item>
+        <item>泡个热水脚</item>
+        <item>吃点水果</item>
+        <item>收拾一下桌面</item>
+        <item>听一首喜欢的歌</item>
+        <item>给老朋友发条消息</item>
+        <item>午后小睡一会儿</item>
+    </string-array>
+    <string-array name="almanac_bad_items">
+        <item>熬夜</item>
+        <item>空腹喝咖啡</item>
+        <item>刷手机到凌晨</item>
+        <item>跟自己较劲</item>
+        <item>久坐不动</item>
+        <item>暴饮暴食</item>
+        <item>生闷气</item>
+        <item>拿自己跟别人比</item>
+        <item>冰饮一杯接一杯</item>
+        <item>边吃饭边刷短视频</item>
+        <item>睡前看工作群</item>
+        <item>累了还硬撑</item>
+        <item>把烦心事带上床</item>
+    </string-array>
+    <!-- The calm line under the jokes: sincere and quiet, the contrast is the point. Not funny, not
+         a lecture; no sex, no counts, no emoji. Shared by both editions. -->
+    <string-array name="almanac_calm_lines">
+        <item>你不需要用任何记录来证明自己。</item>
+        <item>身体有它自己的节奏，听它的就好。</item>
+        <item>今天也请对自己温柔一点。</item>
+        <item>累了就休息，这本身就是一种照顾。</item>
+        <item>慢一点没关系，你比自己以为的做得更好。</item>
+        <item>把呼吸放慢一点，此刻什么都不用赶。</item>
+        <item>不是每一天都要有意义，平静的日子也很好。</item>
+        <item>允许自己什么都不做，安静地待一会儿。</item>
+        <item>你此刻的感受是真实的，也是被允许的。</item>
+        <item>有些日子，只需要好好吃饭，好好睡觉。</item>
+        <item>你值得被温柔对待，包括被你自己。</item>
+    </string-array>
+    <string name="almanac_disclaimer">仅供一乐，非医嘱</string>
 
     <!-- Home stats -->
     <string name="stats_last7">近 7 天</string>

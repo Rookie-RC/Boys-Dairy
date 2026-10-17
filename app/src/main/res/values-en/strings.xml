@@ -280,66 +280,147 @@
         <item quantity="other">%1$d days in a row</item>
     </plurals>
 
-    <!-- Next-time forecast -->
-    <!-- Home card: a tongue-in-cheek guess at the next entry from the user's own recent rhythm
-         (domain/NextTime.kt). Never pushy, never judges how often. -->
-    <string name="forecast_title">Next-Time Forecast</string>
-    <!-- %1$d = typical gap in calendar days (at least 1). Fills %1$s of forecast_upcoming /
-         forecast_today and %2$s of forecast_overdue. -->
-    <plurals name="forecast_pace">
-        <item quantity="one">about %1$d day between rounds</item>
-        <item quantity="other">about %1$d days between rounds</item>
-    </plurals>
-    <!-- %1$s = forecast_pace, %2$s = predicted date (pattern_date_weekday), %3$s = forecast_time_*. -->
-    <string name="forecast_upcoming">At your pace (%1$s), the crystal ball sees your next launch around %2$s, usually %3$s.</string>
-    <string name="forecast_upcoming_girl">At your pace (%1$s), the crystal ball sees your next flight around %2$s, usually %3$s.</string>
-    <!-- Predicted date is today. %1$s = forecast_pace, %2$s = forecast_time_*. -->
-    <string name="forecast_today">At your pace (%1$s), the crystal ball picks today for your next launch, usually %2$s.</string>
-    <string name="forecast_today_girl">At your pace (%1$s), the crystal ball picks today for your next flight, usually %2$s.</string>
-    <string-array name="forecast_today_quips">
-        <item>Ammo should be fully reloaded by now. Use it or don\'t, the crystal ball doesn\'t nag 🎯</item>
-        <item>Today by the numbers, whenever by the mood. You\'re the boss 😌</item>
-        <item>It\'s a forecast, not a to-do list. Zero pressure 🔮</item>
+    <!-- Today's almanac -->
+    <!-- Home card in the style of a Chinese almanac: a verdict on today (domain/TodayAdvice.kt) that
+         leans towards "better not", two "good for" and two "avoid" everyday items and one calm,
+         sincere line. Never pushy: no countdowns, no "it's time", no "overdue"; the only number
+         anywhere is the streak length of almanac_verdict_avoid_streak. Quips, items and the calm
+         line are picked by date, so they stay the same all day. -->
+    <string name="almanac_title">Today\'s Almanac</string>
+    <!-- Round stamp next to the verdict: one short word, four letters at most. -->
+    <string name="almanac_seal_avoid">NO</string>
+    <string name="almanac_seal_unfavorable">HOLD</string>
+    <string name="almanac_seal_neutral">MEH</string>
+    <string name="almanac_seal_favorable">OK</string>
+    <!-- What screen readers say for the stamp. -->
+    <string name="almanac_seal_description_avoid">Today\'s verdict: avoid</string>
+    <string name="almanac_seal_description_unfavorable">Today\'s verdict: better not</string>
+    <string name="almanac_seal_description_neutral">Today\'s verdict: neutral</string>
+    <string name="almanac_seal_description_favorable">Today\'s verdict: allowed</string>
+    <!-- AVOID: today already has an entry. -->
+    <string name="almanac_verdict_avoid_today">No encore today</string>
+    <string name="almanac_verdict_avoid_today_girl">No second flight today</string>
+    <string-array name="almanac_quips_avoid_today">
+        <item>Ammo\'s spent. No dry firing, please 🛑</item>
+        <item>Today\'s round is on the books. The rest of the day belongs to your pillow 🛏️</item>
+        <item>Sage mode engaged. All worldly matters are on hold 🧘</item>
     </string-array>
-    <string-array name="forecast_today_quips_girl">
-        <item>Wings should be fully charged by now. Fly or don\'t, the crystal ball doesn\'t nag 🦋</item>
-        <item>Today by the numbers, whenever by the mood. You do you 🌸</item>
-        <item>It\'s a forecast, not a to-do list. Zero pressure 🔮</item>
+    <string-array name="almanac_quips_avoid_today_girl">
+        <item>Little wings are recharging. Do not disturb 🛑</item>
+        <item>Today\'s joy is saved. The rest of the day belongs to your blanket 🧸</item>
+        <item>Afterglow in progress. Nothing else needs doing ☁️</item>
     </string-array>
-    <!-- Predicted date has passed. %1$d = days since it (at least 1), %2$s = forecast_pace. -->
-    <plurals name="forecast_overdue">
-        <item quantity="one">At your pace (%2$s), you\'re %1$d day past the forecast.</item>
-        <item quantity="other">At your pace (%2$s), you\'re %1$d days past the forecast.</item>
+    <!-- AVOID: entries on 3 or more consecutive days up to yesterday. %1$d = that streak (3 or more). -->
+    <plurals name="almanac_verdict_avoid_streak">
+        <item quantity="one">On duty %1$d day straight. No overtime today</item>
+        <item quantity="other">On duty %1$d days straight. No overtime today</item>
     </plurals>
-    <plurals name="forecast_overdue_girl">
-        <item quantity="one">At your pace (%2$s), the forecast is off by %1$d day.</item>
-        <item quantity="other">At your pace (%2$s), the forecast is off by %1$d days.</item>
+    <plurals name="almanac_verdict_avoid_streak_girl">
+        <item quantity="one">Flying %1$d day straight. No bonus round today</item>
+        <item quantity="other">Flying %1$d days straight. No bonus round today</item>
     </plurals>
-    <string-array name="forecast_overdue_quips">
-        <item>No rush. Your body makes the call 🧘</item>
-        <item>A longer cooldown is fine too. Sage mode: extended edition 🍵</item>
-        <item>Crystal balls glitch. It\'s your rhythm, not the ball\'s 🔮</item>
+    <string-array name="almanac_quips_avoid_streak">
+        <item>Keep this up and your kidneys will hand in their notice (not medical advice) 🧯</item>
+        <item>Even machines that run nonstop need downtime 🔧</item>
+        <item>Today\'s only mission: a proper night\'s sleep 😴</item>
     </string-array>
-    <string-array name="forecast_overdue_quips_girl">
-        <item>No rush. Your body makes the call 🧘‍♀️</item>
-        <item>Slow is lovely too. Let the afterglow linger 🍵</item>
-        <item>Crystal balls glitch. It\'s your rhythm, not the ball\'s 🔮</item>
+    <string-array name="almanac_quips_avoid_streak_girl">
+        <item>Your glow is filing a quiet complaint. Rest up today (not medical advice) 🧯</item>
+        <item>Even fairies take days off. Grant yourself one 🏖️</item>
+        <item>Today\'s only mission: beauty sleep 😴</item>
     </string-array>
-    <!-- Fewer than 3 distinct entry days. %1$d = days still to log (1 or 2). -->
-    <plurals name="forecast_need_more">
-        <item quantity="one">Log %1$d more day and the crystal ball can read your launch rhythm (several entries on one day count once).</item>
-        <item quantity="other">Log %1$d more days and the crystal ball can read your launch rhythm (several entries on one day count once).</item>
-    </plurals>
-    <plurals name="forecast_need_more_girl">
-        <item quantity="one">Log %1$d more day and the crystal ball can read your flight rhythm (several entries on one day count once).</item>
-        <item quantity="other">Log %1$d more days and the crystal ball can read your flight rhythm (several entries on one day count once).</item>
-    </plurals>
-    <!-- Usual time of day for "usually …"; same split as insights_hour_*. -->
-    <string name="forecast_time_night">late at night</string>
-    <string name="forecast_time_morning">in the morning</string>
-    <string name="forecast_time_afternoon">in the afternoon</string>
-    <string name="forecast_time_evening">in the evening</string>
-    <string name="forecast_disclaimer">Just for fun. Not a plan, and not medical advice.</string>
+    <!-- UNFAVORABLE: fewer days since the last entry than the user's usual gap, or (without enough
+         history for one) the last entry was yesterday. "Cooldown isn't over", never with a number. -->
+    <string name="almanac_verdict_unfavorable">Better hold fire today</string>
+    <string name="almanac_verdict_unfavorable_girl">Better stay grounded today</string>
+    <string-array name="almanac_quips_unfavorable">
+        <item>The cooldown bar is still filling. Hands off the launch button ⏳</item>
+        <item>Wrong wind for it today. Keep the ammo in storage 🌬️</item>
+        <item>Reload isn\'t finished. Forcing it just jams the works 🔧</item>
+    </string-array>
+    <string-array name="almanac_quips_unfavorable_girl">
+        <item>Little wings still charging. No flapping today 🔋</item>
+        <item>The afterglow hasn\'t faded. Let it linger a little longer ☁️</item>
+        <item>Energy bar isn\'t full. Lounging is the smart move 🛋️</item>
+    </string-array>
+    <!-- NEUTRAL: not enough history for a usual gap (or no entries at all). Whatever happens, happens. -->
+    <string name="almanac_verdict_neutral">A plain day. Take it as it comes</string>
+    <string-array name="almanac_quips_neutral">
+        <item>Nothing in the almanac either way. Holding position is a strategy too 🍵</item>
+        <item>No need to plan it, no need to dodge it. Just have a decent day 🌿</item>
+        <item>Quiet day at the armory. The guard is napping 💤</item>
+    </string-array>
+    <string-array name="almanac_quips_neutral_girl">
+        <item>Nothing in the almanac either way. Curling up with a book sounds nice 🍵</item>
+        <item>No need to plan it, no need to dodge it. Just have a decent day 🌿</item>
+        <item>Little wings have the day off, napping on a cloud 💤</item>
+    </string-array>
+    <!-- FAVORABLE: the usual gap has passed. Low-key on purpose: "allowed", never "go" or "it's time". -->
+    <string name="almanac_verdict_favorable">Allowed today, never required</string>
+    <string-array name="almanac_quips_favorable">
+        <item>If you feel like it, let it happen. If not, that\'s completely fine 🍃</item>
+        <item>The armory is fully stocked, and a full armory is fine too 🧘</item>
+        <item>The almanac said “allowed”, not “should” 📜</item>
+    </string-array>
+    <string-array name="almanac_quips_favorable_girl">
+        <item>If you feel like it, let it happen. If not, that\'s completely fine 🍃</item>
+        <item>Wings fully charged, and they look lovely folded too 🦋</item>
+        <item>The almanac said “allowed”, not “should” 📜</item>
+    </string-array>
+    <!-- "Good for" / "avoid" lines: %1$s = two items of almanac_good_items / almanac_bad_items joined
+         by almanac_item_separator (almanac_item_separator_spoken for screen readers). -->
+    <string name="almanac_good_line">Good for: %1$s</string>
+    <string name="almanac_bad_line">Avoid: %1$s</string>
+    <string name="almanac_item_separator">" · "</string>
+    <string name="almanac_item_separator_spoken">", "</string>
+    <!-- Small everyday things, shared by both editions; they follow "Good for:" / "Avoid:", so
+         lowercase. 12 / 13 items (and 11 calm lines) on purpose: sizes without a common factor keep
+         the card from repeating in lockstep. -->
+    <string-array name="almanac_good_items">
+        <item>an early night</item>
+        <item>a glass of warm water</item>
+        <item>a twenty-minute walk</item>
+        <item>a bit of sunshine</item>
+        <item>cooking yourself a meal</item>
+        <item>a good long stretch</item>
+        <item>a warm foot soak</item>
+        <item>some fresh fruit</item>
+        <item>tidying your desk</item>
+        <item>a song you love</item>
+        <item>texting an old friend</item>
+        <item>a short afternoon nap</item>
+    </string-array>
+    <string-array name="almanac_bad_items">
+        <item>staying up late</item>
+        <item>coffee on an empty stomach</item>
+        <item>scrolling past midnight</item>
+        <item>being hard on yourself</item>
+        <item>sitting still all day</item>
+        <item>overeating</item>
+        <item>sulking in silence</item>
+        <item>comparing yourself to others</item>
+        <item>one iced drink after another</item>
+        <item>eating in front of short videos</item>
+        <item>checking work chats in bed</item>
+        <item>pushing on when you\'re worn out</item>
+        <item>taking your worries to bed</item>
+    </string-array>
+    <!-- The calm line under the jokes: sincere and quiet, the contrast is the point. Not funny, not
+         a lecture; no sex, no counts, no emoji. Shared by both editions. -->
+    <string-array name="almanac_calm_lines">
+        <item>You don\'t need a record of anything to prove yourself.</item>
+        <item>Your body keeps its own time. It\'s all right to just listen to it.</item>
+        <item>Be a little gentle with yourself today.</item>
+        <item>Resting when you\'re tired is already a way of looking after yourself.</item>
+        <item>It\'s okay to go slowly. You\'re doing better than you think.</item>
+        <item>Let your breathing slow down. Nothing needs rushing right now.</item>
+        <item>Not every day has to mean something. Quiet days are good too.</item>
+        <item>Give yourself permission to do nothing for a while.</item>
+        <item>Whatever you\'re feeling right now is real, and it\'s allowed.</item>
+        <item>Some days only ask for a good meal and a good night\'s sleep.</item>
+        <item>You deserve kindness, including your own.</item>
+    </string-array>
+    <string name="almanac_disclaimer">Just for fun. Not medical advice.</string>
 
     <!-- Home stats -->
     <string name="stats_last7">Last 7 days</string>

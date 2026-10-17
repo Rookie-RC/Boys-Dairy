@@ -25,8 +25,9 @@ internal object GirlVariants {
         R.string.home_subtitle to R.string.home_subtitle_girl,
         R.string.home_cooldown_label to R.string.home_cooldown_label_girl,
         R.string.home_last_entry to R.string.home_last_entry_girl,
-        R.string.forecast_upcoming to R.string.forecast_upcoming_girl,
-        R.string.forecast_today to R.string.forecast_today_girl,
+        // Home: today's almanac
+        R.string.almanac_verdict_avoid_today to R.string.almanac_verdict_avoid_today_girl,
+        R.string.almanac_verdict_unfavorable to R.string.almanac_verdict_unfavorable_girl,
         // Cooldown tiers
         R.string.cooldown_none_title to R.string.cooldown_none_title_girl,
         R.string.cooldown_fresh_title to R.string.cooldown_fresh_title_girl,
@@ -68,9 +69,12 @@ internal object GirlVariants {
         R.array.cooldown_monk_subtitles to R.array.cooldown_monk_subtitles_girl,
         // Daily tip
         R.array.daily_tips to R.array.daily_tips_girl,
-        // Home: next-time forecast
-        R.array.forecast_today_quips to R.array.forecast_today_quips_girl,
-        R.array.forecast_overdue_quips to R.array.forecast_overdue_quips_girl,
+        // Home: today's almanac
+        R.array.almanac_quips_avoid_today to R.array.almanac_quips_avoid_today_girl,
+        R.array.almanac_quips_avoid_streak to R.array.almanac_quips_avoid_streak_girl,
+        R.array.almanac_quips_unfavorable to R.array.almanac_quips_unfavorable_girl,
+        R.array.almanac_quips_neutral to R.array.almanac_quips_neutral_girl,
+        R.array.almanac_quips_favorable to R.array.almanac_quips_favorable_girl,
         // Add entry
         R.array.save_toasts to R.array.save_toasts_girl,
         // AI roast
@@ -78,8 +82,7 @@ internal object GirlVariants {
     )
 
     val plurals: Map<Int, Int> = mapOf(
-        // Home: next-time forecast
-        R.plurals.forecast_overdue to R.plurals.forecast_overdue_girl,
-        R.plurals.forecast_need_more to R.plurals.forecast_need_more_girl,
+        // Home: today's almanac
+        R.plurals.almanac_verdict_avoid_streak to R.plurals.almanac_verdict_avoid_streak_girl,
     )
 }

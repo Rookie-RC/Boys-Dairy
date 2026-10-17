@@ -45,7 +45,7 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 | --- | --- |
 | `BoysDairyApp.kt` | `Application` + `AppContainer`（手动依赖注入，进程内单例）；在 `ProcessLifecycleOwner` `ON_STOP` 时调用 `lockManager.lock()` |
 | `MainActivity.kt` | `FLAG_SECURE`（由 `BuildConfig.SECURE_SCREEN` 控制）、edge-to-edge |
-| `domain/` | 纯 Kotlin，零 Android 依赖：`Entry`、`Mood`、`EntryType`、`DateLogic`（距今天数、月历网格与每日汇总、分组、搜索 / 筛选）、`Stats`（`computeStats`，AI 提示词也用）、`Insights`（完整战报的周 / 星期 / 时段分布、最长连续、成就）、`NextTime`（首页「下次预报」）、`SoloKeyword`（单人关键词的规范化、最近使用、排行榜） |
+| `domain/` | 纯 Kotlin，零 Android 依赖：`Entry`、`Mood`、`EntryType`、`DateLogic`（距今天数、月历网格与每日汇总、分组、搜索 / 筛选）、`Stats`（`computeStats`，AI 提示词也用）、`Insights`（完整战报的周 / 星期 / 时段分布、最长连续、成就）、`TodayAdvice`（首页「今日宜忌」的判定与按天挑选）、`SoloKeyword`（单人关键词的规范化、最近使用、排行榜） |
 | `data/` | Room（`AppDatabase` / `EntryDao` / `EntryEntity`，schema 版本 2，迁移在 `AppDatabase.MIGRATIONS`）、`EntryRepository`、`SettingsRepository`（DataStore `settings`：主题、PIN 哈希、所选 AI 服务商 `aiProvider`、男 / 女生版 `edition`）、`Edition`（`BOY` / `GIRL`） |
 | `data/backup/` | JSON 备份：`BackupCodec`（格式）、`BackupMerge`（去重）、`BackupEngine`（流读写，可纯 JVM 测试）、`BackupManager`（SAF Uri） |
 | `security/` | `PinHasher`（加盐 SHA-256）、`PinAttemptLimiter` + `DataStorePinLockoutStore`（持久化锁定）、`LockManager`（锁状态）、`BiometricUnlock` + `KeystoreBiometricKeys` + `BiometricPolicy`（可选的指纹解锁） |
