@@ -61,6 +61,7 @@ Unlocked ──ProcessLifecycleOwner ON_STOP──► Locked
 - `BoysDairyRoot`（`ui/AppRoot.kt`）是锁闸门：状态不是 `Unlocked` 时只组合 `LockScreen`，导航图、屏幕、列表根本不在组合树里。
 - **会话 store**：解锁后的内容放在 `UnlockedSession` 里，它给内容提供一个 `SessionViewModelStoreOwner`。里面所有 ViewModel 都存在 `SessionStoreHolder.store`（一个 Activity 级 ViewModel 持有）。上锁 → `UnlockedSession` 离开组合 → `holder.end()` 清空 store 并换新的。所以上锁后，未保存的打卡表单、屏幕上的 AI 结果、进行中的 AI 请求都会消失；而配置变更（旋转、切语言）不会触发 `end()`。
 - **要跨越上锁存活的东西放在闸门之上**：系统文件选择器 launcher（`CreateDocument` / `OpenDocument`）和 Activity 级的 `BackupViewModel`。原因：打开系统选择器会让应用进入后台、触发上锁；如果 launcher 注册在解锁后的界面里，结果回来时它已被注销。回来后 `BackupFlowHost` 只在解锁状态下组合，所以选好的文件会等用户重新输入 PIN 之后才开始导出 / 导入。导出成功后 `BackupViewModel` 把当前时间写进 `SettingsRepository.lastExportAt`（写失败不影响导出结果），首页的备份提醒（`domain/BackupReminder.kt` 的纯函数 `shouldRemindBackup`）和设置页的「上次导出」都读它。
+- **指纹解锁**（可选）：`security/BiometricUnlock` 管开关（DataStore `biometricUnlock`）和 Keystore 密钥 `boysdairy_biometric_key`（`KeystoreBiometricKeys`：AES-256/GCM，`setUserAuthenticationRequired(true)` + 每次使用都要强生物识别 + `setInvalidatedByBiometricEnrollment(true)`）。锁屏（`LockViewModel`）在 `Locked` 时准备一个 `ENCRYPT_MODE` 的 Cipher 放进 `BiometricPrompt.CryptoObject`，成功后用回调里的 Cipher 做一次 `doFinal`（`verify`），通过了才调 `LockManager.unlockWithBiometric()`（只把 `Locked` 变成 `Unlocked`，不碰 `PinAttemptLimiter`）。Cipher 初始化抛 `KeyPermanentlyInvalidatedException` 等 → 自动关闭开关、删除密钥、锁屏给中性提示。什么时候自动弹框由纯状态机 `ui/lock/BiometricAutoPrompt` 决定：锁屏每「出现」一次（变成 `Locked`，或 Activity 回到 STARTED）弹一次，取消后不再自动弹，配置变更不算新的出现。设备能力到界面状态的映射是 `security/BiometricPolicy` 里的纯函数。弹框的系统 UI 在 `ui/common/BiometricPromptLauncher`。
 - 输错 PIN 的计数与锁定见 `PinAttemptLimiter`：连续错 5 次 → 锁定 30 秒 → 之后重新给 5 次（不递增）。状态写进 DataStore（失败次数、截止时间、最后更新时间，均为墙钟毫秒），内存里留一份，`LockManager.lockoutRemainingMillis()` 是非挂起读取。读到「最后更新时间在未来」说明系统时间被往回拨过，此时从现在起锁满一个周期；剩余时间最多显示一个周期。改密码时先用 `verifyPin` 验证当前 PIN，同样计入次数。
 
 ## 导航
@@ -84,7 +85,7 @@ BoysDairyRoot
            └─ change_pin                     设置 → 改暗号；全屏，无底栏
 ```
 
-- **男生版 / 女生版**：`Edition`（`data/Edition.kt`）存在 DataStore `settings` 的 `edition`。`RootViewModel.edition` 是 `EditionState`（`Loading` / `Unset` / `Chosen`）。在设置里切换版本只改变 `LocalEdition` 的值，不换分支，所以导航栈和各页状态都保留。锁屏在 provider 之外，始终显示基础文案。代码里永远写基础资源 id，`ui/common/EditionResources.kt` 的同名 `stringResource` / `stringArrayResource` / `pluralStringResource` 按 `LocalEdition` 查 `GirlVariants` 换成 `<name>_girl`，没登记的就两版共用；两版不同的装饰 emoji 集中在 `EditionEmoji`。`EditionResourcesGuardTest` 扫源码，防止有人绕过它直接用 androidx 的版本或 `getString`。
+- **男生版 / 女生版**：`Edition`（`data/Edition.kt`）存在 DataStore `settings` 的 `edition`。`RootViewModel.edition` 是 `EditionState`（`Loading` / `Unset` / `Chosen`）。在设置里切换版本要先过 `FunConfirmDialog`（`ui/settings/EditionSwitch` 持有待确认的版本，确认后才写入），之后只改变 `LocalEdition` 的值，不换分支，所以导航栈和各页状态都保留。锁屏在 provider 之外，始终显示基础文案。代码里永远写基础资源 id，`ui/common/EditionResources.kt` 的同名 `stringResource` / `stringArrayResource` / `pluralStringResource` 按 `LocalEdition` 查 `GirlVariants` 换成 `<name>_girl`，没登记的就两版共用；两版不同的装饰 emoji 集中在 `EditionEmoji`。`EditionResourcesGuardTest` 扫源码，防止有人绕过它直接用 androidx 的版本或 `getString`。
 - 路由字符串用 `Routes.addEntry(entryId, date)` 拼；两个参数都是可选的 `LongType`，缺省值见 `AddEntryViewModel.NO_ENTRY_ID` / `NO_EPOCH_DAY`。`AddEntryViewModel` 只从 `SavedStateHandle` 读这两个参数，从不把表单内容写进去。
 - 修改模式：加载完成前不能保存；那条已被删掉 → 关闭表单并提示。没改时间就**原样保留原 timestamp（毫秒不变）**，只改了首尾空白的笔记也原样保留，这样备份合并的去重键 `(timestamp, type, durationMinutes, note)` 不会因为一次无关修改而变化；时长超过 120 的旧数据不动就原样保存。这些规则是 `ui/add/EntryFormLogic.kt` 里的纯函数，有单元测试。
 - 新增模式：类型和时长默认取最近一条战绩的（用户先动过就不覆盖）。表单有改动时，返回键 / 关闭按钮先弹「放弃确认」。笔记上限 1000 字符（更长的旧笔记不会被截断，只是不能再变长）。
@@ -100,7 +101,7 @@ BoysDairyRoot
 
 ## 数据模型
 
-Room 数据库 `boysdairy.db`，`version = 1`，`exportSchema = true`（schema 在 `app/schemas/`），一张表 `entries`：
+Room 数据库 `boysdairy.db`，`version = 2`，`exportSchema = true`（schema 在 `app/schemas/`，`1.json`、`2.json` 都要留着），一张表 `entries`：
 
 | 列 | 类型 | 说明 |
 | --- | --- | --- |
@@ -112,22 +113,26 @@ Room 数据库 `boysdairy.db`，`version = 1`，`exportSchema = true`（schema �
 | `moodAfter` | TEXT | `Mood` 枚举名；界面可选 RELAXED / GUILTY / EMPTY / ENERGETIC / NEUTRAL |
 | `pleasure` | INTEGER | 1–10 |
 | `note` | TEXT | 笔记，可为空串 |
+| `keyword` | TEXT，可空 | 单人记录的「今日老师」（女生版叫「今日灵感」）关键词；版本 2 新增。去首尾空白，空串存 `NULL`，双人记录永远 `NULL`，界面限 30 字符（更长的旧值不截断） |
 
+- **迁移**：`AppDatabase.MIGRATIONS` 注册在建库处。`1 → 2` 是 ``ALTER TABLE `entries` ADD COLUMN `keyword` TEXT``（可空、无默认值，与 `2.json` 一致），老数据的 keyword 为 `NULL`。`AppDatabaseMigrationTest` 校验迁移 SQL 并比对 `1.json` / `2.json`。不准用 `fallbackToDestructiveMigration`。
 - 枚举按名字存字符串，不依赖序号；读取时遇到未知名字退回默认值（`SOLO` / `NEUTRAL`）。`EntryEntity` ⇄ `domain.Entry` 的转换在 `EntryEntity.kt`。
 - `EntryRepository`：`entries`（Flow，新到旧，同一时刻按 id 新到旧）、`get(id)`、`add`、`update`（id 必须 > 0；行已不存在时什么也不做）、`delete`、`clearAll`（设置里的「清空所有战绩」）、`snapshot`（一次性读，新到旧）、`addAll`（备份合并）、`replaceAll`（`@Transaction`：先清空再插入，失败整体回滚）。
 - `domain/Stats.kt` 的 `computeStats()` 一次性算出 `EntryStats`（总数 / 单人 / 双人、近 7 / 30 天、距上次天数、连续天数、最长间隔、平均间隔、平均时长 / 愉悦度、事前事后心情分布、最忙的星期几和时段）。首页和 AI 提示词共用它。「天」一律按日历日算。
 - `domain/Insights.kt` 给「完整战报」页补充：`weeklyCounts`（近 N 个周一起始的周，空周也在）、`weekdayCounts` / `hourBucketCounts`（全部键都在）、`longestStreakDays`（历史最长连续）、`busiestKeys`（并列最多的都算），以及成就 `Achievement` / `computeAchievements`（每个成就有 `target`，进度封顶）/ `newlyUnlocked`。成就的名字、描述和 emoji 在 `ui/common/Labels.kt`（`Achievement.labels(edition)`），战报页和保存提示共用。战报页的时间范围是 `InsightsPeriod` + `entriesInPeriod`（「近 N 天」按日历日、含今天，与 `last30DaysCount` 同口径），只作用于总览、星期 / 时段分布和心情；近 12 周柱状图、成就墙和 `monthOverMonth`（本月 vs 上月同期，上月没有这一天时取月末）始终基于全部战绩。不改 `EntryStats`，所以 AI 提示词不受影响。
-- `domain/DateLogic.kt` 另有战绩列表和月历用的 `filterEntries(entries, query, type)`（笔记搜索 + 类型筛选）、`groupEntriesByMonth`（保持输入顺序）、`buildDaySummaries`（每天的类型 + 条数，月历角标用；`buildDayMarkers` 由它派生）。
+- `domain/SoloKeyword.kt`：关键词的规范化（`normalizeKeyword`）、表单里「最近用过」的 chip（`recentKeywords`，最多 5 个，忽略大小写去重、按最近使用排序）和战报的「老师排行榜」（`topKeywords`，所选范围内单人记录 Top 5，次数相同按最近使用）。
+- `domain/NextTime.kt`：首页「下次预报」。`forecastNextTime(entries, now, zone)` 取最近至多 10 个有记录的日历日，相邻间隔的中位数（偶数个取中间两个的平均、四舍五入，至少 1 天）作为典型间隔，预计日 = 最近记录日（在未来时按今天）+ 典型间隔，并给出最常见的时段（并列取最近一条所在的）。不足 3 个不同的日子时只返回还差几天。由 `HomeViewModel` 计算，只在内存里，不进备份，也不进 AI 提示词。
+- `domain/DateLogic.kt` 另有战绩列表和月历用的 `filterEntries(entries, query, type)`（笔记或关键词搜索 + 类型筛选）、`groupEntriesByMonth`（保持输入顺序）、`buildDaySummaries`（每天的类型 + 条数，月历角标用；`buildDayMarkers` 由它派生）。
 - 其他存储（DataStore、Keystore）见 [PRIVACY.md](PRIVACY.md#存储位置)。语言不存 DataStore，由 AppCompat 的 per-app locale 管理。
 
 ## 备份格式
 
-`data/backup/BackupCodec`，`formatVersion = 1`，UTF-8 JSON（缩进 2 空格），文件名建议 `boysdairy-backup-YYYYMMDD.json`，MIME `application/json`：
+`data/backup/BackupCodec`，`formatVersion = 2`，UTF-8 JSON（缩进 2 空格），文件名建议 `boysdairy-backup-YYYYMMDD.json`，MIME `application/json`：
 
 ```json
 {
   "app": "boysdairy",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "exportedAt": 1792185600000,
   "entries": [
     {
@@ -137,17 +142,19 @@ Room 数据库 `boysdairy.db`，`version = 1`，`exportSchema = true`（schema �
       "moodBefore": "STRESSED",
       "moodAfter": "RELAXED",
       "pleasure": 7,
-      "note": "..."
+      "note": "...",
+      "keyword": "..."
     }
   ]
 }
 ```
 
 - 只有战绩：没有行 id、PIN、API Key、设置。
+- 版本历史：1 没有 `keyword`；2 加上它，只在记录有关键词时才写。两个版本都能读；`keyword` 缺失或为 `null` 都表示没有，读入时和表单一样规范化（去首尾空白、空串 = 没有、双人记录丢弃、不截断）。
 - 读取（`decode`）：`app` 必须是 `boysdairy`；`formatVersion` 大于当前版本 → `UNSUPPORTED_VERSION`；不是 JSON / 缺字段 / 类型不对 / 未知枚举名 / `formatVersion < 1` → `INVALID_FORMAT`；`entries` 为空 → `EMPTY`。多余的未知字段被忽略。任何一条记录不合法，整份备份都会被拒绝，不会写入部分数据。
 - 数值会被夹到合法范围：`pleasure` 1–10，`durationMinutes` 1–600（比界面的 120 宽松）。文件上限 20 MiB。
 - 导出：没有战绩时直接返回 `EMPTY`，不会打开（清空）目标文件；写入使用 `"wt"` 模式。
-- **合并（MERGE）**：若 `(timestamp, type, durationMinutes, note)` 完全相同，视为同一条，跳过；文件内部重复的也只保留第一条。其余按原顺序追加，分配新 id。结果是 `Imported(added, skippedDuplicates)`。
+- **合并（MERGE）**：若 `(timestamp, type, durationMinutes, note)` 完全相同，视为同一条，跳过（`keyword` 和心情、愉悦度一样不参与比较，所以旧备份仍能和后来补了关键词的记录去重；跳过时以设备上那条为准，不会把文件里的关键词补上去）；文件内部重复的也只保留第一条。其余按原顺序追加，分配新 id。结果是 `Imported(added, skippedDuplicates)`。
 - **覆盖（REPLACE）**：在一个 Room 事务里清空再插入；界面上要经过两层确认（选「覆盖」→ 再确认「真的要覆盖吗？」）。
 - UI 状态机在 `BackupViewModel`：`Idle → ExportPicked | ChooseImportMode → (ConfirmReplace) → Working → Done`。错误统一为 `BackupError`（`IO` / `INVALID_FORMAT` / `UNSUPPORTED_VERSION` / `EMPTY`），对话框里显示本地化文案；异常信息不含日记内容。
 

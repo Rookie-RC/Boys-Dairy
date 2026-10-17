@@ -138,6 +138,29 @@ class BackupEngineTest {
     }
 
     @Test
+    fun keywordsSurviveExportAndReplaceImport() = runBlocking {
+        val solo = testEntry(timestamp = 4_000L, note = "d", keyword = "Mia")
+        repository.addAll(listOf(a, solo))
+        val out = ByteArrayOutputStream()
+        engine.export { out }
+
+        repository.clearAll()
+        assertEquals(BackupResult.Imported(2, 0), engine.import(ImportMode.REPLACE, streamOf(out.toString(Charsets.UTF_8.name()))))
+        assertEquals(listOf("Mia", null), repository.snapshot().map { it.keyword })
+    }
+
+    @Test
+    fun mergingAnOldBackupKeepsTheKeywordsOnTheDevice() = runBlocking {
+        // A version-1 file (no keywords) of entries that were given a keyword later on.
+        val v1 = backupOf(a, c).replace("\"formatVersion\": 2", "\"formatVersion\": 1")
+        assertTrue(v1.contains("\"formatVersion\": 1"))
+        repository.addAll(listOf(a.copy(keyword = "Mia"), c.copy(keyword = "Zoe")))
+
+        assertEquals(BackupResult.Imported(0, 2), engine.import(ImportMode.MERGE, streamOf(v1)))
+        assertEquals(listOf("Zoe", "Mia"), repository.snapshot().map { it.keyword })
+    }
+
+    @Test
     fun wrongAppFileIsInvalidFormat() = runBlocking {
         val other = """{"app":"other","formatVersion":1,"entries":[]}"""
         assertEquals(BackupResult.Failed(BackupError.INVALID_FORMAT), engine.import(ImportMode.MERGE, streamOf(other)))
@@ -145,8 +168,9 @@ class BackupEngineTest {
 
     @Test
     fun newerVersionFileIsUnsupported() = runBlocking {
-        val future = backupOf(a).replace("\"formatVersion\": 1", "\"formatVersion\": 2")
-        assertTrue(future.contains("\"formatVersion\": 2"))
+        val current = BackupCodec.FORMAT_VERSION
+        val future = backupOf(a).replace("\"formatVersion\": $current", "\"formatVersion\": ${current + 1}")
+        assertTrue(future.contains("\"formatVersion\": ${current + 1}"))
         assertEquals(
             BackupResult.Failed(BackupError.UNSUPPORTED_VERSION),
             engine.import(ImportMode.REPLACE, streamOf(future)),

@@ -12,6 +12,7 @@ import com.rookierc.boysdairy.domain.Entry
 import com.rookierc.boysdairy.domain.EntryStats
 import com.rookierc.boysdairy.domain.HourBucket
 import com.rookierc.boysdairy.domain.InsightsPeriod
+import com.rookierc.boysdairy.domain.KeywordCount
 import com.rookierc.boysdairy.domain.MonthComparison
 import com.rookierc.boysdairy.domain.WeekBucket
 import com.rookierc.boysdairy.domain.computeAchievements
@@ -20,6 +21,7 @@ import com.rookierc.boysdairy.domain.entriesInPeriod
 import com.rookierc.boysdairy.domain.hourBucketCounts
 import com.rookierc.boysdairy.domain.longestStreakDays
 import com.rookierc.boysdairy.domain.monthOverMonth
+import com.rookierc.boysdairy.domain.topKeywords
 import com.rookierc.boysdairy.domain.weekdayCounts
 import com.rookierc.boysdairy.domain.weeklyCounts
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,11 +64,15 @@ class InsightsViewModel(repository: EntryRepository) : ViewModel() {
 /** Number of weeks in the bar chart. */
 const val INSIGHTS_WEEKS = 12
 
+/** Rows of the keyword leaderboard. */
+const val INSIGHTS_TOP_KEYWORDS = 5
+
 /**
  * Everything the report screen shows, computed in one go.
  *
- * [stats], [weekdays], [hourBuckets] and [longestStreak] only look at the entries inside [period];
- * [weeks], [achievements] and [monthComparison] always use the whole diary.
+ * [stats], [weekdays], [hourBuckets], [longestStreak] and [keywords] only look at the entries
+ * inside [period]; [weeks], [achievements] and [monthComparison] always use the whole diary.
+ * [keywords] is the solo keyword leaderboard ([topKeywords]); empty when the range has none.
  */
 data class InsightsReport(
     val period: InsightsPeriod,
@@ -77,6 +83,7 @@ data class InsightsReport(
     val longestStreak: Int,
     val achievements: List<AchievementProgress>,
     val monthComparison: MonthComparison,
+    val keywords: List<KeywordCount>,
 ) {
     /** True when [period] holds no entries at all (the diary itself may still have some). */
     val periodIsEmpty: Boolean get() = stats.totalCount == 0
@@ -98,6 +105,7 @@ data class InsightsReport(
                 longestStreak = longestStreakDays(scoped, zone),
                 achievements = computeAchievements(entries, nowMillis, zone),
                 monthComparison = monthOverMonth(entries, nowMillis, zone),
+                keywords = topKeywords(scoped, INSIGHTS_TOP_KEYWORDS),
             )
         }
     }

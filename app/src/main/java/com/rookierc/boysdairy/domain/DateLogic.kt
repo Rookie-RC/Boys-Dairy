@@ -59,20 +59,24 @@ fun buildDaySummaries(entries: List<Entry>, zone: ZoneId): Map<LocalDate, DaySum
         DaySummary(type = type, count = dayEntries.size)
     }
 
-/** Case-insensitive substring match on the note; a blank query returns everything. */
+/** [filterEntries] without a type filter: case-insensitive match on note or keyword; blank = everything. */
 fun filterEntriesByNote(entries: List<Entry>, query: String): List<Entry> =
     filterEntries(entries, query, type = null)
 
 /**
- * Entries whose note contains [query] (case-insensitive, trimmed; blank = no text filter) and
- * whose type is [type] (`null` = any type). Keeps the input order.
+ * Entries whose note or keyword contains [query] (case-insensitive, trimmed; blank = no text
+ * filter) and whose type is [type] (`null` = any type). Keeps the input order.
  */
 fun filterEntries(entries: List<Entry>, query: String, type: EntryType?): List<Entry> {
     val needle = query.trim()
     if (needle.isEmpty() && type == null) return entries
     return entries.filter { entry ->
         (type == null || entry.type == type) &&
-            (needle.isEmpty() || entry.note.contains(needle, ignoreCase = true))
+            (
+                needle.isEmpty() ||
+                    entry.note.contains(needle, ignoreCase = true) ||
+                    entry.keyword?.contains(needle, ignoreCase = true) == true
+                )
     }
 }
 

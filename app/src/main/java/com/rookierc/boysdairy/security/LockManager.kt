@@ -79,6 +79,15 @@ class LockManager(
         return result
     }
 
+    /**
+     * Unlocks after a fingerprint check that the caller has already proven with the Keystore key
+     * ([BiometricUnlock.verify]). Only acts while [LockState.Locked]: it never skips first-run PIN
+     * setup and does nothing when already unlocked. The PIN lockout is deliberately left as it is
+     * (fingerprint attempts are rate-limited by the system), so the counter and the limits of
+     * [PinAttemptLimiter] are untouched. Returns whether the state changed.
+     */
+    fun unlockWithBiometric(): Boolean = _state.compareAndSet(LockState.Locked, LockState.Unlocked)
+
     /** Checks [pin] without changing the lock state. Counts toward the lockout limit. */
     suspend fun verifyPin(pin: String): PinCheckResult = mutex.withLock {
         limiter.load()

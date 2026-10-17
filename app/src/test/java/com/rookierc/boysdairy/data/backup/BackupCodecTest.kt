@@ -8,6 +8,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -26,6 +27,7 @@ class BackupCodecTest {
             id = 77,
         ),
         testEntry(timestamp = 1_760_000_100_000L, note = ""),
+        testEntry(timestamp = 1_760_000_200_000L, note = "with a muse", keyword = "Mia 小蓝 😀"),
     )
 
     private fun errorOf(json: String): BackupError {
@@ -91,11 +93,12 @@ class BackupCodecTest {
 
         assertEquals(setOf("app", "formatVersion", "exportedAt", "entries"), root.keys().asSequence().toSet())
         assertEquals("boysdairy", root.getString("app"))
-        assertEquals(1, root.getInt("formatVersion"))
+        assertEquals(2, root.getInt("formatVersion"))
+        assertEquals(BackupCodec.FORMAT_VERSION, root.getInt("formatVersion"))
         assertEquals(1_760_000_999_000L, root.getLong("exportedAt"))
 
         val entries = root.getJSONArray("entries")
-        assertEquals(2, entries.length())
+        assertEquals(3, entries.length())
         val first = entries.getJSONObject(0)
         assertEquals(
             setOf("timestamp", "type", "durationMinutes", "moodBefore", "moodAfter", "pleasure", "note"),
@@ -107,6 +110,20 @@ class BackupCodecTest {
         assertEquals("EXCITED", first.getString("moodBefore"))
         assertEquals("ENERGETIC", first.getString("moodAfter"))
         assertEquals(9, first.getInt("pleasure"))
+    }
+
+    @Test
+    fun keywordIsWrittenOnlyWhenThereIsOne() {
+        val entries = JSONObject(BackupCodec.encode(sample, 0)).getJSONArray("entries")
+        assertFalse(entries.getJSONObject(0).has("keyword")) // partner
+        assertFalse(entries.getJSONObject(1).has("keyword")) // solo without one: no key, not null
+        val withKeyword = entries.getJSONObject(2)
+        assertEquals(
+            setOf("timestamp", "type", "durationMinutes", "moodBefore", "moodAfter", "pleasure", "note", "keyword"),
+            withKeyword.keys().asSequence().toSet(),
+        )
+        assertEquals("Mia 小蓝 😀", withKeyword.getString("keyword"))
+        assertFalse(BackupCodec.encode(listOf(testEntry(timestamp = 1)), 0).contains("keyword"))
     }
 
     @Test
@@ -218,14 +235,14 @@ class BackupCodecTest {
 
     @Test
     fun newerFormatVersionIsUnsupported() {
-        assertEquals(BackupError.UNSUPPORTED_VERSION, errorOf(document(root = { it.put("formatVersion", 2) })))
+        assertEquals(BackupError.UNSUPPORTED_VERSION, errorOf(document(root = { it.put("formatVersion", 3) })))
         assertEquals(BackupError.UNSUPPORTED_VERSION, errorOf(document(root = { it.put("formatVersion", 999) })))
     }
 
     @Test
     fun unsupportedVersionWinsOverEntryProblems() {
         // A future format may legitimately change the entry shape.
-        val text = document(root = { it.put("formatVersion", 2).put("entries", JSONArray().put(JSONObject().put("x", 1))) })
+        val text = document(root = { it.put("formatVersion", 3).put("entries", JSONArray().put(JSONObject().put("x", 1))) })
         assertEquals(BackupError.UNSUPPORTED_VERSION, errorOf(text))
     }
 
@@ -260,6 +277,76 @@ class BackupCodecTest {
     fun decodedEntriesAlwaysHaveIdZero() {
         val decoded: List<Entry> = BackupCodec.decode(BackupCodec.encode(sample, 0))
         assertTrue(decoded.all { it.id == 0L })
+    }
+
+    // ---- keyword (format 2) -------------------------------------------------------------------
+
+    @Test
+    fun versionOneBackupWithoutKeywordsStillImports() {
+        // The exact shape version 1 of the app wrote.
+        val v1 = """
+            {"app":"boysdairy","formatVersion":1,"exportedAt":5,"entries":[
+              {"timestamp":1760000000000,"type":"SOLO","durationMinutes":12,"moodBefore":"STRESSED",
+               "moodAfter":"RELAXED","pleasure":7,"note":"hi"},
+              {"timestamp":1760000100000,"type":"PARTNER","durationMinutes":30,"moodBefore":"EXCITED",
+               "moodAfter":"ENERGETIC","pleasure":9,"note":""}]}
+        """.trimIndent()
+        val entries = BackupCodec.decode(v1)
+        assertEquals(2, entries.size)
+        assertTrue(entries.all { it.keyword == null })
+        assertEquals(testEntry(1_760_000_000_000L, EntryType.SOLO, 12, Mood.STRESSED, Mood.RELAXED, 7, "hi"), entries[0])
+    }
+
+    @Test
+    fun versionTwoRoundTripKeepsKeywords() {
+        val entries = listOf(
+            testEntry(timestamp = 3, keyword = "Mia"),
+            testEntry(timestamp = 2, keyword = null),
+            testEntry(timestamp = 1, type = EntryType.PARTNER),
+        )
+        val text = BackupCodec.encode(entries, 0)
+        assertEquals(2, JSONObject(text).getInt("formatVersion"))
+        assertEquals(entries, BackupCodec.decode(text))
+    }
+
+    @Test
+    fun missingOrNullKeywordIsNone() {
+        val v2 = { mutate: (JSONObject) -> Unit -> document(root = { it.put("formatVersion", 2) }, mutate = mutate) }
+        assertNull(BackupCodec.decode(v2 {}).single().keyword)
+        assertNull(BackupCodec.decode(v2 { it.put("keyword", JSONObject.NULL) }).single().keyword)
+        assertEquals("Mia", BackupCodec.decode(v2 { it.put("keyword", "Mia") }).single().keyword)
+    }
+
+    @Test
+    fun importedKeywordsAreNormalisedLikeTheForm() {
+        fun keyword(type: String, value: String) = BackupCodec.decode(
+            document(root = { it.put("formatVersion", 2) }, mutate = { it.put("type", type).put("keyword", value) }),
+        ).single().keyword
+
+        assertEquals("Mia", keyword("SOLO", "  Mia \n"))
+        assertNull(keyword("SOLO", ""))
+        assertNull(keyword("SOLO", "   "))
+        assertNull(keyword("PARTNER", "Mia")) // partner entries never keep one
+        // Not shortened: the 30-character limit only applies to typing in the form.
+        assertEquals("x".repeat(80), keyword("SOLO", "x".repeat(80)))
+    }
+
+    @Test
+    fun aKeywordThatIsNotAStringIsInvalidFormat() {
+        for (bad in listOf<Any>(5, true, JSONObject(), JSONArray().put("Mia"))) {
+            assertEquals(
+                "keyword $bad",
+                BackupError.INVALID_FORMAT,
+                errorOf(document(root = { it.put("formatVersion", 2) }, mutate = { it.put("keyword", bad) })),
+            )
+        }
+    }
+
+    @Test
+    fun keywordIsOptionalInEitherVersion() {
+        // Version 1 never wrote it, but a keyword found there is read the same way.
+        assertEquals("Mia", BackupCodec.decode(document(mutate = { it.put("keyword", "Mia") })).single().keyword)
+        assertNull(BackupCodec.decode(document(root = { it.put("formatVersion", 2) })).single().keyword)
     }
 
     // ---- clamping -----------------------------------------------------------------------------

@@ -276,6 +276,62 @@
         <item quantity="other">已连续 %1$d 天</item>
     </plurals>
 
+    <!-- Next-time forecast -->
+    <!-- Home card: a tongue-in-cheek guess at the next entry from the user's own recent rhythm
+         (domain/NextTime.kt). Never pushy, never judges how often. -->
+    <string name="forecast_title">下次预报</string>
+    <!-- %1$d = typical gap in calendar days (at least 1). Fills %1$s of forecast_upcoming /
+         forecast_today and %2$s of forecast_overdue. -->
+    <plurals name="forecast_pace">
+        <item quantity="other">大约 %1$d 天一次</item>
+    </plurals>
+    <!-- %1$s = forecast_pace, %2$s = predicted date (pattern_date_weekday), %3$s = forecast_time_*. -->
+    <string name="forecast_upcoming">按你的节奏（%1$s），下一次发射约在 %2$s，通常在%3$s。</string>
+    <string name="forecast_upcoming_girl">按你的节奏（%1$s），下一次放飞约在 %2$s，通常在%3$s。</string>
+    <!-- Predicted date is today. %1$s = forecast_pace, %2$s = forecast_time_*. -->
+    <string name="forecast_today">按你的节奏（%1$s），下一次发射就是今天，通常在%2$s。</string>
+    <string name="forecast_today_girl">按你的节奏（%1$s），下一次放飞就是今天，通常在%2$s。</string>
+    <string-array name="forecast_today_quips">
+        <item>弹药按节奏刚好装填完毕，用不用随你，水晶球不负责催 🎯</item>
+        <item>按节奏是今天，按心情随便，以你为准 😌</item>
+        <item>预报而已，又不是打卡任务，别有压力 🔮</item>
+    </string-array>
+    <string-array name="forecast_today_quips_girl">
+        <item>小翅膀按节奏刚好充好电，飞不飞随你，水晶球不负责催 🦋</item>
+        <item>按节奏是今天，按心情随便，你开心最重要 🌸</item>
+        <item>预报而已，又不是打卡任务，放轻松 🔮</item>
+    </string-array>
+    <!-- Predicted date has passed. %1$d = days since it (at least 1), %2$s = forecast_pace. -->
+    <plurals name="forecast_overdue">
+        <item quantity="other">按你的节奏（%2$s），已经超期 %1$d 天了。</item>
+    </plurals>
+    <plurals name="forecast_overdue_girl">
+        <item quantity="other">按你的节奏（%2$s），已经超出预报 %1$d 天了。</item>
+    </plurals>
+    <string-array name="forecast_overdue_quips">
+        <item>不急，身体说了算 🧘</item>
+        <item>冷却久一点也挺好，就当贤者时间加长版 🍵</item>
+        <item>水晶球也会失灵，节奏是你的，不是它的 🔮</item>
+    </string-array>
+    <string-array name="forecast_overdue_quips_girl">
+        <item>不急，身体说了算 🧘‍♀️</item>
+        <item>慢一点也挺好，让余韵多留一会儿 🍵</item>
+        <item>水晶球也会失灵，节奏是你的，不是它的 🔮</item>
+    </string-array>
+    <!-- Fewer than 3 distinct entry days. %1$d = days still to log (1 or 2). -->
+    <plurals name="forecast_need_more">
+        <item quantity="other">再记 %1$d 天的战绩，水晶球就能算出你的发射节奏（同一天记多条只算一天）</item>
+    </plurals>
+    <plurals name="forecast_need_more_girl">
+        <item quantity="other">再记 %1$d 天，水晶球就能算出你的放飞节奏（同一天记多条只算一天）</item>
+    </plurals>
+    <!-- Usual time of day for "通常在…"; same split as insights_hour_*. -->
+    <string name="forecast_time_night">凌晨</string>
+    <string name="forecast_time_morning">上午</string>
+    <string name="forecast_time_afternoon">下午</string>
+    <string name="forecast_time_evening">晚上</string>
+    <string name="forecast_disclaimer">仅供一乐，不是计划也不是医嘱</string>
+
     <!-- Home stats -->
     <string name="stats_last7">近 7 天</string>
     <string name="stats_last30">近 30 天</string>
@@ -345,6 +401,32 @@
         <item>小本本已更新，今天辛苦了 📒</item>
     </string-array>
 
+    <!-- Solo keyword -->
+    <!-- Optional one-word keyword of solo entries: card in the add / edit form, extra line on the
+         entry card, leaderboard in the full report. Only the boy edition plays on 「老师」; the girl
+         edition (and English) use a neutral "inspiration" wording. Never sent to the AI. -->
+    <string name="add_keyword_label">今日老师</string>
+    <string name="add_keyword_label_girl">今日灵感</string>
+    <string name="add_keyword_hint">一个关键词就够，可不填</string>
+    <string name="add_keyword_recent">最近的老师</string>
+    <string name="add_keyword_recent_girl">最近的灵感</string>
+    <string name="add_keyword_clear">清空关键词</string>
+    <string name="add_keyword_counter">%1$d/%2$d</string>
+    <!-- Extra line on the entry card. %1$s = the keyword. -->
+    <string name="entry_keyword_line">今日老师：%1$s</string>
+    <string name="entry_keyword_line_girl">今日灵感：%1$s</string>
+    <string name="insights_keyword_title">老师排行榜</string>
+    <string name="insights_keyword_title_girl">灵感排行榜</string>
+    <string name="insights_keyword_caption">感谢各位老师的辛勤付出 🙏 只算所选范围内的单人副本；大小写、首尾空格不同也算同一位。</string>
+    <string name="insights_keyword_caption_girl">感谢每一份灵感的倾情奉献 ✨ 只算所选范围内的单人副本；大小写、首尾空格不同也算同一个。</string>
+    <plurals name="insights_keyword_times">
+        <item quantity="other">%1$d 次</item>
+    </plurals>
+    <!-- Screen reader text of one leaderboard row. %1$d = rank, %2$s = keyword, %3$d = times (the quantity). -->
+    <plurals name="insights_keyword_row_cd">
+        <item quantity="other">第 %1$d 名：%2$s，%3$d 次</item>
+    </plurals>
+
     <!-- Entry card (history list, day sheet) -->
     <string name="entry_when">%1$s · %2$s</string>
     <string name="entry_duration_line">%1$d 分钟 · %2$s</string>
@@ -356,7 +438,7 @@
     <plurals name="history_count">
         <item quantity="other">共 %1$d 条</item>
     </plurals>
-    <string name="history_search_hint">按备注搜索</string>
+    <string name="history_search_hint">按备注或关键词搜索</string>
     <string name="history_search_clear">清除搜索</string>
     <string name="history_empty">战绩一片空白，是在修仙吗？</string>
     <string name="history_empty_hint">点下面的 ➕ 打卡，开启你的传奇</string>
@@ -522,6 +604,38 @@
     <string name="settings_version">版本 %1$s</string>
     <string name="settings_about_joke">本软件不含任何计算功能，仅含少量快乐。如有雷同，纯属巧合（才怪）。</string>
 
+    <!-- Fingerprint unlock & collapsible appearance -->
+    <!-- Lock screen + the system fingerprint prompt are part of the disguise: keep them neutral
+         (no diary / entry wording); lock_* strings never get _girl variants. -->
+    <string name="lock_biometric_key_cd">用指纹解锁</string>
+    <string name="lock_biometric_prompt_title">验证身份</string>
+    <string name="lock_biometric_prompt_use_code">用暗号</string>
+    <string name="lock_biometric_key_changed">指纹有变动，先用暗号解锁，再到设置里重新开启</string>
+    <string name="lock_biometric_locked_out">指纹试太多次了，先用暗号吧</string>
+    <string name="lock_biometric_unavailable">指纹这次没成功，先用暗号吧</string>
+    <!-- Settings → Security → fingerprint unlock row; the prompt subtitle is shown by the system. -->
+    <string name="settings_biometric">指纹解锁</string>
+    <string name="settings_biometric_desc">锁屏上摸一下指纹就能进。改暗号、清空战绩还是只认暗号。</string>
+    <string name="settings_biometric_note">手机里新录入指纹后会自动关闭，得用暗号进来重新开：防止有人偷偷往手机里加自己的指纹。</string>
+    <string name="settings_biometric_needs_enrollment">这台手机还没录指纹，先去系统设置里录一个再来开</string>
+    <string name="settings_biometric_prompt_subtitle">确认是本人，之后在锁屏上就能用指纹解锁</string>
+    <string name="settings_biometric_enabled">指纹解锁已开启 👆 下次锁屏摸一下就行</string>
+    <string name="settings_biometric_enable_failed">指纹解锁没开成 🤔 过会儿再试试</string>
+    <!-- Settings → Appearance card, collapsed by default. The summary joins the theme, language and
+         edition labels with the separator. -->
+    <!-- %1$s = setting name (settings_theme / settings_language), %2$s = its current value. -->
+    <string name="settings_appearance_summary_item">%1$s：%2$s</string>
+    <string name="settings_appearance_summary_separator">" · "</string>
+    <string name="settings_appearance_expanded">已展开</string>
+    <string name="settings_appearance_collapsed">已收起</string>
+    <string name="settings_appearance_expand">展开</string>
+    <string name="settings_appearance_collapse">收起</string>
+    <!-- Picking the other edition in Settings asks first. %1$s = the target edition's name (edition_boy_name / edition_girl_name). -->
+    <string name="settings_edition_switch_title">确定换成%1$s吗？</string>
+    <string name="settings_edition_switch_message">先说清楚：界面版本原则上选定就不改了。换成%1$s后，全部界面文字和图标都会跟着换；你的战绩一条不少，原样保留。\n这可不是换个皮肤那么简单，想好了再点 🙈</string>
+    <string name="settings_edition_switch_confirm">确定切换</string>
+    <string name="settings_edition_switch_cancel">再想想</string>
+
     <!-- Backup flow -->
     <string name="backup_import_title">导入备份</string>
     <string name="backup_mode_merge">合并（保留现有）</string>
@@ -671,7 +785,7 @@
     <string name="clear_all_button">清空所有战绩</string>
     <string name="clear_all_empty">本来就是空的，没什么可清的 🫙</string>
     <string name="clear_all_confirm_title">真的要清空所有战绩吗？</string>
-    <string name="clear_all_confirm_message">所有战绩会被永久删除，无法恢复，也没有撤销。只清战绩：暗号、主题、语言、界面版本和 API Key 都不受影响。建议先在上面「导出备份」留一份。</string>
+    <string name="clear_all_confirm_message">所有战绩会被永久删除，无法恢复，也没有撤销。只清战绩：暗号、指纹解锁、主题、语言、界面版本和 API Key 都不受影响。建议先在上面「导出备份」留一份。</string>
     <string name="clear_all_confirm_next">想好了，下一步</string>
     <string name="clear_all_keep">算了，留着</string>
     <string name="clear_all_pin_title">最后一关：输入暗号</string>
@@ -718,7 +832,7 @@
     <string name="edition_boy_tagline">发射、冷却、贤者时间，懂的都懂</string>
     <string name="edition_girl_name">女生版</string>
     <string name="edition_girl_tagline">小仙女的私密手账，每次心动都记下</string>
-    <string name="edition_chooser_note">以后可以在设置里改，只影响界面文字和图标，你的战绩不受影响。</string>
+    <string name="edition_chooser_note">选定后基本就定了：它决定整个界面的文字和图标。以后真想改，得去设置里二次确认。你的战绩不受影响。</string>
     <string name="edition_chooser_confirm">就这个了</string>
     <string name="settings_edition">界面版本</string>
 </resources>

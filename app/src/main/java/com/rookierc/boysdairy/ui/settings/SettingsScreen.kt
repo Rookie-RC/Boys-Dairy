@@ -3,12 +3,15 @@
 package com.rookierc.boysdairy.ui.settings
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,24 +21,33 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -43,6 +55,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rookierc.boysdairy.BuildConfig
@@ -51,8 +64,11 @@ import com.rookierc.boysdairy.ai.AiProvider
 import com.rookierc.boysdairy.ai.AiSelection
 import com.rookierc.boysdairy.data.Edition
 import com.rookierc.boysdairy.data.ThemeMode
+import com.rookierc.boysdairy.security.BiometricSettingRow
 import com.rookierc.boysdairy.security.PinHasher
 import com.rookierc.boysdairy.ui.backup.FileActions
+import com.rookierc.boysdairy.ui.common.BiometricOutcome
+import com.rookierc.boysdairy.ui.common.BiometricPromptTexts
 import com.rookierc.boysdairy.ui.common.ChoiceCard
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.ChunkyButton
@@ -70,6 +86,7 @@ import com.rookierc.boysdairy.ui.common.emoji
 import com.rookierc.boysdairy.ui.common.labelRes
 import com.rookierc.boysdairy.ui.common.lastExportText
 import com.rookierc.boysdairy.ui.common.nameRes
+import com.rookierc.boysdairy.ui.common.rememberBiometricPromptLauncher
 import com.rookierc.boysdairy.ui.common.stringArrayResource
 import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.common.taglineRes
@@ -102,6 +119,17 @@ fun SettingsScreen(
     val lastExport by viewModel.lastExport.collectAsStateWithLifecycle()
     val snackbar = LocalSnackbar.current
     val clearedMessages = stringArrayResource(R.array.clear_all_done_toasts)
+    val biometric by viewModel.biometric.collectAsStateWithLifecycle()
+    val pendingEdition by viewModel.pendingEdition.collectAsStateWithLifecycle()
+    // Collapsed by default so a stray tap cannot flip the theme / language / edition. Not persisted.
+    var appearanceExpanded by rememberSaveable { mutableStateOf(false) }
+
+    // The device may have gained / lost fingerprints since the last look.
+    LifecycleStartEffect(viewModel) {
+        viewModel.refreshBiometric()
+        onStopOrDispose { }
+    }
+    BiometricEnableEffects(viewModel)
 
     LaunchedEffect(clearAll.justCleared) {
         if (clearAll.justCleared) {
@@ -131,8 +159,29 @@ fun SettingsScreen(
             subtitle = stringResource(R.string.settings_subtitle),
         )
 
-        // Appearance
-        SettingsSection(emoji = "🎨", title = stringResource(R.string.settings_appearance)) {
+        // Appearance (collapsible)
+        // "主题：跟随系统 · 语言：中文 · 女生版": theme and language are prefixed, since both can read
+        // "follow system"; the edition's label names itself.
+        val appearanceSummary = listOf(
+            stringResource(
+                R.string.settings_appearance_summary_item,
+                stringResource(R.string.settings_theme),
+                stringResource(themeMode.labelRes()),
+            ),
+            stringResource(
+                R.string.settings_appearance_summary_item,
+                stringResource(R.string.settings_language),
+                stringResource(language.labelRes()),
+            ),
+            stringResource(edition.labelRes()),
+        ).joinToString(separator = stringResource(R.string.settings_appearance_summary_separator))
+        CollapsibleSettingsSection(
+            emoji = "🎨",
+            title = stringResource(R.string.settings_appearance),
+            summary = appearanceSummary,
+            expanded = appearanceExpanded,
+            onToggle = { appearanceExpanded = !appearanceExpanded },
+        ) {
             Text(
                 text = stringResource(R.string.settings_theme),
                 style = MaterialTheme.typography.labelLarge,
@@ -195,7 +244,8 @@ fun SettingsScreen(
                         emoji = option.emoji(),
                         selected = option == edition,
                         selectedColor = FunTheme.colors.pink,
-                        onClick = { if (option != edition) viewModel.setEdition(option) },
+                        // Only asks; the edition changes once the dialog below is confirmed.
+                        onClick = { viewModel.requestEdition(option, edition) },
                     )
                 }
             }
@@ -209,6 +259,10 @@ fun SettingsScreen(
                 subtitle = stringResource(R.string.settings_change_pin_desc),
                 onClick = onChangePinClick,
             )
+            if (biometric.row != BiometricSettingRow.HIDDEN) {
+                RowDivider()
+                BiometricSettingsRow(state = biometric, onToggle = viewModel::setBiometricUnlock)
+            }
             RowDivider()
             SettingsRow(
                 emoji = "🔒",
@@ -302,6 +356,21 @@ fun SettingsScreen(
                 onDismiss = { showClearKeyConfirm = false },
             )
         }
+    }
+
+    // Switching the edition: say clearly what changes, then confirm. Cancel stores nothing.
+    pendingEdition?.let { target ->
+        val targetName = stringResource(target.labelRes())
+        FunConfirmDialog(
+            title = stringResource(R.string.settings_edition_switch_title, targetName),
+            emoji = "⚠️",
+            message = stringResource(R.string.settings_edition_switch_message, targetName),
+            confirmText = stringResource(R.string.settings_edition_switch_confirm),
+            confirmColor = FunTheme.colors.danger,
+            onConfirm = viewModel::confirmEditionSwitch,
+            dismissText = stringResource(R.string.settings_edition_switch_cancel),
+            onDismiss = viewModel::cancelEditionSwitch,
+        )
     }
 
     // Delete-all flow: "are you sure" -> current PIN -> delete.
@@ -539,6 +608,175 @@ private fun SettingsSection(
         SectionHeader(emoji = emoji, title = title)
         Spacer(Modifier.height(12.dp))
         content()
+    }
+}
+
+/**
+ * [SettingsSection] whose body folds away. The whole header (title, arrow and, while collapsed, a
+ * one-line [summary] of the current values) is one button that toggles it; accessibility services
+ * hear the state ("expanded" / "collapsed") and the action ("expand" / "collapse").
+ */
+@Composable
+private fun CollapsibleSettingsSection(
+    emoji: String,
+    title: String,
+    summary: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colors = FunTheme.colors
+    val stateText = stringResource(
+        if (expanded) R.string.settings_appearance_expanded else R.string.settings_appearance_collapsed,
+    )
+    val actionText = stringResource(
+        if (expanded) R.string.settings_appearance_collapse else R.string.settings_appearance_expand,
+    )
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "collapsibleArrow",
+    )
+
+    FunCard(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(0.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClickLabel = actionText, role = Role.Button, onClick = onToggle)
+                .semantics { stateDescription = stateText }
+                .padding(16.dp),
+        ) {
+            SectionHeader(
+                emoji = emoji,
+                title = title,
+                trailing = {
+                    Icon(
+                        imageVector = Icons.Filled.ExpandMore,
+                        contentDescription = null,
+                        tint = colors.textPrimary,
+                        modifier = Modifier.rotate(arrowRotation),
+                    )
+                },
+            )
+            AnimatedVisibility(visible = !expanded) {
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+        }
+        AnimatedVisibility(visible = expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                content = content,
+            )
+        }
+    }
+}
+
+/** "Fingerprint unlock" switch row (only composed when the device has the hardware). */
+@Composable
+private fun BiometricSettingsRow(
+    state: BiometricSettingUiState,
+    onToggle: (Boolean) -> Unit,
+) {
+    val colors = FunTheme.colors
+    val needsEnrollment = state.row == BiometricSettingRow.NEEDS_ENROLLMENT
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = state.checked,
+                enabled = state.toggleEnabled,
+                role = Role.Switch,
+                onValueChange = onToggle,
+            )
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        EmojiText(text = "👆", fontSize = 24.sp)
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = stringResource(R.string.settings_biometric), style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = stringResource(
+                    if (needsEnrollment) R.string.settings_biometric_needs_enrollment else R.string.settings_biometric_desc,
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            if (!needsEnrollment) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.settings_biometric_note),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.textSecondary,
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(
+            checked = state.checked,
+            onCheckedChange = null,
+            enabled = state.toggleEnabled,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = colors.onAccent,
+                checkedTrackColor = colors.mint,
+                checkedBorderColor = colors.ink,
+                uncheckedThumbColor = colors.ink,
+                uncheckedTrackColor = colors.surfaceAlt,
+                uncheckedBorderColor = colors.ink,
+                disabledCheckedThumbColor = colors.onDisabled,
+                disabledCheckedTrackColor = colors.disabled,
+                disabledCheckedBorderColor = colors.onDisabled,
+                disabledUncheckedThumbColor = colors.onDisabled,
+                disabledUncheckedTrackColor = colors.disabled,
+                disabledUncheckedBorderColor = colors.onDisabled,
+            ),
+        )
+    }
+}
+
+/** Shows the confirmation prompt while turning fingerprint unlock on, and the snackbar afterwards. */
+@Composable
+private fun BiometricEnableEffects(viewModel: SettingsViewModel) {
+    val request by viewModel.biometricPrompt.collectAsStateWithLifecycle()
+    val message by viewModel.biometricMessage.collectAsStateWithLifecycle()
+    val launcher = rememberBiometricPromptLauncher()
+    val snackbar = LocalSnackbar.current
+    val texts = BiometricPromptTexts(
+        title = stringResource(R.string.lock_biometric_prompt_title),
+        negativeButton = stringResource(R.string.action_cancel),
+        subtitle = stringResource(R.string.settings_biometric_prompt_subtitle),
+    )
+    val enabledText = stringResource(R.string.settings_biometric_enabled)
+    val failedText = stringResource(R.string.settings_biometric_enable_failed)
+
+    LaunchedEffect(request) {
+        val pending = request ?: return@LaunchedEffect
+        viewModel.onBiometricPromptHandled(pending)
+        val shown = launcher.launch(
+            cipher = pending.cipher,
+            texts = texts,
+            confirmationRequired = true,
+            onOutcome = viewModel::onBiometricPromptOutcome,
+        )
+        if (!shown) viewModel.onBiometricPromptOutcome(BiometricOutcome.Failed)
+    }
+
+    LaunchedEffect(message) {
+        when (message) {
+            BiometricSettingMessage.ENABLED -> snackbar.show(enabledText)
+            BiometricSettingMessage.ENABLE_FAILED -> snackbar.show(failedText)
+            null -> return@LaunchedEffect
+        }
+        viewModel.onBiometricMessageShown()
     }
 }
 

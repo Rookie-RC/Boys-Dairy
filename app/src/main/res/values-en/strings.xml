@@ -280,6 +280,67 @@
         <item quantity="other">%1$d days in a row</item>
     </plurals>
 
+    <!-- Next-time forecast -->
+    <!-- Home card: a tongue-in-cheek guess at the next entry from the user's own recent rhythm
+         (domain/NextTime.kt). Never pushy, never judges how often. -->
+    <string name="forecast_title">Next-Time Forecast</string>
+    <!-- %1$d = typical gap in calendar days (at least 1). Fills %1$s of forecast_upcoming /
+         forecast_today and %2$s of forecast_overdue. -->
+    <plurals name="forecast_pace">
+        <item quantity="one">about %1$d day between rounds</item>
+        <item quantity="other">about %1$d days between rounds</item>
+    </plurals>
+    <!-- %1$s = forecast_pace, %2$s = predicted date (pattern_date_weekday), %3$s = forecast_time_*. -->
+    <string name="forecast_upcoming">At your pace (%1$s), the crystal ball sees your next launch around %2$s, usually %3$s.</string>
+    <string name="forecast_upcoming_girl">At your pace (%1$s), the crystal ball sees your next flight around %2$s, usually %3$s.</string>
+    <!-- Predicted date is today. %1$s = forecast_pace, %2$s = forecast_time_*. -->
+    <string name="forecast_today">At your pace (%1$s), the crystal ball picks today for your next launch, usually %2$s.</string>
+    <string name="forecast_today_girl">At your pace (%1$s), the crystal ball picks today for your next flight, usually %2$s.</string>
+    <string-array name="forecast_today_quips">
+        <item>Ammo should be fully reloaded by now. Use it or don\'t, the crystal ball doesn\'t nag 🎯</item>
+        <item>Today by the numbers, whenever by the mood. You\'re the boss 😌</item>
+        <item>It\'s a forecast, not a to-do list. Zero pressure 🔮</item>
+    </string-array>
+    <string-array name="forecast_today_quips_girl">
+        <item>Wings should be fully charged by now. Fly or don\'t, the crystal ball doesn\'t nag 🦋</item>
+        <item>Today by the numbers, whenever by the mood. You do you 🌸</item>
+        <item>It\'s a forecast, not a to-do list. Zero pressure 🔮</item>
+    </string-array>
+    <!-- Predicted date has passed. %1$d = days since it (at least 1), %2$s = forecast_pace. -->
+    <plurals name="forecast_overdue">
+        <item quantity="one">At your pace (%2$s), you\'re %1$d day past the forecast.</item>
+        <item quantity="other">At your pace (%2$s), you\'re %1$d days past the forecast.</item>
+    </plurals>
+    <plurals name="forecast_overdue_girl">
+        <item quantity="one">At your pace (%2$s), the forecast is off by %1$d day.</item>
+        <item quantity="other">At your pace (%2$s), the forecast is off by %1$d days.</item>
+    </plurals>
+    <string-array name="forecast_overdue_quips">
+        <item>No rush. Your body makes the call 🧘</item>
+        <item>A longer cooldown is fine too. Sage mode: extended edition 🍵</item>
+        <item>Crystal balls glitch. It\'s your rhythm, not the ball\'s 🔮</item>
+    </string-array>
+    <string-array name="forecast_overdue_quips_girl">
+        <item>No rush. Your body makes the call 🧘‍♀️</item>
+        <item>Slow is lovely too. Let the afterglow linger 🍵</item>
+        <item>Crystal balls glitch. It\'s your rhythm, not the ball\'s 🔮</item>
+    </string-array>
+    <!-- Fewer than 3 distinct entry days. %1$d = days still to log (1 or 2). -->
+    <plurals name="forecast_need_more">
+        <item quantity="one">Log %1$d more day and the crystal ball can read your launch rhythm (several entries on one day count once).</item>
+        <item quantity="other">Log %1$d more days and the crystal ball can read your launch rhythm (several entries on one day count once).</item>
+    </plurals>
+    <plurals name="forecast_need_more_girl">
+        <item quantity="one">Log %1$d more day and the crystal ball can read your flight rhythm (several entries on one day count once).</item>
+        <item quantity="other">Log %1$d more days and the crystal ball can read your flight rhythm (several entries on one day count once).</item>
+    </plurals>
+    <!-- Usual time of day for "usually …"; same split as insights_hour_*. -->
+    <string name="forecast_time_night">late at night</string>
+    <string name="forecast_time_morning">in the morning</string>
+    <string name="forecast_time_afternoon">in the afternoon</string>
+    <string name="forecast_time_evening">in the evening</string>
+    <string name="forecast_disclaimer">Just for fun. Not a plan, and not medical advice.</string>
+
     <!-- Home stats -->
     <string name="stats_last7">Last 7 days</string>
     <string name="stats_last30">Last 30 days</string>
@@ -350,6 +411,34 @@
         <item>Logbook updated. Great work today 📒</item>
     </string-array>
 
+    <!-- Solo keyword -->
+    <!-- Optional one-word keyword of solo entries: card in the add / edit form, extra line on the
+         entry card, leaderboard in the full report. The Chinese boy edition's 「老师」 meme does not
+         exist in English: both editions talk about a muse / inspiration. Never sent to the AI. -->
+    <string name="add_keyword_label">Today\'s muse</string>
+    <string name="add_keyword_label_girl">Today\'s inspiration</string>
+    <string name="add_keyword_hint">One keyword is plenty. Totally optional</string>
+    <string name="add_keyword_recent">Recent muses</string>
+    <string name="add_keyword_recent_girl">Recent inspiration</string>
+    <string name="add_keyword_clear">Clear keyword</string>
+    <string name="add_keyword_counter">%1$d/%2$d</string>
+    <!-- Extra line on the entry card. %1$s = the keyword. -->
+    <string name="entry_keyword_line">Muse: %1$s</string>
+    <string name="entry_keyword_line_girl">Inspo: %1$s</string>
+    <string name="insights_keyword_title">Muse leaderboard</string>
+    <string name="insights_keyword_title_girl">Inspiration charts</string>
+    <string name="insights_keyword_caption">A round of applause for the muses and their hard work 👏 Solo entries in the picked range only; a different case or stray spaces still count as the same one.</string>
+    <string name="insights_keyword_caption_girl">Thanks to every spark of inspiration ✨ Solo entries in the picked range only; a different case or stray spaces still count as the same one.</string>
+    <plurals name="insights_keyword_times">
+        <item quantity="one">%1$d time</item>
+        <item quantity="other">%1$d times</item>
+    </plurals>
+    <!-- Screen reader text of one leaderboard row. %1$d = rank, %2$s = keyword, %3$d = times (the quantity). -->
+    <plurals name="insights_keyword_row_cd">
+        <item quantity="one">No. %1$d: %2$s, %3$d time</item>
+        <item quantity="other">No. %1$d: %2$s, %3$d times</item>
+    </plurals>
+
     <!-- Entry card (history list, day sheet) -->
     <string name="entry_when">%1$s · %2$s</string>
     <string name="entry_duration_line">%1$d min · %2$s</string>
@@ -362,7 +451,7 @@
         <item quantity="one">%1$d entry</item>
         <item quantity="other">%1$d entries</item>
     </plurals>
-    <string name="history_search_hint">Search by note</string>
+    <string name="history_search_hint">Search notes or keywords</string>
     <string name="history_search_clear">Clear search</string>
     <string name="history_empty">Blank record. Are you cultivating immortality?</string>
     <string name="history_empty_hint">Hit the ➕ below and start your legend</string>
@@ -532,6 +621,38 @@
     <string name="settings_version">Version %1$s</string>
     <string name="settings_about_joke">Contains zero actual calculations and a moderate amount of joy. Any resemblance to a calculator is purely coincidental.</string>
 
+    <!-- Fingerprint unlock & collapsible appearance -->
+    <!-- Lock screen + the system fingerprint prompt are part of the disguise: keep them neutral
+         (no diary / entry wording); lock_* strings never get _girl variants. -->
+    <string name="lock_biometric_key_cd">Unlock with fingerprint</string>
+    <string name="lock_biometric_prompt_title">Verify it\'s you</string>
+    <string name="lock_biometric_prompt_use_code">Use secret code</string>
+    <string name="lock_biometric_key_changed">Fingerprints changed. Unlock with your code, then turn fingerprint unlock back on in Settings.</string>
+    <string name="lock_biometric_locked_out">Too many fingerprint tries. Use your code for now.</string>
+    <string name="lock_biometric_unavailable">Fingerprint didn\'t work this time. Use your code.</string>
+    <!-- Settings → Security → fingerprint unlock row; the prompt subtitle is shown by the system. -->
+    <string name="settings_biometric">Fingerprint unlock</string>
+    <string name="settings_biometric_desc">One touch on the lock screen and you\'re in. Changing the code and deleting all entries still need the code.</string>
+    <string name="settings_biometric_note">Turns itself off when a new fingerprint is added to the phone, and you turn it back on after unlocking with your code. That way nobody can sneak their own finger in.</string>
+    <string name="settings_biometric_needs_enrollment">No fingerprint on this phone yet. Add one in the system settings first.</string>
+    <string name="settings_biometric_prompt_subtitle">Confirm it\'s you to use your fingerprint on the lock screen</string>
+    <string name="settings_biometric_enabled">Fingerprint unlock is on 👆 Next time, just a touch.</string>
+    <string name="settings_biometric_enable_failed">Couldn\'t turn on fingerprint unlock 🤔 Try again in a bit.</string>
+    <!-- Settings → Appearance card, collapsed by default. The summary joins the theme, language and
+         edition labels with the separator. -->
+    <!-- %1$s = setting name (settings_theme / settings_language), %2$s = its current value. -->
+    <string name="settings_appearance_summary_item">%1$s: %2$s</string>
+    <string name="settings_appearance_summary_separator">" · "</string>
+    <string name="settings_appearance_expanded">Expanded</string>
+    <string name="settings_appearance_collapsed">Collapsed</string>
+    <string name="settings_appearance_expand">Expand</string>
+    <string name="settings_appearance_collapse">Collapse</string>
+    <!-- Picking the other edition in Settings asks first. %1$s = the target edition's name (edition_boy_name / edition_girl_name). -->
+    <string name="settings_edition_switch_title">Switch to the %1$s?</string>
+    <string name="settings_edition_switch_message">To be clear: the edition is meant to be picked once and kept. Switching to the %1$s changes all the wording and icons in the app; your entries stay exactly as they are.\nIt\'s a bit more than a new paint job, so think it over 🙈</string>
+    <string name="settings_edition_switch_confirm">Yes, switch</string>
+    <string name="settings_edition_switch_cancel">Let me think</string>
+
     <!-- Backup flow -->
     <string name="backup_import_title">Import backup</string>
     <string name="backup_mode_merge">Merge (keep what I have)</string>
@@ -692,7 +813,7 @@
     <string name="clear_all_button">Delete all entries</string>
     <string name="clear_all_empty">Already empty. Nothing to delete 🫙</string>
     <string name="clear_all_confirm_title">Delete every single entry?</string>
-    <string name="clear_all_confirm_message">All entries will be deleted for good. There is no undo and no way to get them back. Only entries go: your secret code, theme, language, edition and API keys stay as they are. Consider using \"Export backup\" above first.</string>
+    <string name="clear_all_confirm_message">All entries will be deleted for good. There is no undo and no way to get them back. Only entries go: your secret code, fingerprint unlock, theme, language, edition and API keys stay as they are. Consider using \"Export backup\" above first.</string>
     <string name="clear_all_confirm_next">I\'m sure, next step</string>
     <string name="clear_all_keep">Never mind, keep them</string>
     <string name="clear_all_pin_title">Last check: your secret code</string>
@@ -741,7 +862,7 @@
     <string name="edition_boy_tagline">Launches, cooldowns, sage mode. You know the drill.</string>
     <string name="edition_girl_name">Girl edition</string>
     <string name="edition_girl_tagline">A secret diary with main-character energy</string>
-    <string name="edition_chooser_note">You can switch anytime in Settings. It only changes the wording and icons; your entries stay exactly as they are.</string>
+    <string name="edition_chooser_note">Choose carefully: this sets the wording and icons of the whole app and is meant to stay. Changing it later takes a second confirmation in Settings. Your entries are never affected.</string>
     <string name="edition_chooser_confirm">That\'s me</string>
     <string name="settings_edition">Edition</string>
 </resources>

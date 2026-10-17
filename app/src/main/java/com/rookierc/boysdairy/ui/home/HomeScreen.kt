@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,6 +76,7 @@ fun HomeScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val today by rememberToday()
+    LaunchedEffect(today) { viewModel.onDayChanged(today) }
 
     val entries = state.entries
     val stats = remember(entries, today) {
@@ -118,6 +120,10 @@ fun HomeScreen(
 
             StreakLevel.of(stats.consecutiveActiveDays)?.let { level ->
                 StreakCard(level = level, days = stats.consecutiveActiveDays)
+            }
+
+            state.forecast?.let { forecast ->
+                ForecastCard(forecast = forecast, today = today)
             }
 
             StatsRow(

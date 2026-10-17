@@ -168,6 +168,81 @@ class EntryFormLogicTest {
         assertFalse(edited.differsFrom(baseline))
     }
 
+    @Test
+    fun aSoloKeywordCountsAsAChange() {
+        assertTrue(baseline.copy(keyword = "Mia").differsFrom(baseline))
+        val withKeyword = baseline.copy(keyword = "Mia")
+        assertTrue(withKeyword.copy(keyword = "mia").differsFrom(withKeyword)) // case is a real edit
+        assertTrue(withKeyword.copy(keyword = "").differsFrom(withKeyword))
+    }
+
+    @Test
+    fun surroundingBlanksInTheKeywordAreNotAChange() {
+        val withKeyword = baseline.copy(keyword = "Mia")
+        assertFalse(withKeyword.copy(keyword = "  Mia ").differsFrom(withKeyword))
+        assertFalse(baseline.copy(keyword = "   ").differsFrom(baseline))
+    }
+
+    @Test
+    fun aHiddenKeywordOfAPartnerFormIsNoChange() {
+        // Started as partner (latest entry), typed a keyword under solo, switched back to partner:
+        // nothing different would be saved.
+        val partner = baseline.copy(type = EntryType.PARTNER)
+        assertFalse(partner.copy(keyword = "Mia").differsFrom(partner))
+        // Switching solo -> partner is still a change (the type), whatever the keyword.
+        assertTrue(baseline.copy(keyword = "Mia").copy(type = EntryType.PARTNER).differsFrom(baseline))
+    }
+
+    // ---- keyword input / storing --------------------------------------------------------------
+
+    @Test
+    fun keywordMayGrowUpToTheLimitButNotPastIt() {
+        val current = "a".repeat(29)
+        assertEquals(current + "b", acceptKeywordEdit(current, current + "b", maxLength = 30))
+        val full = "a".repeat(30)
+        assertSame(full, acceptKeywordEdit(full, full + "b", maxLength = 30))
+        // A paste that would overshoot is refused as a whole.
+        assertSame(current, acceptKeywordEdit(current, current + "bcd", maxLength = 30))
+    }
+
+    @Test
+    fun anOverlongOldKeywordCanBeShortenedButNotGrown() {
+        val old = "x".repeat(40)
+        assertEquals("x".repeat(39), acceptKeywordEdit(old, "x".repeat(39), maxLength = 30))
+        assertSame(old, acceptKeywordEdit(old, old + "!", maxLength = 30))
+    }
+
+    @Test
+    fun pastedLineBreaksInTheKeywordBecomeSpaces() {
+        assertEquals("Mia Lux", acceptKeywordEdit("", "Mia\nLux", maxLength = 30))
+        assertEquals("Mia Lux ", acceptKeywordEdit("", "Mia\r\nLux\r", maxLength = 30))
+        assertEquals("", acceptKeywordEdit("Mia", "", maxLength = 30))
+    }
+
+    @Test
+    fun keywordToStoreTrimsAndDropsBlanks() {
+        assertEquals("Mia", keywordToStore("  Mia ", EntryType.SOLO, originalKeyword = null))
+        assertNull(keywordToStore("", EntryType.SOLO, originalKeyword = null))
+        assertNull(keywordToStore("  \n", EntryType.SOLO, originalKeyword = null))
+        // Never shortened when saving: the limit is an input rule only.
+        assertEquals("x".repeat(40), keywordToStore("x".repeat(40), EntryType.SOLO, originalKeyword = null))
+    }
+
+    @Test
+    fun keywordIsOnlyStoredForSoloEntries() {
+        assertNull(keywordToStore("Mia", EntryType.PARTNER, originalKeyword = null))
+        // Editing a solo entry into a partner one drops its keyword.
+        assertNull(keywordToStore("Mia", EntryType.PARTNER, originalKeyword = "Mia"))
+    }
+
+    @Test
+    fun editingKeepsAnUnchangedOriginalKeywordToTheCharacter() {
+        val original = " Mia "
+        assertSame(original, keywordToStore("Mia", EntryType.SOLO, originalKeyword = original))
+        assertEquals("Zoe", keywordToStore(" Zoe", EntryType.SOLO, originalKeyword = "Mia"))
+        assertNull(keywordToStore("", EntryType.SOLO, originalKeyword = "Mia"))
+    }
+
     // ---- quick-time chips ---------------------------------------------------------------------
 
     /** 20:47:38.250 on 17 Oct. */
@@ -241,5 +316,13 @@ class EntryFormLogicTest {
     fun anEditThatChangedNothingHasNoUndo() {
         val original = testEntry(timestamp = millisOf(2026, 10, 3, 12, 34) + 56_789, id = 7)
         assertNull(revertOfEdit(original, original.copy()))
+    }
+
+    @Test
+    fun anEditOfOnlyTheKeywordCanBeUndone() {
+        val original = testEntry(timestamp = millisOf(2026, 10, 3, 12, 34), id = 7, keyword = "Mia")
+        assertSame(original, revertOfEdit(original, original.copy(keyword = "Zoe")))
+        assertSame(original, revertOfEdit(original, original.copy(keyword = null)))
+        assertNull(revertOfEdit(original, original.copy(keyword = "Mia")))
     }
 }

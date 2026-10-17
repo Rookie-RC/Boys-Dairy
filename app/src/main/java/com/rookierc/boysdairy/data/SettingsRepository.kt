@@ -3,6 +3,7 @@ package com.rookierc.boysdairy.data
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -89,6 +90,20 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { prefs -> prefs[KEY_BACKUP_REMINDER_SNOOZED_UNTIL] = epochMillis }
     }
 
+    /**
+     * Fingerprint unlock on the lock screen; off until the user turns it on in Settings (after one
+     * successful fingerprint check). A device setting, not diary content: never written into a
+     * backup, and "delete all entries" leaves it alone. The Keystore key behind it is managed by
+     * the security layer (`BiometricUnlock`), not stored here.
+     */
+    val biometricUnlock: Flow<Boolean> = preferences
+        .map { prefs -> prefs[KEY_BIOMETRIC_UNLOCK] ?: false }
+        .distinctUntilChanged()
+
+    suspend fun setBiometricUnlock(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_BIOMETRIC_UNLOCK] = enabled }
+    }
+
     suspend fun loadPinCredentials(): PinCredentials? {
         val prefs = preferences.first()
         val salt = prefs[KEY_PIN_SALT]
@@ -120,5 +135,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         // Backup reminder; both are persistence keys and must never be renamed.
         val KEY_LAST_EXPORT_AT = longPreferencesKey("lastExportAt")
         val KEY_BACKUP_REMINDER_SNOOZED_UNTIL = longPreferencesKey("backupReminderSnoozedUntil")
+
+        // Fingerprint unlock on / off; a persistence key that must never be renamed.
+        val KEY_BIOMETRIC_UNLOCK = booleanPreferencesKey("biometricUnlock")
     }
 }

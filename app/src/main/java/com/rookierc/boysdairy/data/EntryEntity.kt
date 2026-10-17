@@ -20,6 +20,8 @@ data class EntryEntity(
     val moodAfter: String,
     val pleasure: Int,
     val note: String,
+    /** Added in schema version 2 (nullable, no default; see [MIGRATION_1_2]). */
+    val keyword: String? = null,
 )
 
 internal fun EntryEntity.toDomain(): Entry = Entry(
@@ -31,6 +33,7 @@ internal fun EntryEntity.toDomain(): Entry = Entry(
     moodAfter = enumOrDefault(moodAfter, Mood.NEUTRAL),
     pleasure = pleasure,
     note = note,
+    keyword = keyword,
 )
 
 internal fun Entry.toEntity(): EntryEntity = EntryEntity(
@@ -42,6 +45,7 @@ internal fun Entry.toEntity(): EntryEntity = EntryEntity(
     moodAfter = moodAfter.name,
     pleasure = pleasure,
     note = note,
+    keyword = keyword,
 )
 
 private inline fun <reified E : Enum<E>> enumOrDefault(name: String, default: E): E =

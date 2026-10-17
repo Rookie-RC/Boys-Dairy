@@ -25,6 +25,8 @@ internal object GirlVariants {
         R.string.home_subtitle to R.string.home_subtitle_girl,
         R.string.home_cooldown_label to R.string.home_cooldown_label_girl,
         R.string.home_last_entry to R.string.home_last_entry_girl,
+        R.string.forecast_upcoming to R.string.forecast_upcoming_girl,
+        R.string.forecast_today to R.string.forecast_today_girl,
         // Cooldown tiers
         R.string.cooldown_none_title to R.string.cooldown_none_title_girl,
         R.string.cooldown_fresh_title to R.string.cooldown_fresh_title_girl,
@@ -39,6 +41,12 @@ internal object GirlVariants {
         // Add entry
         R.string.add_mood_after_label to R.string.add_mood_after_label_girl,
         R.string.add_pick_time_title to R.string.add_pick_time_title_girl,
+        // Solo keyword
+        R.string.add_keyword_label to R.string.add_keyword_label_girl,
+        R.string.add_keyword_recent to R.string.add_keyword_recent_girl,
+        R.string.entry_keyword_line to R.string.entry_keyword_line_girl,
+        R.string.insights_keyword_title to R.string.insights_keyword_title_girl,
+        R.string.insights_keyword_caption to R.string.insights_keyword_caption_girl,
         // Insights
         R.string.achievement_gap_30_desc to R.string.achievement_gap_30_desc_girl,
         R.string.achievement_marathon_name to R.string.achievement_marathon_name_girl,
@@ -60,12 +68,18 @@ internal object GirlVariants {
         R.array.cooldown_monk_subtitles to R.array.cooldown_monk_subtitles_girl,
         // Daily tip
         R.array.daily_tips to R.array.daily_tips_girl,
+        // Home: next-time forecast
+        R.array.forecast_today_quips to R.array.forecast_today_quips_girl,
+        R.array.forecast_overdue_quips to R.array.forecast_overdue_quips_girl,
         // Add entry
         R.array.save_toasts to R.array.save_toasts_girl,
         // AI roast
         R.array.ai_loading_messages to R.array.ai_loading_messages_girl,
     )
 
-    /** No quantity string carries boy-only wording yet; add `R.plurals.x to R.plurals.x_girl` here when one does. */
-    val plurals: Map<Int, Int> = mapOf()
+    val plurals: Map<Int, Int> = mapOf(
+        // Home: next-time forecast
+        R.plurals.forecast_overdue to R.plurals.forecast_overdue_girl,
+        R.plurals.forecast_need_more to R.plurals.forecast_need_more_girl,
+    )
 }

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +33,7 @@ import java.time.ZoneId
 
 /**
  * One diary entry as a sticker card. Shared by the history list and the calendar day sheet.
+ * A solo entry's keyword, if any, gets its own line under the type.
  * [onDelete] = null hides the trash button; [showDate] = false shows only the time;
  * [onClick] makes the whole card tappable; it is announced as "edit this entry", which is what
  * callers use it for.
@@ -88,6 +90,16 @@ fun EntryCard(
                     text = stringResource(entry.type.labelRes()),
                     style = MaterialTheme.typography.titleMedium,
                 )
+                val keyword = entry.keyword?.trim()
+                if (!keyword.isNullOrEmpty()) {
+                    Text(
+                        text = "${EditionEmoji.MUSE.current} ${stringResource(R.string.entry_keyword_line, keyword)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Text(
                     text = stringResource(
                         R.string.entry_duration_line,

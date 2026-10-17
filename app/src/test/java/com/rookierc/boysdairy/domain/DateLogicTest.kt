@@ -256,6 +256,34 @@ class DateLogicTest {
         assertEquals(filterEntries(mixed, "beach", null), filterEntriesByNote(mixed, "beach"))
     }
 
+    private val withKeywords = listOf(
+        entry(6L, EntryType.SOLO, note = "").copy(keyword = "Mia Lux"),
+        entry(5L, EntryType.SOLO, note = "thinking of mia").copy(keyword = "Zoe"),
+        entry(4L, EntryType.SOLO, note = "nothing").copy(keyword = "小蓝"),
+        entry(3L, EntryType.PARTNER, note = "beach"),
+        entry(2L, EntryType.SOLO, note = "beach").copy(keyword = null),
+    )
+
+    @Test
+    fun queryMatchesTheKeywordToo() {
+        assertEquals(listOf(6L), filterEntries(withKeywords, "lux", null).map { it.timestamp })
+        assertEquals(listOf(4L), filterEntries(withKeywords, "蓝", null).map { it.timestamp })
+        assertEquals(listOf(5L), filterEntries(withKeywords, " ZOE ", EntryType.SOLO).map { it.timestamp })
+    }
+
+    @Test
+    fun queryMatchesNoteOrKeywordEitherWay() {
+        // 6 by its keyword, 5 by its note.
+        assertEquals(listOf(6L, 5L), filterEntries(withKeywords, "MIA", null).map { it.timestamp })
+        assertEquals(listOf(6L, 5L), filterEntriesByNote(withKeywords, "mia").map { it.timestamp })
+    }
+
+    @Test
+    fun entriesWithoutAKeywordAreStillFoundByTheirNote() {
+        assertEquals(listOf(3L, 2L), filterEntries(withKeywords, "beach", null).map { it.timestamp })
+        assertTrue(filterEntries(withKeywords, "lux", EntryType.PARTNER).isEmpty())
+    }
+
     // ---- groupEntriesByMonth ------------------------------------------------------------------
 
     @Test

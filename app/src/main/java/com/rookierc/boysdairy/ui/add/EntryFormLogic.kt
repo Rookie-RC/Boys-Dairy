@@ -3,6 +3,7 @@ package com.rookierc.boysdairy.ui.add
 import com.rookierc.boysdairy.domain.Entry
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.Mood
+import com.rookierc.boysdairy.domain.normalizeKeyword
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -20,7 +21,11 @@ import java.time.temporal.ChronoUnit
  */
 typealias EntryUndo = suspend () -> Unit
 
-/** Everything the user can change in the form; used to tell whether there are unsaved changes. */
+/**
+ * Everything the user can change in the form; used to tell whether there are unsaved changes.
+ * [keyword] is the text of the keyword field ("" when empty), also while it is hidden because
+ * [type] is not solo.
+ */
 data class EntryFormValues(
     val dateTime: LocalDateTime,
     val type: EntryType,
@@ -29,11 +34,21 @@ data class EntryFormValues(
     val moodAfter: Mood,
     val pleasure: Int,
     val note: String,
+    val keyword: String = "",
 )
 
-/** True if [this] differs from [baseline]. Leading / trailing blanks of the note do not count. */
+/**
+ * True if [this] differs from [baseline]: what would be saved, not what is typed. Leading /
+ * trailing blanks of the note and the keyword do not count, and neither does the keyword at all
+ * while the type is not solo (it is hidden then and would not be saved).
+ */
 internal fun EntryFormValues.differsFrom(baseline: EntryFormValues): Boolean =
-    copy(note = note.trim()) != baseline.copy(note = baseline.note.trim())
+    comparable() != baseline.comparable()
+
+private fun EntryFormValues.comparable(): EntryFormValues = copy(
+    note = note.trim(),
+    keyword = if (type == EntryType.SOLO) keyword.trim() else "",
+)
 
 /** The minute-precision local date-time the form shows for a stored [timestamp][Long]. */
 internal fun Long.toFormDateTime(zone: ZoneId): LocalDateTime =
@@ -81,6 +96,29 @@ internal fun acceptNoteEdit(current: String, proposed: String, maxLength: Int): 
 internal fun noteToStore(note: String, originalNote: String?): String {
     val trimmed = note.trim()
     return if (originalNote != null && originalNote.trim() == trimmed) originalNote else trimmed
+}
+
+/**
+ * The keyword after the user typed [proposed] while it was [current]. The field is a single line,
+ * so pasted line breaks become spaces; otherwise the same rule as [acceptNoteEdit]: it cannot grow
+ * past [maxLength], but an older, longer keyword is never cut short.
+ */
+internal fun acceptKeywordEdit(current: String, proposed: String, maxLength: Int): String {
+    val singleLine = if (proposed.any { it == '\n' || it == '\r' }) proposed.replace(LINE_BREAKS, " ") else proposed
+    return acceptNoteEdit(current = current, proposed = singleLine, maxLength = maxLength)
+}
+
+private val LINE_BREAKS = Regex("\r\n|[\r\n]")
+
+/**
+ * The keyword to store for the form's [keyword] text and [type]: `null` unless the entry is solo
+ * or when nothing but blanks is left, otherwise trimmed ([normalizeKeyword]). When editing, an
+ * [originalKeyword] that only differs by surrounding blanks is kept to the character, like
+ * [noteToStore] does it.
+ */
+internal fun keywordToStore(keyword: String, type: EntryType, originalKeyword: String?): String? {
+    val normalized = normalizeKeyword(keyword, type) ?: return null
+    return if (originalKeyword != null && originalKeyword.trim() == normalized) originalKeyword else normalized
 }
 
 /** The quick-time chips under the date-time button, as minutes before now: just now, 30 min, 1 h, 2 h. */

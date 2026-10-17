@@ -5,7 +5,12 @@ package com.rookierc.boysdairy.ui.add
 import android.content.res.Resources
 import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,14 +27,17 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Slider
@@ -51,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,6 +70,7 @@ import com.rookierc.boysdairy.data.Edition
 import com.rookierc.boysdairy.domain.Achievement
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.Mood
+import com.rookierc.boysdairy.domain.keywordKey
 import com.rookierc.boysdairy.ui.common.EditionEmoji
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.ChoiceCard
@@ -253,6 +263,21 @@ private fun EntryForm(
             }
         }
 
+        // Solo only. Switching to partner just hides it: the text stays in the form (and comes
+        // back with solo), but is not saved for a partner entry (see keywordToStore).
+        AnimatedVisibility(
+            visible = state.type == EntryType.SOLO,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            KeywordCard(
+                keyword = viewModel.keyword,
+                suggestions = state.recentKeywords,
+                onKeywordChange = viewModel::onKeywordChange,
+                onPick = viewModel::pickKeyword,
+            )
+        }
+
         FormCard(
             emoji = "⏱️",
             title = stringResource(R.string.add_duration_label),
@@ -427,6 +452,82 @@ private fun saveMessage(
     }
     return toast + "\n" +
         resources.editionQuantityString(R.plurals.achievement_unlocked_toast, unlocked.size, edition, names)
+}
+
+/**
+ * "今日老师": one single-line keyword (optional) plus chips with the most recently used ones; a
+ * tap on a chip fills it in. The chip matching the current text (ignoring case and blanks) is
+ * highlighted.
+ */
+@Composable
+private fun KeywordCard(
+    keyword: String,
+    suggestions: List<String>,
+    onKeywordChange: (String) -> Unit,
+    onPick: (String) -> Unit,
+) {
+    val colors = FunTheme.colors
+    FormCard(emoji = EditionEmoji.MUSE.current, title = stringResource(R.string.add_keyword_label)) {
+        FunTextField(
+            value = keyword,
+            onValueChange = onKeywordChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = stringResource(R.string.add_keyword_hint),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            trailing = if (keyword.isNotEmpty()) {
+                {
+                    IconButton(onClick = { onKeywordChange("") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Clear,
+                            contentDescription = stringResource(R.string.add_keyword_clear),
+                        )
+                    }
+                }
+            } else {
+                null
+            },
+        )
+        if (keyword.length >= AddEntryViewModel.KEYWORD_COUNTER_FROM) {
+            val atLimit = keyword.length >= AddEntryViewModel.MAX_KEYWORD_LENGTH
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = stringResource(
+                    R.string.add_keyword_counter,
+                    keyword.length,
+                    AddEntryViewModel.MAX_KEYWORD_LENGTH,
+                ),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (atLimit) FontWeight.ExtraBold else null,
+                color = if (atLimit) colors.textPrimary else colors.textSecondary,
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (suggestions.isNotEmpty()) {
+            val currentKey = keywordKey(keyword)
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.add_keyword_recent),
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.textSecondary,
+            )
+            Spacer(Modifier.height(8.dp))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                suggestions.forEach { suggestion ->
+                    EmojiChip(
+                        label = suggestion,
+                        selected = currentKey.isNotEmpty() && keywordKey(suggestion) == currentKey,
+                        onClick = { onPick(suggestion) },
+                    )
+                }
+            }
+        }
+    }
 }
 
 /** The "−" / "+" buttons next to the duration slider. */

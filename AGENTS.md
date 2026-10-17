@@ -45,10 +45,10 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 | --- | --- |
 | `BoysDairyApp.kt` | `Application` + `AppContainer`（手动依赖注入，进程内单例）；在 `ProcessLifecycleOwner` `ON_STOP` 时调用 `lockManager.lock()` |
 | `MainActivity.kt` | `FLAG_SECURE`（由 `BuildConfig.SECURE_SCREEN` 控制）、edge-to-edge |
-| `domain/` | 纯 Kotlin，零 Android 依赖：`Entry`、`Mood`、`EntryType`、`DateLogic`（距今天数、月历网格与每日汇总、分组、搜索 / 筛选）、`Stats`（`computeStats`，AI 提示词也用）、`Insights`（完整战报的周 / 星期 / 时段分布、最长连续、成就） |
-| `data/` | Room（`AppDatabase` / `EntryDao` / `EntryEntity`）、`EntryRepository`、`SettingsRepository`（DataStore `settings`：主题、PIN 哈希、所选 AI 服务商 `aiProvider`、男 / 女生版 `edition`）、`Edition`（`BOY` / `GIRL`） |
+| `domain/` | 纯 Kotlin，零 Android 依赖：`Entry`、`Mood`、`EntryType`、`DateLogic`（距今天数、月历网格与每日汇总、分组、搜索 / 筛选）、`Stats`（`computeStats`，AI 提示词也用）、`Insights`（完整战报的周 / 星期 / 时段分布、最长连续、成就）、`NextTime`（首页「下次预报」）、`SoloKeyword`（单人关键词的规范化、最近使用、排行榜） |
+| `data/` | Room（`AppDatabase` / `EntryDao` / `EntryEntity`，schema 版本 2，迁移在 `AppDatabase.MIGRATIONS`）、`EntryRepository`、`SettingsRepository`（DataStore `settings`：主题、PIN 哈希、所选 AI 服务商 `aiProvider`、男 / 女生版 `edition`）、`Edition`（`BOY` / `GIRL`） |
 | `data/backup/` | JSON 备份：`BackupCodec`（格式）、`BackupMerge`（去重）、`BackupEngine`（流读写，可纯 JVM 测试）、`BackupManager`（SAF Uri） |
-| `security/` | `PinHasher`（加盐 SHA-256）、`PinAttemptLimiter` + `DataStorePinLockoutStore`（持久化锁定）、`LockManager`（锁状态） |
+| `security/` | `PinHasher`（加盐 SHA-256）、`PinAttemptLimiter` + `DataStorePinLockoutStore`（持久化锁定）、`LockManager`（锁状态）、`BiometricUnlock` + `KeystoreBiometricKeys` + `BiometricPolicy`（可选的指纹解锁） |
 | `ai/` | AI 锐评。`AiProvider.kt`：服务商枚举 + `AiProvider.spec`（**固定的**模型、推理强度、展示用主机名）；`AiPromptBuilder`（纯函数，决定发什么）；`AiAnalysisService`（编排）；`ApiKeyStore`（每个服务商一个 Key 槽，Keystore 加密，DataStore `secure`）；`DeepSeekTextGenerator`（OkHttp）与 `ClaudeTextGenerator`（Anthropic Java SDK）及各自的配置常量；`AiModels.kt`（`AiRequest` / `AiResult` / `AiError`）。**唯一允许联网的包** |
 | `ui/AppRoot.kt` `ui/SessionStores.kt` | 锁闸门与每次解锁独立的 ViewModelStore；解锁后版本未选时先显示 `ui/edition/EditionChooserScreen`，选过后在 `MainNavigation` 外提供 `LocalEdition` |
 | `ui/MainNavigation.kt` `ui/FunBottomBar.kt` | 路由与底栏（首页 / 战绩 / 中央打卡 / AI 锐评 / 设置） |
@@ -68,23 +68,25 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 - 女生版文案命名为 `<基础名>_girl`（中英都要有、占位符与基础版一致），并登记进 `GirlVariants`；`_girl` 后缀只用于此。`app_name` 和锁屏的 `lock_*` 不做变体（锁屏在 `LocalEdition` 之外，始终中性）。`GirlVariantsTest` 检查命名、登记和占位符。两版不同的装饰 emoji 只登记在 `EditionEmoji`。
 
 **隐私与安全**
-- `ai/` 之外不得出现任何网络调用；不要新增权限、遥测、崩溃上报、第三方 SDK。`INTERNET` 权限只为 AI 锐评存在。
+- `ai/` 之外不得出现任何网络调用；不要新增权限、遥测、崩溃上报、第三方 SDK。`INTERNET` 权限只为 AI 锐评存在，`USE_BIOMETRIC`（及 androidx.biometric 自带的 `USE_FINGERPRINT`）只为可选的指纹解锁存在。
 - 没有用户的显式点击就不能发请求：预览只读本地，只有 `AiViewModel.analyze()` 这条路径才会真正发送。
 - 不记录日志、不持久化日记内容或 API Key 的明文：不要写 `Log.*` / `println`，异常信息里不要带日记内容或 Key，API Key 只允许以 Keystore 加密后的形式落盘，且只放在请求头里。
 - 备份文件只含战绩；永远不要把 PIN 哈希 / 盐、API Key、设置写进去。
 - AI 提示词保持品牌与性别中性；男 / 女生版是纯界面设置，永远不作为提示词的输入，也不进备份。
 - AI 服务商的模型和推理强度固定在 `AiProvider.spec`，这是产品决定：不要加用户可选的模型 / 参数界面，也不要把模型 id 写到别处。
-- 持久化键不能改名：`AiProvider.id`（`deepseek` / `claude`）、`Edition.id`（`boy` / `girl`）、DataStore 键 `aiProvider`、`edition` 和 `api_key_<id>`、Keystore 别名 `boysdairy_claude_key`（最初为 Claude 创建，现在所有服务商共用）。改了会让用户已存的选择和 Key 失效。
+- 持久化键不能改名：`AiProvider.id`（`deepseek` / `claude`）、`Edition.id`（`boy` / `girl`）、DataStore 键 `aiProvider`、`edition`、`biometricUnlock` 和 `api_key_<id>`、Keystore 别名 `boysdairy_claude_key`（最初为 Claude 创建，现在所有服务商共用，不能要求用户认证）和 `boysdairy_biometric_key`（指纹解锁专用）。改了会让用户已存的选择和 Key 失效。
 - 每个服务商实现都要：Key 只放请求头；不跟随重定向；不打印请求 / 响应体；错误映射到 `AiError`；`previewPayload()` 展示的两段提示词必须与 `analyze()` 实际发送的一致。新增服务商的步骤见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 - 保留 `FLAG_SECURE` 仅 release 生效的逻辑（`BuildConfig.SECURE_SCREEN`：release = true，debug = false）。不要在 release 里关掉它，也不要让 debug 的放宽泄漏到 release。
 - 保持 `allowBackup="false"` 与 `data_extraction_rules.xml` 排除所有域。
 - PIN 比较用恒定时间（`MessageDigest.isEqual`）；不要降低 `PinAttemptLimiter` 的限制或把锁定状态改回只存内存。
+- 指纹解锁必须经过 `BiometricUnlock.verify`（用认证过的 Cipher 做一次 `doFinal`）才能调 `LockManager.unlockWithBiometric()`；不要改成只看回调成功，也不要去掉 `setInvalidatedByBiometricEnrollment(true)`。改暗号、清空战绩只认 PIN。
 
 **架构**
 - 依赖方向：`ui → (security, ai, data/backup) → data → domain`，`domain` 不依赖任何其他层。
 - 解锁后的界面里创建的 ViewModel 必须取自会话 store（在 `MainNavigation` 下用 `viewModel(factory = ...)`），这样上锁时会被清空。需要跨越上锁存活的东西（系统文件选择器 launcher、`BackupViewModel`）放在 `AppRoot` 的锁闸门之上，别随手加新的。
 - 数据库结构变更：升 `@Database` 的 `version`，写 `Migration`，提交新生成的 `app/schemas/.../<N>.json`；不要用 `fallbackToDestructiveMigration`（会清空用户日记）。
-- 改了备份格式要升 `BackupCodec.FORMAT_VERSION` 并保持能读旧版本。
+- 改了备份格式要升 `BackupCodec.FORMAT_VERSION` 并保持能读旧版本（当前是 2，v1 没有 `keyword`）。
+- 单人关键词（`Entry.keyword`）和笔记一样是敏感内容，但**永远不进 AI 提示词**，也不受「发送笔记」开关影响；`AiPromptBuilderTest` 守着这一点。
 
 **测试**
 - 为 `domain` / `data` / `security` / `ai` 的逻辑新增或保留单元测试（JVM，JUnit4）。需要时间或存储就像现有代码那样注入（`now` / `clock` 参数、`PinLockoutStore`、`keyProvider` 等），不要在测试里依赖真实时钟或网络；网络行为用本机 `MockWebServer` 验证。

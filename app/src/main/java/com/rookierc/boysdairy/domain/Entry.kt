@@ -22,7 +22,13 @@ enum class Mood {
     }
 }
 
-/** A single diary entry. [id] is 0 for entries that have not been stored yet. */
+/**
+ * A single diary entry. [id] is 0 for entries that have not been stored yet.
+ *
+ * [keyword] is the optional one-word "today's muse" of a solo entry: trimmed, never blank and
+ * always `null` for [EntryType.PARTNER] (see [normalizeKeyword]). It stays on the device and in
+ * backups only; it is never part of the AI prompt.
+ */
 data class Entry(
     val id: Long = 0,
     val timestamp: Long,
@@ -32,4 +38,5 @@ data class Entry(
     val moodAfter: Mood,
     val pleasure: Int,
     val note: String,
+    val keyword: String? = null,
 )

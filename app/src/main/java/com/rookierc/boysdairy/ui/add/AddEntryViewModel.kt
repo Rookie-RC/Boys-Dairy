@@ -18,6 +18,7 @@ import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.Mood
 import com.rookierc.boysdairy.domain.computeAchievements
 import com.rookierc.boysdairy.domain.newlyUnlocked
+import com.rookierc.boysdairy.domain.recentKeywords
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +52,11 @@ data class AddEntryUiState(
     val deleting: Boolean = false,
     /** Edit mode: true after the last delete attempt threw; the entry and the form are unchanged. */
     val deleteFailed: Boolean = false,
+    /**
+     * Keywords of earlier solo entries, offered as one-tap chips under the keyword field: most
+     * recently used first, at most [AddEntryViewModel.KEYWORD_SUGGESTIONS] (see [recentKeywords]).
+     */
+    val recentKeywords: List<String> = emptyList(),
 ) {
     /** A save or delete is in flight: leaving now could cancel it. */
     val busy: Boolean get() = saving || deleting
@@ -60,7 +66,7 @@ data class AddEntryUiState(
     /** Edit mode only: the loaded entry can be deleted from the form. */
     val canDelete: Boolean get() = isEditing && canSave
 
-    fun formValues(note: String) = EntryFormValues(
+    fun formValues(note: String, keyword: String) = EntryFormValues(
         dateTime = dateTime,
         type = type,
         durationMinutes = durationMinutes,
@@ -68,6 +74,7 @@ data class AddEntryUiState(
         moodAfter = moodAfter,
         pleasure = pleasure,
         note = note,
+        keyword = keyword,
     )
 
     companion object {
@@ -116,6 +123,14 @@ class AddEntryViewModel(
         private set
 
     /**
+     * Text of the solo keyword field, snapshot state like [note]. Kept while the type is switched
+     * to partner (the field is hidden then), so switching back to solo brings it back; only
+     * [keywordToStore] decides what is saved.
+     */
+    var keyword: String by mutableStateOf("")
+        private set
+
+    /**
      * What the form started with (edit mode: the stored entry), to detect unsaved changes.
      * Snapshot state so composables reading [hasUnsavedChanges] recompose when it is set.
      * `null` while the entry is loading.
@@ -131,14 +146,37 @@ class AddEntryViewModel(
 
     init {
         if (entryId != null) {
-            viewModelScope.launch { loadForEditing(entryId) }
+            viewModelScope.launch {
+                if (loadForEditing(entryId)) loadKeywordSuggestions(diaryOrNull())
+            }
         } else {
-            baseline = _uiState.value.formValues(note)
-            viewModelScope.launch { applyLatestEntryDefaults() }
+            baseline = _uiState.value.formValues(note, keyword)
+            viewModelScope.launch {
+                val diary = diaryOrNull()
+                applyLatestEntryDefaults(diary?.firstOrNull())
+                loadKeywordSuggestions(diary)
+            }
         }
     }
 
-    private suspend fun loadForEditing(id: Long) {
+    /** Every entry, newest first, or `null` if it cannot be read (only used for conveniences). */
+    private suspend fun diaryOrNull(): List<Entry>? = try {
+        repository.snapshot()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        null
+    }
+
+    /** Fills [AddEntryUiState.recentKeywords] from [diary]; nothing to offer if it could not be read. */
+    private suspend fun loadKeywordSuggestions(diary: List<Entry>?) {
+        if (diary.isNullOrEmpty()) return
+        val suggestions = withContext(Dispatchers.Default) { recentKeywords(diary, KEYWORD_SUGGESTIONS) }
+        _uiState.update { it.copy(recentKeywords = suggestions) }
+    }
+
+    /** Edit mode: reads the entry into the form. False if it is gone (the screen then closes). */
+    private suspend fun loadForEditing(id: Long): Boolean {
         val entry = try {
             repository.get(id)
         } catch (cancelled: CancellationException) {
@@ -148,10 +186,11 @@ class AddEntryViewModel(
         }
         if (entry == null) {
             _uiState.update { it.copy(loading = false, entryMissing = true) }
-            return
+            return false
         }
         original = entry
         note = entry.note
+        keyword = entry.keyword.orEmpty()
         _uiState.update {
             it.copy(
                 loading = false,
@@ -164,19 +203,16 @@ class AddEntryViewModel(
                 pleasure = entry.pleasure,
             )
         }
-        baseline = _uiState.value.formValues(note)
+        baseline = _uiState.value.formValues(note, keyword)
+        return true
     }
 
-    /** New entries start with the type and duration of the most recent entry, unless already picked. */
-    private suspend fun applyLatestEntryDefaults() {
-        val latest = try {
-            repository.snapshot().firstOrNull()
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: Exception) {
-            null // Only a convenience: keep the built-in defaults.
-        } ?: return
-
+    /**
+     * New entries start with the type and duration of the [latest] entry, unless already picked.
+     * `null` (empty or unreadable diary): the built-in defaults stay.
+     */
+    private fun applyLatestEntryDefaults(latest: Entry?) {
+        if (latest == null) return
         val type = latest.type
         val duration = latest.durationMinutes.coerceIn(MIN_DURATION, MAX_DURATION)
         _uiState.update {
@@ -196,11 +232,20 @@ class AddEntryViewModel(
     /** True if the form differs from what it started with. Reads snapshot state (observable). */
     fun hasUnsavedChanges(state: AddEntryUiState): Boolean {
         val start = baseline ?: return false
-        return state.formValues(note).differsFrom(start)
+        return state.formValues(note, keyword).differsFrom(start)
     }
 
     fun onNoteChange(value: String) {
         note = acceptNoteEdit(current = note, proposed = value, maxLength = MAX_NOTE_LENGTH)
+    }
+
+    fun onKeywordChange(value: String) {
+        keyword = acceptKeywordEdit(current = keyword, proposed = value, maxLength = MAX_KEYWORD_LENGTH)
+    }
+
+    /** A "recently used" chip: the keyword becomes exactly that one (even if older and longer than the limit). */
+    fun pickKeyword(value: String) {
+        keyword = value
     }
 
     fun setDateTime(value: LocalDateTime) {
@@ -280,6 +325,7 @@ class AddEntryViewModel(
             moodAfter = snapshot.moodAfter,
             pleasure = snapshot.pleasure,
             note = noteToStore(note, editing?.note),
+            keyword = keywordToStore(keyword, snapshot.type, editing?.keyword),
         )
         val undo = editing?.let { revertOfEdit(original = it, saved = entry) }
             ?.let { revert -> undoWith { update(revert) } }
@@ -349,6 +395,15 @@ class AddEntryViewModel(
 
         /** The `length/max` counter under the note appears from this length on. */
         const val NOTE_COUNTER_FROM = 900
+
+        /** The solo keyword cannot grow past this; longer ones from backups are kept as is. */
+        const val MAX_KEYWORD_LENGTH = 30
+
+        /** The `length/max` counter under the keyword appears from this length on. */
+        const val KEYWORD_COUNTER_FROM = 24
+
+        /** At most this many "recently used" keyword chips. */
+        const val KEYWORD_SUGGESTIONS = 5
 
         /** Navigation argument: id of the entry to edit, [NO_ENTRY_ID] for a new entry. */
         const val ARG_ENTRY_ID = "entryId"

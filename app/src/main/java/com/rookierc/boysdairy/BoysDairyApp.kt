@@ -17,7 +17,10 @@ import com.rookierc.boysdairy.data.EntryRepository
 import com.rookierc.boysdairy.data.SettingsRepository
 import com.rookierc.boysdairy.data.backup.BackupManager
 import com.rookierc.boysdairy.data.settingsDataStore
+import com.rookierc.boysdairy.security.AndroidBiometricCapabilityChecker
+import com.rookierc.boysdairy.security.BiometricUnlock
 import com.rookierc.boysdairy.security.DataStorePinLockoutStore
+import com.rookierc.boysdairy.security.KeystoreBiometricKeys
 import com.rookierc.boysdairy.security.LockManager
 import com.rookierc.boysdairy.security.PinAttemptLimiter
 import kotlinx.coroutines.CoroutineScope
@@ -45,6 +48,15 @@ class AppContainer(context: Context) {
             now = System::currentTimeMillis,
         ),
     )
+
+    /** Optional fingerprint unlock (lock screen only); its Keystore key needs a fingerprint for every use. */
+    val biometricUnlock: BiometricUnlock by lazy {
+        BiometricUnlock(
+            settings = settingsRepository,
+            keys = KeystoreBiometricKeys(),
+            capabilityChecker = AndroidBiometricCapabilityChecker(appContext),
+        )
+    }
 
     val backupManager: BackupManager by lazy {
         BackupManager(appContext.contentResolver, entryRepository)

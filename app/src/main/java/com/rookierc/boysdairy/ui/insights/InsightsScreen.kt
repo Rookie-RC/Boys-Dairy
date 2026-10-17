@@ -61,6 +61,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,6 +73,7 @@ import com.rookierc.boysdairy.domain.EntryStats
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.HourBucket
 import com.rookierc.boysdairy.domain.InsightsPeriod
+import com.rookierc.boysdairy.domain.KeywordCount
 import com.rookierc.boysdairy.domain.Mood
 import com.rookierc.boysdairy.domain.MonthComparison
 import com.rookierc.boysdairy.domain.WeekBucket
@@ -213,6 +215,11 @@ private fun InsightsContent(
         )
 
         MoodCard(stats = report.stats)
+
+        // Hidden altogether when the range has no keyword (also for diaries that never used one).
+        if (report.keywords.isNotEmpty()) {
+            KeywordLeaderboardCard(keywords = report.keywords)
+        }
 
         AchievementWall(achievements = report.achievements)
 
@@ -1087,6 +1094,87 @@ private fun moodRows(counts: Map<Mood, Int>): List<BarRow> {
             )
         }
 }
+
+// ---- Keyword leaderboard ----------------------------------------------------------------------
+
+/**
+ * "老师排行榜": the most used solo keywords of the picked range (see [InsightsReport.keywords]),
+ * each with a medal, a bar relative to the leader and its count. The leader's bar is lemon, the
+ * others grape, like the distribution bars. Only composed when there is at least one keyword.
+ */
+@Composable
+private fun KeywordLeaderboardCard(keywords: List<KeywordCount>) {
+    val colors = FunTheme.colors
+    val max = (keywords.maxOfOrNull { it.count } ?: 0).coerceAtLeast(1)
+
+    FunCard(modifier = Modifier.fillMaxWidth()) {
+        SectionHeader(emoji = EditionEmoji.MUSE.current, title = stringResource(R.string.insights_keyword_title))
+        Spacer(Modifier.height(12.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            keywords.forEachIndexed { index, item ->
+                val rank = index + 1
+                val description = quantityString(
+                    R.plurals.insights_keyword_row_cd,
+                    item.count,
+                    rank,
+                    item.keyword,
+                    item.count,
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clearAndSetSemantics { contentDescription = description },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(modifier = Modifier.width(32.dp), contentAlignment = Alignment.Center) {
+                        val medal = RANK_EMOJI.getOrNull(index)
+                        if (medal != null) {
+                            EmojiText(text = medal, fontSize = 22.sp)
+                        } else {
+                            Text(text = rank.toString(), style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = item.keyword,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = colors.textPrimary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        BarTrack(
+                            fraction = item.count.toFloat() / max,
+                            color = if (index == 0) colors.lemon else colors.grape,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(14.dp),
+                        )
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    StickerBadge(
+                        text = quantityString(R.plurals.insights_keyword_times, item.count, item.count),
+                        containerColor = if (index == 0) colors.lemon else colors.surfaceAlt,
+                        contentColor = if (index == 0) colors.onAccent else colors.textPrimary,
+                        rotation = if (index % 2 == 0) -3f else 2f,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.insights_keyword_caption),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
+    }
+}
+
+/** Rank marks of the leaderboard, best first; ranks beyond these are shown as plain numbers. */
+private val RANK_EMOJI = listOf("🥇", "🥈", "🥉", "4️⃣", "5️⃣")
 
 // ---- Achievements -----------------------------------------------------------------------------
 

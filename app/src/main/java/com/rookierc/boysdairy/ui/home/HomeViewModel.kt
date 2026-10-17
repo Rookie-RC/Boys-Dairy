@@ -9,7 +9,9 @@ import com.rookierc.boysdairy.appContainer
 import com.rookierc.boysdairy.data.EntryRepository
 import com.rookierc.boysdairy.data.SettingsRepository
 import com.rookierc.boysdairy.domain.Entry
+import com.rookierc.boysdairy.domain.NextTimeForecast
 import com.rookierc.boysdairy.domain.backupReminderSnoozeEnd
+import com.rookierc.boysdairy.domain.forecastNextTime
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,11 +19,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 
 /**
- * Raw data only: everything that depends on "today" (stats, cooldown, calendar highlight) is
- * derived in the UI from [entries] and the date, which is refreshed on resume and at midnight.
+ * Mostly raw data: what depends on "today" (stats, cooldown, calendar highlight) is derived in the
+ * UI from [entries] and the date, which is refreshed on resume and at midnight. The exception is
+ * [forecast], computed here and recomputed whenever the screen reports a new date.
  */
 data class HomeUiState(
     val isLoading: Boolean = true,
@@ -32,28 +37,36 @@ data class HomeUiState(
     val lastExportAt: Long? = null,
     /** The backup reminder is snoozed until then (epoch millis); `null` = never snoozed. */
     val backupReminderSnoozedUntil: Long? = null,
+    /** "Next time" forecast card; `null` without entries (no card). In memory only. */
+    val forecast: NextTimeForecast? = null,
 )
 
 class HomeViewModel(
     repository: EntryRepository,
     private val settings: SettingsRepository,
     private val clock: () -> Long = System::currentTimeMillis,
+    private val zone: () -> ZoneId = ZoneId::systemDefault,
 ) : ViewModel() {
 
     private val visibleMonth = MutableStateFlow(YearMonth.now())
+
+    /** Last date reported by [onDayChanged]; a new value only triggers a fresh forecast. */
+    private val day = MutableStateFlow<LocalDate?>(null)
 
     val uiState: StateFlow<HomeUiState> = combine(
         repository.entries,
         visibleMonth,
         settings.lastExportAt,
         settings.backupReminderSnoozedUntil,
-    ) { entries, month, lastExportAt, snoozedUntil ->
+        day,
+    ) { entries, month, lastExportAt, snoozedUntil, _ ->
         HomeUiState(
             isLoading = false,
             entries = entries,
             visibleMonth = month,
             lastExportAt = lastExportAt,
             backupReminderSnoozedUntil = snoozedUntil,
+            forecast = forecastNextTime(entries, clock(), zone()),
         )
     }.stateIn(
         scope = viewModelScope,
@@ -67,6 +80,11 @@ class HomeViewModel(
 
     fun showMonth(month: YearMonth) {
         visibleMonth.value = month
+    }
+
+    /** The screen's "today" changed (resume, midnight): the forecast's "days until" moves with it. */
+    fun onDayChanged(today: LocalDate) {
+        day.value = today
     }
 
     /** "Remind me later" on the backup reminder card. */

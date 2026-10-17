@@ -42,6 +42,9 @@ enum class EditionEmoji(val boy: String, val girl: String) {
 
     /** Marathon achievement. */
     RUNNER("🏃", "🏃‍♀️"),
+
+    /** Solo keyword: form card, entry card line, report leaderboard (the boy edition's 「老师」). */
+    MUSE("👩‍🏫", "💡"),
     ;
 
     fun of(edition: Edition): String = when (edition) {

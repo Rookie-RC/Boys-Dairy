@@ -57,8 +57,8 @@ import java.time.ZoneId
 import kotlinx.coroutines.flow.drop
 
 /**
- * "战绩回放": every entry, newest first and grouped by month, searchable by note, filterable by
- * type, deletable with undo. Tapping a card opens it for editing via [onEditEntry].
+ * "战绩回放": every entry, newest first and grouped by month, searchable by note or keyword,
+ * filterable by type, deletable with undo. Tapping a card opens it for editing via [onEditEntry].
  *
  * Title, search field and type chips are the first items of the list and scroll away with it
  * (only the month headers stick), so with large system fonts the list keeps most of the screen.

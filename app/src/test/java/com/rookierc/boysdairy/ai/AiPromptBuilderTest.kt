@@ -44,6 +44,31 @@ class AiPromptBuilderTest {
     }
 
     @Test
+    fun soloKeywordsNeverAppearInEitherPrompt() {
+        // Privacy decision: the keyword stays on the device, notes or not, whatever the options.
+        val entries = listOf(
+            dayEntry(0, note = "a note").copy(keyword = "KEYWORD-SECRET-MIA"),
+            dayEntry(1).copy(keyword = "小蓝老师"),
+            dayEntry(2, note = "plain note"),
+        )
+        val optionSets = listOf(withoutNotes, withNotes, AiOptions(includeNotes = true, languageTag = "zh-CN"))
+        for (options in optionSets) {
+            val system = AiPromptBuilder.systemPrompt(options)
+            val user = message(entries, options)
+            for (text in listOf(system, user)) {
+                assertFalse(text.contains("KEYWORD-SECRET"))
+                assertFalse(text.contains("小蓝"))
+                assertFalse(text.contains("keyword", ignoreCase = true))
+            }
+        }
+        // The keyword is not the reason the prompt looks different: same text as without keywords.
+        val plain = entries.map { it.copy(keyword = null) }
+        for (options in optionSets) {
+            assertEquals(message(plain, options), message(entries, options))
+        }
+    }
+
+    @Test
     fun notesAppearWhenIncludeNotesIsTrue() {
         val text = message(listOf(dayEntry(0, note = "felt great today")), withNotes)
         assertTrue(text.contains("felt great today"))

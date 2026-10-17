@@ -5,6 +5,7 @@ import com.rookierc.boysdairy.domain.Achievement
 import com.rookierc.boysdairy.domain.Entry
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.InsightsPeriod
+import com.rookierc.boysdairy.domain.KeywordCount
 import com.rookierc.boysdairy.millisOf
 import com.rookierc.boysdairy.testEntry
 import org.junit.Assert.assertEquals
@@ -64,6 +65,39 @@ class InsightsReportTest {
         val run = listOf(entryOn(9, 15), entryOn(9, 16), entryOn(9, 17), entryOn(9, 18))
         assertEquals(4, report(run, InsightsPeriod.ALL).longestStreak)
         assertEquals(2, report(run, InsightsPeriod.LAST_30_DAYS).longestStreak)
+    }
+
+    @Test
+    fun theKeywordLeaderboardFollowsTheRange() {
+        val withKeywords = listOf(
+            entryOn(10, 12).copy(keyword = "mia"),
+            entryOn(10, 10).copy(keyword = "Zoe"),
+            entryOn(10, 5).copy(keyword = "MIA"),
+            entryOn(9, 10).copy(keyword = "Zoe"), // outside the last 30 days
+            entryOn(9, 9).copy(keyword = "Zoe"), // same
+            entryOn(10, 11, type = EntryType.PARTNER),
+        )
+        assertEquals(
+            listOf(KeywordCount("mia", 2, millisOf(2026, 10, 12)), KeywordCount("Zoe", 1, millisOf(2026, 10, 10))),
+            report(withKeywords, InsightsPeriod.LAST_30_DAYS).keywords,
+        )
+        assertEquals(listOf("Zoe", "mia"), report(withKeywords, InsightsPeriod.ALL).keywords.map { it.keyword })
+    }
+
+    @Test
+    fun theKeywordLeaderboardIsEmptyWithoutKeywordsInTheRange() {
+        assertTrue(report(entries, InsightsPeriod.ALL).keywords.isEmpty())
+        val oldKeyword = listOf(entryOn(10, 10), entryOn(8, 20).copy(keyword = "Mia"))
+        assertTrue(report(oldKeyword, InsightsPeriod.LAST_30_DAYS).keywords.isEmpty())
+        assertEquals(1, report(oldKeyword, InsightsPeriod.ALL).keywords.size)
+    }
+
+    @Test
+    fun theKeywordLeaderboardHasAtMostFiveRows() {
+        val many = (1..7).map { day -> entryOn(10, day).copy(keyword = "k$day") }
+        val keywords = report(many, InsightsPeriod.ALL).keywords
+        assertEquals(INSIGHTS_TOP_KEYWORDS, keywords.size)
+        assertEquals(listOf("k7", "k6", "k5", "k4", "k3"), keywords.map { it.keyword })
     }
 
     @Test

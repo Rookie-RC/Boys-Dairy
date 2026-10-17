@@ -14,9 +14,15 @@ import com.rookierc.boysdairy.data.Edition
 import com.rookierc.boysdairy.data.EntryRepository
 import com.rookierc.boysdairy.data.SettingsRepository
 import com.rookierc.boysdairy.data.ThemeMode
+import com.rookierc.boysdairy.security.BiometricCapability
+import com.rookierc.boysdairy.security.BiometricSettingRow
+import com.rookierc.boysdairy.security.BiometricUnlock
 import com.rookierc.boysdairy.security.LockManager
 import com.rookierc.boysdairy.security.PinCheckResult
 import com.rookierc.boysdairy.security.PinHasher
+import com.rookierc.boysdairy.security.biometricSettingRow
+import com.rookierc.boysdairy.ui.common.BiometricOutcome
+import com.rookierc.boysdairy.ui.common.BiometricPromptRequest
 import com.rookierc.boysdairy.ui.lock.LockoutCountdown
 import com.rookierc.boysdairy.ui.lock.PinMessage
 import kotlinx.coroutines.CancellationException
@@ -24,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -55,11 +62,24 @@ data class ClearAllUiState(
 /** The last successful export as read from settings; [atMillis] `null` = never exported. */
 data class LastExport(val atMillis: Long?)
 
+/** The "Fingerprint unlock" row. [busy] = turning it on (new key, confirmation prompt open). */
+data class BiometricSettingUiState(
+    val row: BiometricSettingRow = BiometricSettingRow.HIDDEN,
+    val busy: Boolean = false,
+) {
+    val checked: Boolean get() = row == BiometricSettingRow.ON
+    val toggleEnabled: Boolean get() = !busy && (row == BiometricSettingRow.ON || row == BiometricSettingRow.OFF)
+}
+
+/** One-shot snackbar after trying to turn fingerprint unlock on. */
+enum class BiometricSettingMessage { ENABLED, ENABLE_FAILED }
+
 class SettingsViewModel(
     private val settings: SettingsRepository,
     private val apiKeyStore: ApiKeyStore,
     private val entryRepository: EntryRepository,
     private val lockManager: LockManager,
+    private val biometricUnlock: BiometricUnlock,
 ) : ViewModel() {
 
     val themeMode: StateFlow<ThemeMode> = settings.themeMode.stateIn(
@@ -82,10 +102,22 @@ class SettingsViewModel(
         viewModelScope.launch { settings.setThemeMode(mode) }
     }
 
-    /** Boy / girl edition; the whole unlocked UI switches as soon as it is stored. */
-    fun setEdition(edition: Edition) {
+    // ---- Boy / girl edition: picking the other one asks first --------------------------------
+
+    private val editionSwitch = EditionSwitch { edition ->
+        // The whole unlocked UI switches as soon as it is stored.
         viewModelScope.launch { settings.setEdition(edition) }
     }
+
+    /** The edition waiting in the "are you sure" dialog; `null` = no dialog. */
+    val pendingEdition: StateFlow<Edition?> = editionSwitch.pending
+
+    /** A tap on an edition chip: only opens the confirmation, nothing is stored yet. */
+    fun requestEdition(target: Edition, current: Edition) = editionSwitch.request(target, current)
+
+    fun confirmEditionSwitch() = editionSwitch.confirm()
+
+    fun cancelEditionSwitch() = editionSwitch.cancel()
 
     fun selectProvider(provider: AiProvider) {
         viewModelScope.launch { settings.setAiProvider(provider) }
@@ -111,6 +143,97 @@ class SettingsViewModel(
     /** "Lock now": back to the PIN screen right away; the session (and this ViewModel) is torn down. */
     fun lockNow() {
         lockManager.lock()
+    }
+
+    // ---- Fingerprint unlock -------------------------------------------------------------------
+
+    /** `null` until read; the row stays hidden meanwhile. */
+    private val biometricCapability = MutableStateFlow<BiometricCapability?>(null)
+    private val biometricBusy = MutableStateFlow(false)
+
+    val biometric: StateFlow<BiometricSettingUiState> = combine(
+        biometricUnlock.enabled,
+        biometricCapability,
+        biometricBusy,
+    ) { enabled, capability, busy ->
+        BiometricSettingUiState(
+            row = capability?.let { biometricSettingRow(it, enabled) } ?: BiometricSettingRow.HIDDEN,
+            busy = busy,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = BiometricSettingUiState(),
+    )
+
+    private val _biometricPrompt = MutableStateFlow<BiometricPromptRequest?>(null)
+
+    /** The confirmation prompt to show while turning the feature on. */
+    val biometricPrompt: StateFlow<BiometricPromptRequest?> = _biometricPrompt.asStateFlow()
+
+    private val _biometricMessage = MutableStateFlow<BiometricSettingMessage?>(null)
+    val biometricMessage: StateFlow<BiometricSettingMessage?> = _biometricMessage.asStateFlow()
+
+    /** Re-reads what the device offers (fingerprints may have been enrolled meanwhile). */
+    fun refreshBiometric() {
+        viewModelScope.launch { biometricCapability.value = biometricUnlock.capability() }
+    }
+
+    /**
+     * On: a fresh key, then one fingerprint check; the setting is only stored once that check went
+     * through ([onBiometricPromptOutcome]). Off: immediately, and the key is deleted.
+     */
+    fun setBiometricUnlock(on: Boolean) {
+        if (!on) {
+            viewModelScope.launch { quietly { biometricUnlock.disable() } }
+            return
+        }
+        if (biometricBusy.value || biometric.value.row != BiometricSettingRow.OFF) return
+        biometricBusy.value = true
+        viewModelScope.launch {
+            val cipher = quietly { biometricUnlock.prepareEnable() }
+            if (cipher == null) {
+                biometricBusy.value = false
+                _biometricMessage.value = BiometricSettingMessage.ENABLE_FAILED
+            } else {
+                _biometricPrompt.value = BiometricPromptRequest(cipher)
+            }
+        }
+    }
+
+    fun onBiometricPromptHandled(request: BiometricPromptRequest) {
+        _biometricPrompt.compareAndSet(request, null)
+    }
+
+    fun onBiometricPromptOutcome(outcome: BiometricOutcome) {
+        viewModelScope.launch {
+            when (outcome) {
+                is BiometricOutcome.Succeeded -> {
+                    val enabled = quietly { biometricUnlock.completeEnable(outcome.cipher) } == true
+                    _biometricMessage.value =
+                        if (enabled) BiometricSettingMessage.ENABLED else BiometricSettingMessage.ENABLE_FAILED
+                }
+                BiometricOutcome.Cancelled -> quietly { biometricUnlock.abortEnable() }
+                BiometricOutcome.LockedOut, BiometricOutcome.Failed -> {
+                    quietly { biometricUnlock.abortEnable() }
+                    _biometricMessage.value = BiometricSettingMessage.ENABLE_FAILED
+                }
+            }
+            biometricBusy.value = false
+        }
+    }
+
+    fun onBiometricMessageShown() {
+        _biometricMessage.value = null
+    }
+
+    /** Runs [block]; storage / Keystore trouble yields `null` (nothing is logged). */
+    private suspend fun <T> quietly(block: suspend () -> T): T? = try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
     }
 
     // ---- Danger zone: delete all entries ----------------------------------------------------
@@ -208,6 +331,7 @@ class SettingsViewModel(
                     apiKeyStore = container.apiKeyStore,
                     entryRepository = container.entryRepository,
                     lockManager = container.lockManager,
+                    biometricUnlock = container.biometricUnlock,
                 )
             }
         }

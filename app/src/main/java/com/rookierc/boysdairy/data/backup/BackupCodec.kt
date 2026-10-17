@@ -3,25 +3,32 @@ package com.rookierc.boysdairy.data.backup
 import com.rookierc.boysdairy.domain.Entry
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.Mood
+import com.rookierc.boysdairy.domain.normalizeKeyword
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
 /**
- * JSON (de)serialisation of the diary. Format, version 1:
+ * JSON (de)serialisation of the diary. Format, version 2:
  *
  * ```
- * {"app":"boysdairy","formatVersion":1,"exportedAt":<epoch millis>,
+ * {"app":"boysdairy","formatVersion":2,"exportedAt":<epoch millis>,
  *  "entries":[{"timestamp":<epoch millis>,"type":"SOLO","durationMinutes":12,
- *              "moodBefore":"STRESSED","moodAfter":"RELAXED","pleasure":7,"note":"..."}]}
+ *              "moodBefore":"STRESSED","moodAfter":"RELAXED","pleasure":7,"note":"...",
+ *              "keyword":"..."}]}
  * ```
+ *
+ * Version history: 1 had no `keyword`; 2 adds it as an optional string, written only when the
+ * entry has one. Both versions are read; `keyword` is optional in either (missing or `null` =
+ * none) and normalised like the form does it ([normalizeKeyword]: trimmed, blank = none, never
+ * kept on a partner entry, never shortened).
  *
  * Enums are written by name. Row ids, the PIN, the API key and all settings are deliberately
  * not part of a backup.
  */
 object BackupCodec {
     const val APP_ID = "boysdairy"
-    const val FORMAT_VERSION = 1
+    const val FORMAT_VERSION = 2
 
     const val MIN_DURATION_MINUTES = 1
     const val MAX_DURATION_MINUTES = 600
@@ -39,20 +46,22 @@ object BackupCodec {
     private const val KEY_MOOD_AFTER = "moodAfter"
     private const val KEY_PLEASURE = "pleasure"
     private const val KEY_NOTE = "note"
+    private const val KEY_KEYWORD = "keyword"
 
     fun encode(entries: List<Entry>, exportedAtMillis: Long): String {
         val array = JSONArray()
         for (entry in entries) {
-            array.put(
-                JSONObject()
-                    .put(KEY_TIMESTAMP, entry.timestamp)
-                    .put(KEY_TYPE, entry.type.name)
-                    .put(KEY_DURATION, entry.durationMinutes)
-                    .put(KEY_MOOD_BEFORE, entry.moodBefore.name)
-                    .put(KEY_MOOD_AFTER, entry.moodAfter.name)
-                    .put(KEY_PLEASURE, entry.pleasure)
-                    .put(KEY_NOTE, entry.note),
-            )
+            val obj = JSONObject()
+                .put(KEY_TIMESTAMP, entry.timestamp)
+                .put(KEY_TYPE, entry.type.name)
+                .put(KEY_DURATION, entry.durationMinutes)
+                .put(KEY_MOOD_BEFORE, entry.moodBefore.name)
+                .put(KEY_MOOD_AFTER, entry.moodAfter.name)
+                .put(KEY_PLEASURE, entry.pleasure)
+                .put(KEY_NOTE, entry.note)
+            // Absent rather than null: an entry without a keyword looks exactly like in version 1.
+            entry.keyword?.let { obj.put(KEY_KEYWORD, it) }
+            array.put(obj)
         }
         return JSONObject()
             .put(KEY_APP, APP_ID)
@@ -108,10 +117,18 @@ object BackupCodec {
             return values.firstOrNull { it.name == name } ?: throw invalid("entry $index: unknown $key")
         }
 
+        /** Optional string: missing or JSON null = `null`; any other non-string is malformed. */
+        fun optionalText(key: String): String? = when (val value = obj.opt(key)) {
+            null, JSONObject.NULL -> null
+            is String -> value
+            else -> throw invalid("entry $index: $key not a string")
+        }
+
+        val type = enumValue(KEY_TYPE, EntryType.entries.toTypedArray())
         return Entry(
             id = 0,
             timestamp = number(KEY_TIMESTAMP),
-            type = enumValue(KEY_TYPE, EntryType.entries.toTypedArray()),
+            type = type,
             durationMinutes = number(KEY_DURATION)
                 .coerceIn(MIN_DURATION_MINUTES.toLong(), MAX_DURATION_MINUTES.toLong()).toInt(),
             moodBefore = enumValue(KEY_MOOD_BEFORE, Mood.entries.toTypedArray()),
@@ -119,6 +136,7 @@ object BackupCodec {
             pleasure = number(KEY_PLEASURE)
                 .coerceIn(MIN_PLEASURE.toLong(), MAX_PLEASURE.toLong()).toInt(),
             note = text(KEY_NOTE),
+            keyword = normalizeKeyword(optionalText(KEY_KEYWORD), type),
         )
     }
 

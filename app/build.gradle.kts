@@ -13,8 +13,8 @@ android {
         applicationId = "com.rookierc.boysdairy"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         // FLAG_SECURE (blocks screenshots and hides content in recents).
         buildConfigField("boolean", "SECURE_SCREEN", "true")
@@ -81,6 +81,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.androidx.datastore.preferences)
+
+    implementation(libs.androidx.biometric)
 
     implementation(libs.anthropic.java)
     implementation(libs.okhttp)

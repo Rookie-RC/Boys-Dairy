@@ -32,6 +32,7 @@ fun testEntry(
     pleasure: Int = 5,
     note: String = "",
     id: Long = 0,
+    keyword: String? = null,
 ) = Entry(
     id = id,
     timestamp = timestamp,
@@ -41,6 +42,7 @@ fun testEntry(
     moodAfter = moodAfter,
     pleasure = pleasure,
     note = note,
+    keyword = keyword,
 )
 
 /** In-memory [EntryDao] mimicking Room's auto-generated ids and ordering. */

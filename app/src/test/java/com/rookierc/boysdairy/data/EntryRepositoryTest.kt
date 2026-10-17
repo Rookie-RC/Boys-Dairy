@@ -49,6 +49,17 @@ class EntryRepositoryTest {
     }
 
     @Test
+    fun keywordIsStoredReadBackAndUpdated() = runBlocking {
+        val id = repository.add(testEntry(timestamp = 42, keyword = "Mia"))
+        assertEquals("Mia", repository.get(id)?.keyword)
+        assertEquals("Mia", dao.getById(id)?.keyword)
+
+        repository.update(repository.get(id)!!.copy(keyword = null))
+        assertNull(repository.get(id)?.keyword)
+        assertNull(dao.getById(id)?.keyword)
+    }
+
+    @Test
     fun addAllInsertsNewRowsAndIgnoresSuppliedIds() = runBlocking {
         repository.add(testEntry(timestamp = 1))
         repository.addAll(listOf(testEntry(timestamp = 2, id = 1), testEntry(timestamp = 3, id = 1)))

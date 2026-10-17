@@ -35,6 +35,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -55,7 +57,9 @@ private val keypadRows = listOf(
 
 /**
  * Stateless PIN entry layout: optional hero emoji, title, subtitle, 4 dots, message line and a
- * chunky 3x4 keypad. Shared by the lock screen and the change-PIN screen.
+ * chunky 3x4 keypad. Shared by the lock screen and the change-PIN screen. With [onBiometricKey]
+ * (lock screen only) the empty bottom-left slot becomes a 👆 key described by [biometricKeyLabel];
+ * it stays usable while [enabled] is false.
  *
  * Whenever [shakeTrigger] changes to a value > 0 the dots and the message wiggle (wrong PIN),
  * with one firm haptic buzz. Keys give a light tick. Haptics go through Compose's
@@ -74,6 +78,8 @@ fun PinEntryContent(
     subtitle: String? = null,
     heroEmoji: String? = null,
     shakeTrigger: Int = 0,
+    biometricKeyLabel: String? = null,
+    onBiometricKey: (() -> Unit)? = null,
 ) {
     val colors = FunTheme.colors
     val haptics = LocalHapticFeedback.current
@@ -180,7 +186,16 @@ fun PinEntryContent(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Spacer(Modifier.size(keySize))
+                    if (onBiometricKey != null && biometricKeyLabel != null) {
+                        BiometricKey(
+                            size = keySize,
+                            label = biometricKeyLabel,
+                            onClick = onBiometricKey,
+                            haptics = haptics,
+                        )
+                    } else {
+                        Spacer(Modifier.size(keySize))
+                    }
                     DigitKey(digit = '0', size = keySize, enabled = enabled, onDigit = onDigit, haptics = haptics)
                     BackspaceKey(size = keySize, enabled = enabled, onBackspace = onBackspace, haptics = haptics)
                 }
@@ -235,6 +250,37 @@ private fun DigitKey(
         contentAlignment = Alignment.Center,
     ) {
         Text(text = digit.toString(), style = MaterialTheme.typography.headlineMedium)
+    }
+}
+
+/**
+ * 👆 key in the keypad's empty bottom-left slot: opens the fingerprint prompt. Always enabled,
+ * also during a PIN lockout (fingerprint tries are rate-limited by the system itself).
+ */
+@Composable
+private fun BiometricKey(
+    size: Dp,
+    label: String,
+    onClick: () -> Unit,
+    haptics: HapticFeedback,
+) {
+    val colors = FunTheme.colors
+    FunSurface(
+        modifier = Modifier
+            .size(size)
+            .semantics { contentDescription = label },
+        shape = FunShapes.key,
+        containerColor = colors.mint,
+        contentColor = colors.onAccent,
+        shadowOffset = 3.dp,
+        onClick = {
+            haptics.keyTick()
+            onClick()
+        },
+        role = Role.Button,
+        contentAlignment = Alignment.Center,
+    ) {
+        EmojiText(text = "👆", fontSize = 28.sp)
     }
 }
 
