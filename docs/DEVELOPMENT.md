@@ -1,8 +1,41 @@
 # 开发指南
 
-给人和 Agent 共用的操作手册。项目规则与代码地图见 [AGENTS.md](../AGENTS.md)，设计见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+给人和 Agent 共用的操作手册：上手、命令、调试、CI，以及常见改动的步骤。面向用户的介绍见 [README.md](../README.md)，项目规则与代码地图见 [AGENTS.md](../AGENTS.md)，设计见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
-## 环境要求
+## 概览
+
+Boys Dairy 是一个原生 Android 应用（启动器名称「Daily Calc」，计算器图标伪装），单模块 `:app`，包名 `com.rookierc.boysdairy`，最低支持 Android 8.0（API 26），目标 / 编译 API 35。本仓库此前是一个 React 网页应用，0.1.0 起已被这个原生应用完全取代（网页版及其 GitHub Pages 部署流程已删除）。
+
+技术栈：Kotlin 2.1.0、AGP 8.7.3、Gradle 8.11.1、Compose BOM 2024.12.01（Material 3，未启用动态取色）、Navigation Compose、Room 2.6.1（KSP）、DataStore Preferences、androidx.biometric（可选的指纹解锁）。AI：Claude 走官方 Anthropic Java SDK，DeepSeek 直接用 OkHttp + `org.json` 调它的 OpenAI 兼容接口。依赖版本见 `gradle/libs.versions.toml`。
+
+### 文档索引
+
+| 文档 | 内容 |
+| --- | --- |
+| [README.md](../README.md) | 面向用户：是什么、能做什么、隐私一览、安装、常见问题 |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 分层、依赖容器、锁与会话生命周期、导航、数据模型、备份格式、AI 请求流程、设计系统 |
+| [PRIVACY.md](PRIVACY.md) | 存了什么、存在哪、什么会离开设备、4 位 PIN 的诚实局限 |
+| DEVELOPMENT.md（本文） | 环境搭建、命令、项目结构、模拟器、调试、CI、加文案、换 AI 模型、装到手机 / 发布构建 |
+| [AGENTS.md](../AGENTS.md) | 给编码 Agent 的项目指南（命令、代码地图、硬性规则） |
+| [CLAUDE.md](../CLAUDE.md) | Claude Code 专用补充说明 |
+| [CHANGELOG.md](../CHANGELOG.md) | 版本变更记录 |
+
+## 快速开始
+
+需要 JDK 17 和 Android SDK 35。macOS 上可以一键装好（用户级安装，不需要 sudo 和 Homebrew）：
+
+```bash
+scripts/setup-macos.sh --with-emulator --accept-licenses   # 一次性：JDK 17 + Android SDK + 模拟器（会代你接受 SDK 许可）
+./gradlew testDebugUnitTest                                 # 跑单元测试
+./gradlew assembleDebug                                     # 构建 → app/build/outputs/apk/debug/app-debug.apk
+scripts/emulator.sh --install                               # 启动模拟器，安装并打开应用
+```
+
+脚本做了什么、其他平台怎么装，见下面的「环境搭建」；更多命令见「常用命令」；想装到自己手机上日常用，见「[装到自己手机上](#装到自己手机上)」。
+
+## 环境搭建
+
+### 环境要求
 
 | 项 | 版本 |
 | --- | --- |
@@ -11,13 +44,9 @@
 | Gradle | wrapper 8.11.1（`./gradlew` 自动下载，首次构建需要联网） |
 | AGP / Kotlin | 8.7.3 / 2.1.0 |
 
-## macOS 一键搭建
+### macOS 一键搭建
 
-```bash
-scripts/setup-macos.sh --with-emulator --accept-licenses
-```
-
-用户级安装，不需要 sudo，也不用 Homebrew（Intel Mac 上 Homebrew 没有预编译包，要从源码编译，实际不可用）。脚本幂等，已装好的步骤会跳过：
+快速开始第一行的 `scripts/setup-macos.sh` 是用户级安装，不需要 sudo，也不用 Homebrew（Intel Mac 上 Homebrew 没有预编译包，要从源码编译，实际不可用）。脚本幂等，已装好的步骤会跳过：
 
 - Temurin JDK 17 → `~/Library/Java/JavaVirtualMachines/temurin-17.jdk`（从 Adoptium API 下载，校验 SHA-256）。
 - Android 命令行工具 → `~/Library/Android/sdk/cmdline-tools/latest`（默认从 dl.google.com 下载；设 `CMDLINE_TOOLS_SHA256` 可校验，`CMDLINE_TOOLS_URL` 可换地址）。
@@ -34,9 +63,11 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 export PATH="$PATH:$ANDROID_HOME/platform-tools"
 ```
 
-**其他平台**没有脚本：自己装 JDK 17 和上表的 SDK 包即可。
+### 其他平台
 
-## local.properties
+没有脚本：自己装 JDK 17 和上表的 SDK 包即可。
+
+### local.properties
 
 仓库根目录的 `local.properties` 只有一行，告诉 Gradle SDK 在哪（已被 `.gitignore` 忽略，不要提交）：
 
@@ -48,24 +79,60 @@ sdk.dir=/Users/你/Library/Android/sdk
 
 ## 常用命令
 
+跑全部单元测试和构建 debug APK 的命令见「快速开始」，其余常用的：
+
 | 目的 | 命令 |
 | --- | --- |
-| 单元测试 | `./gradlew testDebugUnitTest` |
-| 只跑一部分 | `./gradlew testDebugUnitTest --tests 'com.rookierc.boysdairy.ai.*'` |
-| 构建 debug APK | `./gradlew assembleDebug`（产物 `app/build/outputs/apk/debug/app-debug.apk`） |
+| 只跑一部分测试 | `./gradlew testDebugUnitTest --tests 'com.rookierc.boysdairy.ai.*'` |
 | Lint | `./gradlew lintDebug`（报告 `app/build/reports/lint-results-debug.html`） |
-| 装到已连接设备 / 模拟器 | `./gradlew installDebug` |
-| 与 CI 完全一致 | `./gradlew --no-daemon testDebugUnitTest assembleDebug lintDebug` |
+| 装到已连接设备 / 模拟器 | `./gradlew installDebug`（debug 版，只用于开发） |
+| 与 CI 完全一致（交付前跑一遍） | `./gradlew --no-daemon testDebugUnitTest assembleDebug lintDebug` |
+| 构建 release APK | 见「[装到自己手机上](#装到自己手机上)」 |
 
 单元测试报告在 `app/build/reports/tests/testDebugUnitTest/index.html`。同一个检出目录里同一时间只跑一个 Gradle。
 
-## 模拟器
+## 项目结构
 
-```bash
-scripts/emulator.sh --install
+```
+.
+├── README.md  AGENTS.md  CLAUDE.md  CHANGELOG.md
+├── docs/                            # ARCHITECTURE / PRIVACY / DEVELOPMENT
+├── scripts/
+│   ├── setup-macos.sh               # 安装 JDK 17 + Android SDK（+ 模拟器），写 local.properties
+│   └── emulator.sh                  # 启动模拟器，可选安装并打开应用
+├── .github/
+│   ├── workflows/android.yml        # CI：单元测试 + debug 构建 + lint
+│   └── pull_request_template.md
+├── build.gradle.kts  settings.gradle.kts  gradle.properties
+├── gradle/libs.versions.toml        # 版本目录
+└── app/
+    ├── build.gradle.kts  proguard-rules.pro
+    ├── schemas/                     # Room 导出的数据库 schema
+    └── src/
+        ├── main/
+        │   ├── AndroidManifest.xml
+        │   ├── res/                 # values（中文，默认）/ values-en / values-night / xml / drawable / mipmap
+        │   └── java/com/rookierc/boysdairy/
+        │       ├── BoysDairyApp.kt  # Application + AppContainer（手动依赖注入）+ 进程级自动上锁
+        │       ├── MainActivity.kt  # FLAG_SECURE（仅 release）、edge-to-edge
+        │       ├── domain/          # 纯 Kotlin：Entry、日期逻辑、统计、完整战报、今日宜忌、单人关键词、备份提醒规则
+        │       ├── data/            # Room 实体 / DAO / 仓库、DataStore 设置、男 / 女生版
+        │       │   └── backup/      # JSON 导出 / 导入（编码、合并、引擎、SAF 管理器）
+        │       ├── security/        # PinHasher、PinAttemptLimiter、LockManager、持久化锁定记录、指纹解锁
+        │       ├── ai/              # AI 锐评：提示词、服务编排、AiProvider（固定模型）、各服务商实现、Key 加密存储
+        │       └── ui/
+        │           ├── AppRoot.kt  SessionStores.kt  MainNavigation.kt  FunBottomBar.kt
+        │           ├── theme/       # FunColors / FunShapes / Material3 主题
+        │           ├── common/      # Fun* 设计系统组件、按男 / 女生版取文案与 emoji
+        │           └── lock/ edition/ home/ add/ history/ insights/ ai/ backup/ settings/
+        └── test/                    # JVM 单元测试，目录与 main 镜像
 ```
 
-启动 AVD、等待开机、`./gradlew installDebug`、再打开应用。选项：
+每个包的职责更细的说明见 [AGENTS.md](../AGENTS.md) 的「代码地图」。
+
+## 模拟器
+
+快速开始最后一行的 `scripts/emulator.sh --install` 会启动 AVD、等待开机、`./gradlew installDebug`、再打开应用。选项：
 
 | 选项 | 作用 |
 | --- | --- |
@@ -138,7 +205,7 @@ PR 模板 `.github/pull_request_template.md` 要求填：变更说明、截图�
 6. 用你自己的 Key 在模拟器上真跑一次 AI 页（Key 只输入到应用里，不要写进仓库、日志或聊天）。
 7. 在 `CHANGELOG.md` 的 `[Unreleased]` 记一笔；如果请求地址变了，同步 `docs/PRIVACY.md`。
 
-`AiProviderSpec.endpointHost` 只是展示给用户看的主机名（界面和隐私文案），真正的地址在 `DeepSeekConfig.BASE_URL`（DeepSeek）或 SDK 默认值（Claude）。改地址时三处要一起改。
+`AiProviderSpec.endpointHost` 只是请求主机名的记录（隐私文档引用、`AiProviderTest` 校验，界面不显示），真正的地址在 `DeepSeekConfig.BASE_URL`（DeepSeek）或 SDK 默认值（Claude）。改地址时三处要一起改。
 
 ## 新增一个 AI 服务商
 
@@ -146,25 +213,42 @@ PR 模板 `.github/pull_request_template.md` 要求填：变更说明、截图�
 2. 写一个 `AiTextGenerator` 实现（输入 `AiRequest`，输出 `AiResult`）：Key 只放请求头，不跟随重定向，不打印请求 / 响应体，把服务商的错误映射成 `AiError`；在 `AppContainer.aiAnalysisService` 的 `generators` 映射里注册。
 3. 补 `ui/common/AiProviderUi.kt` 的 `nameRes()` / `taglineRes()` / `emoji()`，以及中英两份 `ai_provider_<id>`、`ai_provider_<id>_tagline` 文案。
 4. 测试：用 `MockWebServer` 验证实际请求和各类响应、状态码映射；`AiProviderTest` 里补固定值断言。
-5. 更新 `docs/PRIVACY.md` 的服务商表、`docs/ARCHITECTURE.md`、`README.md` 和 `CHANGELOG.md`。
+5. 更新 `docs/PRIVACY.md` 的服务商表、`docs/ARCHITECTURE.md`、`README.md`（功能、隐私一览和常见问题里提到服务商的地方；README 面向普通用户，用大白话写，不写类名、主机名这类技术细节）和 `CHANGELOG.md`。
 
 ## 数据库 schema 变更
 
 改 `EntryEntity` 或加表：升 `AppDatabase` 的 `version`，写 `Migration` 并注册，构建后把新生成的 `app/schemas/com.rookierc.boysdairy.data.AppDatabase/<N>.json` 一并提交；不要用 `fallbackToDestructiveMigration`。若字段会进备份，同时评估是否要升 `BackupCodec.FORMAT_VERSION`。
 
-## Release 构建
+## 装到自己手机上
+
+README 的「安装」一节指向这里。仓库**没有发布渠道**：没有上架应用商店，也没有现成的安装包；CI 只产出用于验证的 debug APK（见上文「CI」），不适合日常使用。想日常用，就自己构建并签名 release 版。
+
+**别拿 debug 版记真事**：debug 版 `BuildConfig.SECURE_SCREEN = false`（能截屏 / 录屏，最近任务里能看到内容），而且可调试，连上电脑就能用 `adb run-as` 读走应用私有数据。`./gradlew installDebug` 只用于开发。
+
+### 构建、签名、安装
 
 ```bash
 ./gradlew assembleRelease     # → app/build/outputs/apk/release/app-release-unsigned.apk
 ```
 
-- 仓库里**没有签名配置**，产物是未签名 APK。要装到真机需要自己签名，keystore 放在仓库之外，绝不提交（`*.jks`、`*.keystore` 已被忽略）：
+仓库里**没有签名配置**，产物是未签名 APK，要自己签名后才能安装。keystore 放在仓库之外，绝不提交（`*.jks`、`*.keystore` 已被忽略）：
 
-  ```bash
-  BT="$HOME/Library/Android/sdk/build-tools/35.0.0"
-  "$BT/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk /tmp/aligned.apk
-  "$BT/apksigner" sign --ks ~/path/to/release.jks --out /tmp/boysdairy-release.apk /tmp/aligned.apk
-  ```
+```bash
+# 只需一次：用 JDK 自带的 keytool 生成自己的 keystore（会提示设置密码）
+keytool -genkeypair -v -keystore ~/path/to/release.jks -alias boysdairy -keyalg RSA -keysize 2048 -validity 10000
+
+BT="$HOME/Library/Android/sdk/build-tools/35.0.0"
+"$BT/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk /tmp/aligned.apk
+"$BT/apksigner" sign --ks ~/path/to/release.jks --out /tmp/boysdairy-release.apk /tmp/aligned.apk
+adb install /tmp/boysdairy-release.apk     # 手机需开启 USB 调试；也可以把 APK 拷到手机上点开安装
+```
+
+### 升级与签名
+
+- debug 和 release 用同一个 `applicationId`（`com.rookierc.boysdairy`），但签名不同。以后每次升级都要用**同一个 keystore** 签名，再 `adb install -r` 覆盖安装；签名对不上（包括手机上装的是 debug 版）时系统会拒绝覆盖，只能卸载重装，而卸载会删除全部日记、PIN 和 API Key（云备份与设备迁移是关着的，系统不会替你留一份）。keystore 和它的密码自己备份好。
+- 升级或换签名前，先在应用里导出一次备份（设置 →「数据」），装好后再导入。
+
+### release 构建须知
 
 - Release 版 `BuildConfig.SECURE_SCREEN = true`，即开启 `FLAG_SECURE`：不能截屏、录屏，也不能用 `adb screencap` 验证界面；要看界面请用 debug 版。
 - **R8 / 代码压缩尚未开启**（`isMinifyEnabled = false`，`proguard-rules.pro` 只有占位注释），APK 偏大、类名未混淆。开启前要按 Anthropic SDK（及其依赖）的文档补 keep 规则，并在 release 构建上用两家服务商各完整跑一遍 AI 流程；这一步还没有验证过。
