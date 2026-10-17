@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -32,10 +33,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -49,6 +52,7 @@ import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.ai.AiProvider
 import com.rookierc.boysdairy.ai.AiSelection
 import com.rookierc.boysdairy.data.ThemeMode
+import com.rookierc.boysdairy.security.PinHasher
 import com.rookierc.boysdairy.ui.backup.FileActions
 import com.rookierc.boysdairy.ui.common.ChoiceCard
 import com.rookierc.boysdairy.ui.common.EmojiText
@@ -58,12 +62,14 @@ import com.rookierc.boysdairy.ui.common.FunCard
 import com.rookierc.boysdairy.ui.common.FunConfirmDialog
 import com.rookierc.boysdairy.ui.common.FunDialog
 import com.rookierc.boysdairy.ui.common.FunTextField
+import com.rookierc.boysdairy.ui.common.LocalSnackbar
 import com.rookierc.boysdairy.ui.common.ScreenTitle
 import com.rookierc.boysdairy.ui.common.SectionHeader
 import com.rookierc.boysdairy.ui.common.StickerBadge
 import com.rookierc.boysdairy.ui.common.emoji
 import com.rookierc.boysdairy.ui.common.nameRes
 import com.rookierc.boysdairy.ui.common.taglineRes
+import com.rookierc.boysdairy.ui.lock.pinMessageText
 import com.rookierc.boysdairy.ui.theme.FunTheme
 
 /**
@@ -86,6 +92,17 @@ fun SettingsScreen(
     var language by remember { mutableStateOf(currentAppLanguage()) }
     var showKeyDialog by remember { mutableStateOf(false) }
     var showClearKeyConfirm by remember { mutableStateOf(false) }
+    val hasEntries by viewModel.hasEntries.collectAsStateWithLifecycle()
+    val clearAll by viewModel.clearAll.collectAsStateWithLifecycle()
+    val snackbar = LocalSnackbar.current
+    val clearedMessages = stringArrayResource(R.array.clear_all_done_toasts)
+
+    LaunchedEffect(clearAll.justCleared) {
+        if (clearAll.justCleared) {
+            snackbar.show(clearedMessages.random())
+            viewModel.onClearedNoticeShown()
+        }
+    }
 
     LaunchedEffect(openKeyDialogRequest) {
         if (openKeyDialogRequest) {
@@ -188,6 +205,7 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = FunTheme.colors.textSecondary,
             )
+            DangerZone(hasEntries = hasEntries, onClearAll = viewModel::startClearAll)
         }
 
         // AI
@@ -247,6 +265,132 @@ fun SettingsScreen(
                 },
                 dismissText = stringResource(R.string.action_cancel),
                 onDismiss = { showClearKeyConfirm = false },
+            )
+        }
+    }
+
+    // Delete-all flow: "are you sure" -> current PIN -> delete.
+    when (clearAll.step) {
+        ClearAllStep.CONFIRM -> FunConfirmDialog(
+            title = stringResource(R.string.clear_all_confirm_title),
+            emoji = "🧨",
+            message = stringResource(R.string.clear_all_confirm_message),
+            confirmText = stringResource(R.string.clear_all_confirm_next),
+            confirmColor = FunTheme.colors.danger,
+            onConfirm = viewModel::proceedToPin,
+            dismissText = stringResource(R.string.clear_all_keep),
+            onDismiss = viewModel::cancelClearAll,
+        )
+
+        ClearAllStep.PIN -> ClearAllPinDialog(
+            state = clearAll,
+            onConfirm = viewModel::confirmClearAll,
+            onDismiss = viewModel::cancelClearAll,
+        )
+
+        ClearAllStep.HIDDEN -> Unit
+    }
+}
+
+/** Danger-coloured "delete all entries" button at the bottom of the Data section. */
+@Composable
+private fun DangerZone(hasEntries: Boolean?, onClearAll: () -> Unit) {
+    Spacer(Modifier.height(16.dp))
+    RowDivider()
+    Spacer(Modifier.height(16.dp))
+    ChunkyButton(
+        text = stringResource(R.string.clear_all_button),
+        emoji = "🧨",
+        onClick = onClearAll,
+        containerColor = FunTheme.colors.danger,
+        enabled = hasEntries == true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    if (hasEntries == false) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.clear_all_empty),
+            style = MaterialTheme.typography.bodyMedium,
+            color = FunTheme.colors.textSecondary,
+        )
+    }
+}
+
+/**
+ * Second confirmation: the current 4-digit PIN (numeric keyboard, masked). The typed PIN lives only
+ * in this dialog's in-memory state (plain `remember`, never saved state) and is handed to
+ * [onConfirm]; wrong tries count toward the lockout just like on the lock screen.
+ */
+@Composable
+private fun ClearAllPinDialog(
+    state: ClearAllUiState,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = FunTheme.colors
+    var pin by remember { mutableStateOf("") }
+    LaunchedEffect(state.pinResetToken) { pin = "" }
+
+    val canSubmit = state.inputEnabled && pin.length == PinHasher.PIN_LENGTH
+    val submit = { if (canSubmit) onConfirm(pin) }
+    val errorText = if (state.failed && state.lockoutSeconds == 0) {
+        stringResource(R.string.clear_all_failed)
+    } else {
+        pinMessageText(state.message, state.lockoutSeconds)
+    }
+
+    FunDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.clear_all_pin_title),
+        emoji = "🔐",
+        dismissible = !state.working,
+        buttons = {
+            ChunkyButton(
+                text = stringResource(
+                    if (state.working) R.string.clear_all_working else R.string.clear_all_pin_confirm,
+                ),
+                emoji = "🧨",
+                onClick = submit,
+                containerColor = colors.danger,
+                enabled = canSubmit,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            ChunkyButton(
+                text = stringResource(R.string.clear_all_keep),
+                onClick = onDismiss,
+                containerColor = colors.surface,
+                contentColor = colors.textPrimary,
+                enabled = !state.working,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+    ) {
+        Text(
+            text = stringResource(R.string.clear_all_pin_message),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(12.dp))
+        FunTextField(
+            value = pin,
+            onValueChange = { input -> pin = input.filter { it.isDigit() }.take(PinHasher.PIN_LENGTH) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = stringResource(R.string.clear_all_pin_placeholder),
+            leadingEmoji = "🔢",
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.NumberPassword,
+                imeAction = ImeAction.Done,
+            ),
+            keyboardActions = KeyboardActions(onDone = { submit() }),
+            isError = errorText != null,
+        )
+        if (errorText != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = errorText,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.error,
             )
         }
     }

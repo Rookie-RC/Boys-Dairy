@@ -45,7 +45,7 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 | --- | --- |
 | `BoysDairyApp.kt` | `Application` + `AppContainer`（手动依赖注入，进程内单例）；在 `ProcessLifecycleOwner` `ON_STOP` 时调用 `lockManager.lock()` |
 | `MainActivity.kt` | `FLAG_SECURE`（由 `BuildConfig.SECURE_SCREEN` 控制）、edge-to-edge |
-| `domain/` | 纯 Kotlin，零 Android 依赖：`Entry`、`Mood`、`EntryType`、`DateLogic`（距今天数、月历网格、分组、搜索）、`Stats`（`computeStats`） |
+| `domain/` | 纯 Kotlin，零 Android 依赖：`Entry`、`Mood`、`EntryType`、`DateLogic`（距今天数、月历网格与每日汇总、分组、搜索 / 筛选）、`Stats`（`computeStats`，AI 提示词也用）、`Insights`（完整战报的周 / 星期 / 时段分布、最长连续、成就） |
 | `data/` | Room（`AppDatabase` / `EntryDao` / `EntryEntity`）、`EntryRepository`、`SettingsRepository`（DataStore `settings`：主题、PIN 哈希、所选 AI 服务商 `aiProvider`） |
 | `data/backup/` | JSON 备份：`BackupCodec`（格式）、`BackupMerge`（去重）、`BackupEngine`（流读写，可纯 JVM 测试）、`BackupManager`（SAF Uri） |
 | `security/` | `PinHasher`（加盐 SHA-256）、`PinAttemptLimiter` + `DataStorePinLockoutStore`（持久化锁定）、`LockManager`（锁状态） |
@@ -54,7 +54,7 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 | `ui/MainNavigation.kt` `ui/FunBottomBar.kt` | 路由与底栏（首页 / 战绩 / 中央打卡 / AI 锐评 / 设置） |
 | `ui/theme/` | `FunColors`、`FunShapes`、Material3 主题（浅色奶油 / 深色暗紫） |
 | `ui/common/` | `Fun*` 设计系统组件：`FunSurface`、`FunCard`、`ChunkyButton`、`Chips`、`FunDialog`、`FunSnackbar`、`FunTextField`、`Headers`、`EntryCard` 等 |
-| `ui/lock/ home/ add/ history/ ai/ backup/ settings/` | 各屏幕及其 ViewModel |
+| `ui/lock/ home/ add/ history/ insights/ ai/ backup/ settings/` | 各屏幕及其 ViewModel；`add/` 同时负责新增和修改（`EntryFormLogic.kt` 是可测试的表单规则） |
 
 测试在 `app/src/test/java/...`，目录结构与主代码镜像。
 

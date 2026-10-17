@@ -57,6 +57,13 @@ class FakeEntryDao : EntryDao {
 
     override suspend fun getAll(): List<EntryEntity> = sorted(rows.value)
 
+    override suspend fun getById(id: Long): EntryEntity? = rows.value.firstOrNull { it.id == id }
+
+    /** Like Room's @Update: replaces the row with the same id; a missing row is a no-op. */
+    override suspend fun update(entry: EntryEntity) {
+        rows.value = rows.value.map { if (it.id == entry.id) entry else it }
+    }
+
     override suspend fun insert(entry: EntryEntity): Long {
         val stored = entry.copy(id = nextId++)
         rows.value = rows.value + stored

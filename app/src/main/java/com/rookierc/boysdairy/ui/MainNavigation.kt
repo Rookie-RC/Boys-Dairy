@@ -18,12 +18,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.ui.add.AddEntryScreen
+import com.rookierc.boysdairy.ui.add.AddEntryViewModel
 import com.rookierc.boysdairy.ui.ai.AiScreen
 import com.rookierc.boysdairy.ui.backup.BackupFlowHost
 import com.rookierc.boysdairy.ui.backup.BackupViewModel
@@ -34,17 +37,38 @@ import com.rookierc.boysdairy.ui.common.LocalSnackbar
 import com.rookierc.boysdairy.ui.common.NoInsets
 import com.rookierc.boysdairy.ui.history.HistoryScreen
 import com.rookierc.boysdairy.ui.home.HomeScreen
+import com.rookierc.boysdairy.ui.insights.InsightsScreen
 import com.rookierc.boysdairy.ui.settings.ChangePinScreen
 import com.rookierc.boysdairy.ui.settings.SettingsScreen
 import com.rookierc.boysdairy.ui.theme.FunTheme
+import java.time.LocalDate
 
 object Routes {
     const val HOME = "home"
     const val HISTORY = "history"
     const val AI = "ai"
     const val SETTINGS = "settings"
-    const val ADD = "add"
+
+    /**
+     * Add / edit form. Both query arguments are optional (see [addEntry]); their names are
+     * [AddEntryViewModel.ARG_ENTRY_ID] and [AddEntryViewModel.ARG_EPOCH_DAY].
+     */
+    const val ADD = "add?entryId={entryId}&date={epochDay}"
+
+    /**
+     * Route to the add form: with [entryId] it edits that entry, otherwise it logs a new one,
+     * back-filled for [date] if given. No arguments = plain "new entry".
+     */
+    fun addEntry(entryId: Long? = null, date: LocalDate? = null): String {
+        val query = listOfNotNull(
+            entryId?.let { "entryId=$it" },
+            date?.let { "date=${it.toEpochDay()}" },
+        )
+        return if (query.isEmpty()) "add" else "add?" + query.joinToString("&")
+    }
+
     const val CHANGE_PIN = "change_pin"
+    const val INSIGHTS = "insights"
 }
 
 /** Left two tabs, then the raised "check in" button, then the right two tabs. */
@@ -56,8 +80,8 @@ private val bottomTabs = listOf(
 )
 
 /**
- * Main UI shown after unlocking: four tabs plus a raised check-in button; Add and Change PIN are
- * full-screen routes without the bar.
+ * Main UI shown after unlocking: four tabs plus a raised check-in button; Add, Change PIN and
+ * Insights are full-screen routes without the bar.
  *
  * @param backupViewModel Activity-scoped (survives the lock that the system file picker causes)
  * @param fileActions picker launchers owned by the root composable
@@ -102,7 +126,7 @@ fun MainNavigation(
                         selectedRoute = selectedTabRoute,
                         onTabClick = { tab -> openTab(tab.route) },
                         onAddClick = {
-                            navController.navigate(Routes.ADD) { launchSingleTop = true }
+                            navController.navigate(Routes.addEntry()) { launchSingleTop = true }
                         },
                     )
                 }
@@ -122,10 +146,24 @@ fun MainNavigation(
                     popExitTransition = { fadeOut(tween(110)) },
                 ) {
                     composable(Routes.HOME) {
-                        HomeScreen()
+                        HomeScreen(
+                            onOpenInsights = {
+                                navController.navigate(Routes.INSIGHTS) { launchSingleTop = true }
+                            },
+                            onEditEntry = { id ->
+                                navController.navigate(Routes.addEntry(entryId = id)) { launchSingleTop = true }
+                            },
+                            onAddForDate = { date ->
+                                navController.navigate(Routes.addEntry(date = date)) { launchSingleTop = true }
+                            },
+                        )
                     }
                     composable(Routes.HISTORY) {
-                        HistoryScreen()
+                        HistoryScreen(
+                            onEditEntry = { id ->
+                                navController.navigate(Routes.addEntry(entryId = id)) { launchSingleTop = true }
+                            },
+                        )
                     }
                     composable(Routes.AI) {
                         AiScreen(
@@ -145,11 +183,33 @@ fun MainNavigation(
                             onKeyDialogRequestConsumed = { openKeyDialogRequest = false },
                         )
                     }
-                    composable(Routes.ADD) {
-                        AddEntryScreen(
-                            onClose = { navController.popBackStack() },
-                            onSaved = { message ->
+                    composable(
+                        route = Routes.ADD,
+                        arguments = listOf(
+                            navArgument(AddEntryViewModel.ARG_ENTRY_ID) {
+                                type = NavType.LongType
+                                defaultValue = AddEntryViewModel.NO_ENTRY_ID
+                            },
+                            navArgument(AddEntryViewModel.ARG_EPOCH_DAY) {
+                                type = NavType.LongType
+                                defaultValue = AddEntryViewModel.NO_EPOCH_DAY
+                            },
+                        ),
+                    ) { formEntry ->
+                        // Pops only while the form is on top, so a double tap can't pop the tab below.
+                        val closeForm = {
+                            if (navController.currentBackStackEntry?.id == formEntry.id) {
                                 navController.popBackStack()
+                            }
+                        }
+                        AddEntryScreen(
+                            onClose = { closeForm() },
+                            onSaved = { message, celebrate ->
+                                closeForm()
+                                snackbar.show(message, long = celebrate)
+                            },
+                            onEntryMissing = { message ->
+                                closeForm()
                                 snackbar.show(message)
                             },
                         )
@@ -159,6 +219,9 @@ fun MainNavigation(
                             onBack = { navController.popBackStack() },
                             onFinished = { navController.popBackStack() },
                         )
+                    }
+                    composable(Routes.INSIGHTS) {
+                        InsightsScreen(onBack = { navController.popBackStack() })
                     }
                 }
 

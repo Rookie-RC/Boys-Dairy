@@ -30,13 +30,19 @@ class FunSnackbarController(
     val hostState: SnackbarHostState,
     private val scope: CoroutineScope,
 ) {
-    fun show(message: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
+    /** [long] keeps a message without an action up longer (e.g. a save toast plus an unlocked achievement). */
+    fun show(
+        message: String,
+        actionLabel: String? = null,
+        onAction: (() -> Unit)? = null,
+        long: Boolean = false,
+    ) {
         scope.launch {
             hostState.currentSnackbarData?.dismiss()
             val result = hostState.showSnackbar(
                 message = message,
                 actionLabel = actionLabel,
-                duration = if (actionLabel != null) SnackbarDuration.Long else SnackbarDuration.Short,
+                duration = if (actionLabel != null || long) SnackbarDuration.Long else SnackbarDuration.Short,
             )
             if (result == SnackbarResult.ActionPerformed) {
                 onAction?.invoke()

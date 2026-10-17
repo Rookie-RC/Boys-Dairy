@@ -1,8 +1,13 @@
 package com.rookierc.boysdairy.ui.history
 
+import androidx.annotation.StringRes
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,20 +33,33 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.domain.Entry
-import com.rookierc.boysdairy.domain.filterEntriesByNote
+import com.rookierc.boysdairy.domain.EntryType
+import com.rookierc.boysdairy.domain.filterEntries
+import com.rookierc.boysdairy.domain.groupEntriesByMonth
+import com.rookierc.boysdairy.ui.common.EmojiChip
 import com.rookierc.boysdairy.ui.common.EmptyState
 import com.rookierc.boysdairy.ui.common.EntryCard
 import com.rookierc.boysdairy.ui.common.FunConfirmDialog
 import com.rookierc.boysdairy.ui.common.FunTextField
 import com.rookierc.boysdairy.ui.common.LocalSnackbar
 import com.rookierc.boysdairy.ui.common.ScreenTitle
+import com.rookierc.boysdairy.ui.common.SectionHeader
 import com.rookierc.boysdairy.ui.common.StickerBadge
+import com.rookierc.boysdairy.ui.common.emoji
 import com.rookierc.boysdairy.ui.common.quantityString
+import com.rookierc.boysdairy.ui.common.rememberFormatter
 import com.rookierc.boysdairy.ui.theme.FunTheme
+import com.rookierc.boysdairy.ui.theme.accent
+import java.time.YearMonth
+import java.time.ZoneId
 
-/** "战绩回放": every entry, newest first, searchable by note, deletable with undo. */
+/**
+ * "战绩回放": every entry, newest first and grouped by month, searchable by note, filterable by
+ * type, deletable with undo. Tapping a card opens it for editing via [onEditEntry].
+ */
 @Composable
 fun HistoryScreen(
+    onEditEntry: (entryId: Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HistoryViewModel = viewModel(factory = HistoryViewModel.Factory),
 ) {
@@ -50,13 +68,17 @@ fun HistoryScreen(
     val deleteMessages = stringArrayResource(R.array.delete_toasts)
     val undoLabel = stringResource(R.string.action_undo)
 
-    // Plain `remember`: the query is intentionally not persisted anywhere (privacy).
+    // Plain `remember`: the query and the type filter are intentionally not persisted (privacy).
     var query by remember { mutableStateOf("") }
+    var typeFilter by remember { mutableStateOf<EntryType?>(null) }
     var pendingDelete by remember { mutableStateOf<Entry?>(null) }
 
     val allEntries = entries
-    val visibleEntries = remember(allEntries, query) {
-        if (allEntries == null) emptyList<Entry>() else filterEntriesByNote(allEntries, query)
+    val visibleEntries = remember(allEntries, query, typeFilter) {
+        if (allEntries == null) emptyList<Entry>() else filterEntries(allEntries, query, typeFilter)
+    }
+    val monthGroups = remember(visibleEntries) {
+        groupEntriesByMonth(visibleEntries, ZoneId.systemDefault())
     }
 
     Column(
@@ -104,6 +126,11 @@ fun HistoryScreen(
                     null
                 },
             )
+
+            TypeFilterChips(
+                selected = typeFilter,
+                onSelect = { typeFilter = it },
+            )
         }
 
         when {
@@ -127,18 +154,11 @@ fun HistoryScreen(
                 }
             }
 
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                items(items = visibleEntries, key = { it.id }) { entry ->
-                    EntryCard(
-                        entry = entry,
-                        onDelete = { pendingDelete = entry },
-                    )
-                }
-            }
+            else -> MonthList(
+                monthGroups = monthGroups,
+                onEditEntry = onEditEntry,
+                onDeleteEntry = { pendingDelete = it },
+            )
         }
     }
 
@@ -162,4 +182,94 @@ fun HistoryScreen(
             onDismiss = { pendingDelete = null },
         )
     }
+}
+
+/**
+ * The month groups with sticky month headers, so the current month stays visible while scrolling.
+ *
+ * The 16 dp side gutter is applied per item instead of as content padding: that way a stuck header
+ * can paint its opaque background across the full width and the cards scrolling underneath it
+ * (shadows included) never show through at the edges.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MonthList(
+    monthGroups: List<Pair<YearMonth, List<Entry>>>,
+    onEditEntry: (entryId: Long) -> Unit,
+    onDeleteEntry: (Entry) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        monthGroups.forEach { (month, monthEntries) ->
+            stickyHeader(key = "month-$month", contentType = "month") {
+                MonthHeader(month = month, count = monthEntries.size)
+            }
+            items(items = monthEntries, key = { it.id }, contentType = { "entry" }) { entry ->
+                EntryCard(
+                    entry = entry,
+                    onClick = { onEditEntry(entry.id) },
+                    onDelete = { onDeleteEntry(entry) },
+                    modifier = Modifier.padding(horizontal = ListGutter),
+                )
+            }
+        }
+    }
+}
+
+private val ListGutter = 16.dp
+
+/** "All / Solo / Co-op" chips; `null` = all types. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TypeFilterChips(
+    selected: EntryType?,
+    onSelect: (EntryType?) -> Unit,
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        EmojiChip(
+            label = stringResource(R.string.history_filter_all),
+            emoji = "🎞️",
+            selected = selected == null,
+            onClick = { onSelect(null) },
+        )
+        EntryType.entries.forEach { type ->
+            EmojiChip(
+                label = stringResource(type.filterLabelRes()),
+                emoji = type.emoji(),
+                selected = selected == type,
+                onClick = { onSelect(type) },
+                selectedColor = type.accent(),
+            )
+        }
+    }
+}
+
+@StringRes
+private fun EntryType.filterLabelRes(): Int = when (this) {
+    EntryType.SOLO -> R.string.history_filter_solo
+    EntryType.PARTNER -> R.string.history_filter_partner
+}
+
+/**
+ * Sticky month divider of the list: "2026年10月 · 5 次" (counts what is visible after filtering).
+ * Full width with the screen background, so cards scrolling under it are hidden.
+ */
+@Composable
+private fun MonthHeader(month: YearMonth, count: Int) {
+    val formatter = rememberFormatter(R.string.pattern_month_year)
+    SectionHeader(
+        emoji = "🗓️",
+        title = quantityString(R.plurals.history_month_header, count, month.format(formatter), count),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(FunTheme.colors.background)
+            .padding(start = ListGutter, end = ListGutter, top = 6.dp, bottom = 4.dp),
+    )
 }

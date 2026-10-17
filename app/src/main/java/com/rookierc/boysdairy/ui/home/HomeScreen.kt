@@ -32,9 +32,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.domain.Entry
-import com.rookierc.boysdairy.domain.buildDayMarkers
+import com.rookierc.boysdairy.domain.buildDaySummaries
 import com.rookierc.boysdairy.domain.computeStats
 import com.rookierc.boysdairy.domain.groupEntriesByDate
+import com.rookierc.boysdairy.ui.common.ChunkyButton
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.FunCard
 import com.rookierc.boysdairy.ui.common.ScreenTitle
@@ -47,11 +48,22 @@ import com.rookierc.boysdairy.ui.theme.FunColors
 import com.rookierc.boysdairy.ui.theme.FunTheme
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.util.Locale
 
+/**
+ * @param onOpenInsights opens the full report
+ * @param onEditEntry open an entry (tapped in the calendar's day sheet) for editing
+ * @param onAddForDate log a new entry back-filled for a day picked in the calendar
+ *
+ * Navigation stays in MainNavigation.
+ */
 @Composable
 fun HomeScreen(
+    onOpenInsights: () -> Unit,
+    onEditEntry: (entryId: Long) -> Unit,
+    onAddForDate: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
 ) {
@@ -62,7 +74,7 @@ fun HomeScreen(
     val stats = remember(entries, today) {
         computeStats(entries, System.currentTimeMillis(), ZoneId.systemDefault())
     }
-    val markers = remember(entries) { buildDayMarkers(entries, ZoneId.systemDefault()) }
+    val daySummaries = remember(entries) { buildDaySummaries(entries, ZoneId.systemDefault()) }
     val entriesByDay = remember(entries) { groupEntriesByDate(entries, ZoneId.systemDefault()) }
     val lastEntry = remember(entries) { entries.maxByOrNull { it.timestamp } }
 
@@ -98,16 +110,28 @@ fun HomeScreen(
                 last30Days = stats.last30DaysCount,
                 averagePleasure = stats.averagePleasure,
             )
+
+            if (entries.isNotEmpty()) {
+                ChunkyButton(
+                    text = stringResource(R.string.insights_open),
+                    emoji = "📊",
+                    onClick = onOpenInsights,
+                    containerColor = FunTheme.colors.grape,
+                    contentColor = FunTheme.colors.onGrape,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
 
         TipCard(today = today)
 
         CalendarCard(
             month = state.visibleMonth,
-            markers = markers,
+            days = daySummaries,
             today = today,
             onPreviousMonth = viewModel::showPreviousMonth,
             onNextMonth = viewModel::showNextMonth,
+            onCurrentMonth = { viewModel.showMonth(YearMonth.from(today)) },
             onDayClick = { day -> selectedDay = day },
         )
     }
@@ -117,6 +141,19 @@ fun HomeScreen(
             date = day,
             entries = entriesByDay[day].orEmpty().sortedBy(Entry::timestamp),
             onDismiss = { selectedDay = null },
+            onEntryClick = { entry ->
+                selectedDay = null
+                onEditEntry(entry.id)
+            },
+            // No back-filling into the future (today itself is fine).
+            onAddForDay = if (day.isAfter(today)) {
+                null
+            } else {
+                {
+                    selectedDay = null
+                    onAddForDate(day)
+                }
+            },
         )
     }
 }

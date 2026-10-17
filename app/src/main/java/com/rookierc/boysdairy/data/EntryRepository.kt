@@ -11,6 +11,18 @@ class EntryRepository(private val dao: EntryDao) {
 
     suspend fun add(entry: Entry): Long = dao.insert(entry.toEntity())
 
+    /** The stored entry with [id], or `null` if there is none (e.g. it has been deleted). */
+    suspend fun get(id: Long): Entry? = dao.getById(id)?.toDomain()
+
+    /**
+     * Overwrites the stored entry that has [Entry.id] with every field of [entry]. The id must be
+     * the one of a stored entry (> 0); if that row no longer exists nothing happens.
+     */
+    suspend fun update(entry: Entry) {
+        require(entry.id > 0) { "update() needs the id of a stored entry" }
+        dao.update(entry.toEntity())
+    }
+
     suspend fun delete(id: Long) = dao.deleteById(id)
 
     /** One-shot copy of every entry, newest first. */
@@ -29,6 +41,9 @@ class EntryRepository(private val dao: EntryDao) {
     suspend fun replaceAll(entries: List<Entry>) {
         dao.replaceAll(entries.map { it.toNewRow() })
     }
+
+    /** Deletes every entry. Settings, the PIN and API keys live elsewhere and are not touched. */
+    suspend fun clearAll() = dao.deleteAll()
 
     private fun Entry.toNewRow(): EntryEntity = copy(id = 0).toEntity()
 }

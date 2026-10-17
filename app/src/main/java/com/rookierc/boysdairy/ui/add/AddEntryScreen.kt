@@ -2,9 +2,12 @@
 
 package com.rookierc.boysdairy.ui.add
 
+import android.content.res.Resources
 import android.text.format.DateFormat
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -20,9 +23,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Slider
@@ -33,29 +40,36 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rookierc.boysdairy.R
+import com.rookierc.boysdairy.domain.Achievement
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.Mood
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.ChoiceCard
 import com.rookierc.boysdairy.ui.common.ChunkyButton
 import com.rookierc.boysdairy.ui.common.ChunkyButtonSlot
+import com.rookierc.boysdairy.ui.common.ChunkyIconButton
 import com.rookierc.boysdairy.ui.common.EmojiChip
+import com.rookierc.boysdairy.ui.common.EmptyState
 import com.rookierc.boysdairy.ui.common.FunCard
+import com.rookierc.boysdairy.ui.common.FunConfirmDialog
 import com.rookierc.boysdairy.ui.common.FunDialog
 import com.rookierc.boysdairy.ui.common.FunTextField
 import com.rookierc.boysdairy.ui.common.FunTopBar
@@ -65,6 +79,7 @@ import com.rookierc.boysdairy.ui.common.durationTierRes
 import com.rookierc.boysdairy.ui.common.emoji
 import com.rookierc.boysdairy.ui.common.hintRes
 import com.rookierc.boysdairy.ui.common.labelRes
+import com.rookierc.boysdairy.ui.common.labels
 import com.rookierc.boysdairy.ui.common.pleasureTierRes
 import com.rookierc.boysdairy.ui.common.rememberFormatter
 import com.rookierc.boysdairy.ui.theme.FunTheme
@@ -77,151 +92,296 @@ import java.time.ZoneOffset
 import kotlin.math.roundToInt
 
 /**
- * Full-screen "log a new entry" form.
+ * Full-screen form to log a new entry or edit an existing one (which one is decided by the
+ * navigation arguments read in [AddEntryViewModel.Factory]).
+ *
+ * Leaving with unsaved changes (close button or system back) asks for confirmation first.
  *
  * @param onClose back / close without saving
  * @param onSaved called after the entry was stored, with a random funny message for the snackbar
+ *   (plus a line naming the achievements this save unlocked, if any; [celebrate] is then true)
+ * @param onEntryMissing edit mode: the entry no longer exists; close and show the given message
  */
 @Composable
 fun AddEntryScreen(
     onClose: () -> Unit,
-    onSaved: (message: String) -> Unit,
+    onSaved: (message: String, celebrate: Boolean) -> Unit,
+    onEntryMissing: (message: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: AddEntryViewModel = viewModel(factory = AddEntryViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val saveToasts = stringArrayResource(R.array.save_toasts)
-    val colors = FunTheme.colors
+    val editing = state.isEditing
+    val missingMessage = stringResource(R.string.edit_entry_missing)
+    val hasUnsavedChanges = viewModel.hasUnsavedChanges(state)
+    var confirmDiscard by remember { mutableStateOf(false) }
+
+    fun requestClose() {
+        when {
+            // A save is in flight: leaving now could cancel it; the screen closes by itself.
+            state.saving -> Unit
+            hasUnsavedChanges -> confirmDiscard = true
+            else -> onClose()
+        }
+    }
+
+    // Without changes the back press falls through to the navigation and simply closes the form.
+    BackHandler(enabled = hasUnsavedChanges || state.saving) { requestClose() }
+
+    LaunchedEffect(state.entryMissing) {
+        if (state.entryMissing) onEntryMissing(missingMessage)
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         FunTopBar(
-            title = stringResource(R.string.add_title),
-            emoji = "📼",
-            onBack = onClose,
+            title = stringResource(if (editing) R.string.edit_title else R.string.add_title),
+            emoji = if (editing) "✏️" else "📼",
+            onBack = ::requestClose,
             useCloseIcon = true,
         )
 
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            DateTimeSection(
-                dateTime = state.dateTime,
-                onDateTimeChange = viewModel::setDateTime,
-            )
+        when {
+            state.entryMissing -> Unit
 
-            FormCard(emoji = "🎮", title = stringResource(R.string.add_type_label)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    EntryType.entries.forEach { type ->
-                        ChoiceCard(
-                            selected = state.type == type,
-                            onClick = { viewModel.setType(type) },
-                            selectedColor = type.accent(),
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            EmojiText(text = type.emoji(), fontSize = 38.sp)
-                            Text(
-                                text = stringResource(type.labelRes()),
-                                style = MaterialTheme.typography.titleMedium,
-                                textAlign = TextAlign.Center,
-                            )
-                            Text(
-                                text = stringResource(type.hintRes()),
-                                style = MaterialTheme.typography.labelSmall,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
+            state.loading -> Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                EmptyState(emoji = "🗂️", message = stringResource(R.string.edit_loading))
+            }
+
+            else -> EntryForm(
+                state = state,
+                viewModel = viewModel,
+                onSaved = onSaved,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+
+    if (confirmDiscard) {
+        FunConfirmDialog(
+            title = stringResource(if (editing) R.string.edit_discard_title else R.string.add_discard_title),
+            emoji = if (editing) "🙈" else "🗑️",
+            message = stringResource(if (editing) R.string.edit_discard_message else R.string.add_discard_message),
+            confirmText = stringResource(if (editing) R.string.edit_discard_confirm else R.string.add_discard_confirm),
+            confirmColor = FunTheme.colors.danger,
+            onConfirm = {
+                confirmDiscard = false
+                onClose()
+            },
+            dismissText = stringResource(R.string.add_discard_keep),
+            onDismiss = { confirmDiscard = false },
+        )
+    }
+}
+
+@Composable
+private fun EntryForm(
+    state: AddEntryUiState,
+    viewModel: AddEntryViewModel,
+    onSaved: (message: String, celebrate: Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = FunTheme.colors
+    val context = LocalContext.current
+    val saveToasts = stringArrayResource(
+        if (state.isEditing) R.array.edit_save_toasts else R.array.save_toasts,
+    )
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        DateTimeSection(
+            dateTime = state.dateTime,
+            onDateTimeChange = viewModel::setDateTime,
+        )
+
+        FormCard(emoji = "🎮", title = stringResource(R.string.add_type_label)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                EntryType.entries.forEach { type ->
+                    ChoiceCard(
+                        selected = state.type == type,
+                        onClick = { viewModel.setType(type) },
+                        selectedColor = type.accent(),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        EmojiText(text = type.emoji(), fontSize = 38.sp)
+                        Text(
+                            text = stringResource(type.labelRes()),
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            text = stringResource(type.hintRes()),
+                            style = MaterialTheme.typography.labelSmall,
+                            textAlign = TextAlign.Center,
+                        )
                     }
                 }
             }
+        }
 
-            FormCard(
-                emoji = "⏱️",
-                title = stringResource(R.string.add_duration_label),
-                value = stringResource(R.string.add_duration_value, state.durationMinutes),
+        FormCard(
+            emoji = "⏱️",
+            title = stringResource(R.string.add_duration_label),
+            value = stringResource(R.string.add_duration_value, state.durationMinutes),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                StepButton(
+                    icon = Icons.Filled.Remove,
+                    contentDescription = stringResource(R.string.add_duration_minus_cd),
+                    enabled = state.durationMinutes > AddEntryViewModel.MIN_DURATION,
+                    onClick = { viewModel.stepDuration(-1) },
+                )
                 FunSlider(
                     value = state.durationMinutes.toFloat(),
                     onValueChange = { viewModel.setDuration(it.roundToInt()) },
                     valueRange = AddEntryViewModel.MIN_DURATION.toFloat()..AddEntryViewModel.MAX_DURATION.toFloat(),
+                    modifier = Modifier.weight(1f),
                 )
-                ReactiveLabel(labelRes = durationTierRes(state.durationMinutes))
-            }
-
-            FormCard(emoji = "😰", title = stringResource(R.string.add_mood_before_label)) {
-                MoodChips(
-                    options = Mood.beforeOptions,
-                    selected = state.moodBefore,
-                    onSelect = viewModel::setMoodBefore,
+                StepButton(
+                    icon = Icons.Filled.Add,
+                    contentDescription = stringResource(R.string.add_duration_plus_cd),
+                    enabled = state.durationMinutes < AddEntryViewModel.MAX_DURATION,
+                    onClick = { viewModel.stepDuration(1) },
                 )
             }
-
-            FormCard(emoji = "😌", title = stringResource(R.string.add_mood_after_label)) {
-                MoodChips(
-                    options = Mood.afterOptions,
-                    selected = state.moodAfter,
-                    onSelect = viewModel::setMoodAfter,
-                )
-            }
-
-            FormCard(
-                emoji = "🔥",
-                title = stringResource(R.string.add_pleasure_label),
-                value = stringResource(R.string.add_pleasure_value, state.pleasure),
-            ) {
-                FunSlider(
-                    value = state.pleasure.toFloat(),
-                    onValueChange = { viewModel.setPleasure(it.roundToInt()) },
-                    valueRange = AddEntryViewModel.MIN_PLEASURE.toFloat()..AddEntryViewModel.MAX_PLEASURE.toFloat(),
-                    steps = AddEntryViewModel.MAX_PLEASURE - AddEntryViewModel.MIN_PLEASURE - 1,
-                )
-                ReactiveLabel(labelRes = pleasureTierRes(state.pleasure))
-            }
-
-            FormCard(emoji = "📝", title = stringResource(R.string.add_note_label)) {
-                FunTextField(
-                    value = viewModel.note,
-                    onValueChange = viewModel::onNoteChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = stringResource(R.string.add_note_hint),
-                    minLines = 3,
-                    maxLines = 8,
-                )
-            }
-
-            if (state.saveFailed) {
-                FunCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    containerColor = colors.danger,
-                    contentColor = colors.onAccent,
-                ) {
-                    Text(
-                        text = stringResource(R.string.add_save_failed),
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                }
-            }
-
-            ChunkyButton(
-                text = stringResource(if (state.saving) R.string.add_saving else R.string.add_save),
-                emoji = "💾",
-                onClick = { viewModel.save { onSaved(saveToasts.random()) } },
-                enabled = !state.saving,
-                modifier = Modifier.fillMaxWidth(),
-                minHeight = 58.dp,
-            )
-
-            Spacer(Modifier.height(8.dp))
+            ReactiveLabel(labelRes = durationTierRes(state.durationMinutes))
         }
+
+        FormCard(emoji = "😰", title = stringResource(R.string.add_mood_before_label)) {
+            MoodChips(
+                options = Mood.beforeOptions,
+                selected = state.moodBefore,
+                onSelect = viewModel::setMoodBefore,
+            )
+        }
+
+        FormCard(emoji = "😌", title = stringResource(R.string.add_mood_after_label)) {
+            MoodChips(
+                options = Mood.afterOptions,
+                selected = state.moodAfter,
+                onSelect = viewModel::setMoodAfter,
+            )
+        }
+
+        FormCard(
+            emoji = "🔥",
+            title = stringResource(R.string.add_pleasure_label),
+            value = stringResource(R.string.add_pleasure_value, state.pleasure),
+        ) {
+            FunSlider(
+                value = state.pleasure.toFloat(),
+                onValueChange = { viewModel.setPleasure(it.roundToInt()) },
+                valueRange = AddEntryViewModel.MIN_PLEASURE.toFloat()..AddEntryViewModel.MAX_PLEASURE.toFloat(),
+                steps = AddEntryViewModel.MAX_PLEASURE - AddEntryViewModel.MIN_PLEASURE - 1,
+            )
+            ReactiveLabel(labelRes = pleasureTierRes(state.pleasure))
+        }
+
+        FormCard(emoji = "📝", title = stringResource(R.string.add_note_label)) {
+            val note = viewModel.note
+            FunTextField(
+                value = note,
+                onValueChange = viewModel::onNoteChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = stringResource(R.string.add_note_hint),
+                minLines = 3,
+                maxLines = 8,
+            )
+            if (note.length >= AddEntryViewModel.NOTE_COUNTER_FROM) {
+                val atLimit = note.length >= AddEntryViewModel.MAX_NOTE_LENGTH
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.add_note_counter, note.length, AddEntryViewModel.MAX_NOTE_LENGTH),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (atLimit) FontWeight.ExtraBold else null,
+                    color = if (atLimit) colors.textPrimary else colors.textSecondary,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        if (state.saveFailed) {
+            FunCard(
+                modifier = Modifier.fillMaxWidth(),
+                containerColor = colors.danger,
+                contentColor = colors.onAccent,
+            ) {
+                Text(
+                    text = stringResource(R.string.add_save_failed),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            }
+        }
+
+        ChunkyButton(
+            text = stringResource(
+                when {
+                    state.saving -> R.string.add_saving
+                    state.isEditing -> R.string.edit_save
+                    else -> R.string.add_save
+                },
+            ),
+            emoji = "💾",
+            onClick = {
+                viewModel.save { unlocked ->
+                    onSaved(saveMessage(context.resources, saveToasts.random(), unlocked), unlocked.isNotEmpty())
+                }
+            },
+            enabled = state.canSave,
+            modifier = Modifier.fillMaxWidth(),
+            minHeight = 58.dp,
+        )
+
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+/**
+ * The save snackbar text: [toast], plus "🏆 解锁成就：夜猫子、马拉松选手" on a second line when the
+ * save unlocked achievements. Built when the save completes, so it reads [resources] then.
+ */
+private fun saveMessage(resources: Resources, toast: String, unlocked: List<Achievement>): String {
+    if (unlocked.isEmpty()) return toast
+    val names = unlocked.joinToString(separator = resources.getString(R.string.achievement_unlocked_separator)) {
+        resources.getString(it.labels().nameRes)
+    }
+    return toast + "\n" + resources.getQuantityString(R.plurals.achievement_unlocked_toast, unlocked.size, names)
+}
+
+/** The "−" / "+" buttons next to the duration slider. */
+@Composable
+private fun StepButton(
+    icon: ImageVector,
+    contentDescription: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    ChunkyIconButton(
+        onClick = onClick,
+        enabled = enabled,
+        size = 48.dp,
+        shadowOffset = 2.dp,
+    ) {
+        Icon(imageVector = icon, contentDescription = contentDescription)
     }
 }
 

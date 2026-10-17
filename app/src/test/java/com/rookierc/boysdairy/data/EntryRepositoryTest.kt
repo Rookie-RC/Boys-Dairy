@@ -7,6 +7,8 @@ import com.rookierc.boysdairy.testEntry
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -78,5 +80,109 @@ class EntryRepositoryTest {
         repository.add(testEntry(timestamp = 1))
         repository.replaceAll(emptyList())
         assertTrue(repository.snapshot().isEmpty())
+    }
+
+    @Test
+    fun clearAllDeletesEveryEntryAndTheLiveFlowFollows() = runBlocking {
+        repository.add(testEntry(timestamp = 1))
+        repository.add(testEntry(timestamp = 2, type = EntryType.PARTNER))
+
+        repository.clearAll()
+
+        assertTrue(repository.snapshot().isEmpty())
+        assertTrue(repository.entries.first().isEmpty())
+    }
+
+    @Test
+    fun clearAllOnAnEmptyDiaryIsHarmlessAndNewEntriesStillWork() = runBlocking {
+        repository.clearAll()
+        assertTrue(repository.snapshot().isEmpty())
+
+        repository.add(testEntry(timestamp = 5))
+        assertEquals(listOf(5L), repository.snapshot().map { it.timestamp })
+    }
+
+    // ---- get / update -------------------------------------------------------------------------
+
+    @Test
+    fun getReturnsTheStoredEntryOrNull() = runBlocking {
+        val id = repository.add(testEntry(timestamp = 7, type = EntryType.PARTNER, note = "hi"))
+
+        assertEquals(testEntry(timestamp = 7, type = EntryType.PARTNER, note = "hi", id = id), repository.get(id))
+        assertNull(repository.get(id + 100))
+
+        repository.delete(id)
+        assertNull(repository.get(id))
+    }
+
+    @Test
+    fun updateOverwritesEveryFieldAndKeepsTheId() = runBlocking {
+        val id = repository.add(testEntry(timestamp = 1_000, note = "old"))
+        val otherId = repository.add(testEntry(timestamp = 2_000, note = "other"))
+
+        val edited = testEntry(
+            timestamp = 1_234,
+            type = EntryType.PARTNER,
+            durationMinutes = 42,
+            moodBefore = Mood.EXCITED,
+            moodAfter = Mood.ENERGETIC,
+            pleasure = 10,
+            note = "new",
+            id = id,
+        )
+        repository.update(edited)
+
+        assertEquals(edited, repository.get(id))
+        assertEquals(2, repository.snapshot().size) // updated in place, nothing inserted
+        assertEquals("other", repository.get(otherId)?.note) // other rows untouched
+    }
+
+    @Test
+    fun updateKeepsTheTimestampToTheMillisecond() = runBlocking {
+        val id = repository.add(testEntry(timestamp = 1_792_180_000_123L))
+        val stored = repository.get(id)!!
+
+        repository.update(stored.copy(pleasure = 9))
+
+        assertEquals(1_792_180_000_123L, repository.get(id)?.timestamp)
+    }
+
+    @Test
+    fun updateMovesTheEntryInTheNewestFirstOrder() = runBlocking {
+        val a = repository.add(testEntry(timestamp = 100))
+        repository.add(testEntry(timestamp = 200))
+
+        repository.update(repository.get(a)!!.copy(timestamp = 300))
+
+        assertEquals(listOf(300L, 200L), repository.entries.first().map { it.timestamp })
+    }
+
+    @Test
+    fun updateOfADeletedEntryDoesNothing() = runBlocking {
+        val id = repository.add(testEntry(timestamp = 1))
+        repository.delete(id)
+
+        repository.update(testEntry(timestamp = 5, id = id))
+
+        assertTrue(repository.snapshot().isEmpty())
+    }
+
+    @Test
+    fun updateRequiresAStoredId() {
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { repository.update(testEntry(timestamp = 1, id = 0)) }
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { repository.update(testEntry(timestamp = 1, id = -1)) }
+        }
+    }
+
+    @Test
+    fun liveFlowBreaksTimestampTiesByNewestId() = runBlocking {
+        val first = repository.add(testEntry(timestamp = 50, note = "first"))
+        val second = repository.add(testEntry(timestamp = 50, note = "second"))
+
+        assertEquals(listOf(second, first), repository.entries.first().map { it.id })
+        assertEquals(listOf(second, first), repository.snapshot().map { it.id })
     }
 }

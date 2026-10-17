@@ -8,12 +8,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.rookierc.boysdairy.ui.theme.FunShapes
 import com.rookierc.boysdairy.ui.theme.FunTheme
 
-/** Chunky card: 2dp outline, 20dp corners and a hard offset shadow. Clickable when [onClick] is set. */
+/**
+ * Chunky card: 2dp outline, 20dp corners and a hard offset shadow. Clickable when [onClick] is set;
+ * [onClickLabel] is what accessibility services announce as the click action.
+ */
 @Composable
 fun FunCard(
     modifier: Modifier = Modifier,
@@ -22,6 +26,7 @@ fun FunCard(
     shape: Shape = FunShapes.card,
     shadowOffset: Dp = 4.dp,
     onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
     enabled: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(16.dp),
     content: @Composable ColumnScope.() -> Unit,
@@ -34,6 +39,8 @@ fun FunCard(
         shadowOffset = shadowOffset,
         onClick = onClick,
         enabled = enabled,
+        role = if (onClick != null) Role.Button else null,
+        onClickLabel = onClickLabel,
     ) {
         Column(modifier = Modifier.padding(contentPadding), content = content)
     }

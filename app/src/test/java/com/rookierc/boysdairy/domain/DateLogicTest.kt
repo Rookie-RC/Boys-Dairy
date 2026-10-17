@@ -170,4 +170,137 @@ class DateLogicTest {
         assertEquals(entries, filterEntriesByNote(entries, ""))
         assertEquals(entries, filterEntriesByNote(entries, "   "))
     }
+
+    // ---- day summaries ------------------------------------------------------------------------
+
+    @Test
+    fun daySummariesCountEntriesPerLocalDayAndUseTheMarkerRule() {
+        val entries = listOf(
+            entry(millis(2026, 10, 16, 23, 59), EntryType.SOLO),
+            entry(millis(2026, 10, 16, 21, 0), EntryType.PARTNER),
+            entry(millis(2026, 10, 16, 0, 1), EntryType.SOLO),
+            entry(millis(2026, 10, 15, 9, 0), EntryType.SOLO),
+            entry(millis(2026, 10, 14, 9, 0), EntryType.PARTNER),
+        )
+        val summaries = buildDaySummaries(entries, zone)
+
+        assertEquals(DaySummary(EntryType.PARTNER, 3), summaries[LocalDate.of(2026, 10, 16)])
+        assertEquals(DaySummary(EntryType.SOLO, 1), summaries[LocalDate.of(2026, 10, 15)])
+        assertEquals(DaySummary(EntryType.PARTNER, 1), summaries[LocalDate.of(2026, 10, 14)])
+        assertNull(summaries[LocalDate.of(2026, 10, 13)])
+        assertEquals(3, summaries.size)
+    }
+
+    @Test
+    fun daySummaryTypesMatchTheDayMarkers() {
+        val entries = listOf(
+            entry(millis(2026, 10, 16, 9, 0), EntryType.SOLO),
+            entry(millis(2026, 10, 16, 21, 0), EntryType.PARTNER),
+            entry(millis(2026, 10, 15, 9, 0), EntryType.SOLO),
+            entry(millis(2026, 10, 15, 10, 0), EntryType.SOLO),
+        )
+        assertEquals(
+            buildDayMarkers(entries, zone),
+            buildDaySummaries(entries, zone).mapValues { it.value.type },
+        )
+    }
+
+    @Test
+    fun daySummariesFollowTheZone() {
+        // 23:30 in Shanghai on the 16th is still the 16th there but already the 17th in Tokyo.
+        val entries = listOf(entry(millis(2026, 10, 16, 23, 30), EntryType.SOLO))
+        assertEquals(setOf(LocalDate.of(2026, 10, 16)), buildDaySummaries(entries, zone).keys)
+        assertEquals(
+            setOf(LocalDate.of(2026, 10, 17)),
+            buildDaySummaries(entries, ZoneId.of("Asia/Tokyo")).keys,
+        )
+    }
+
+    @Test
+    fun daySummariesOfNothingIsEmpty() {
+        assertTrue(buildDaySummaries(emptyList(), zone).isEmpty())
+    }
+
+    // ---- filterEntries ------------------------------------------------------------------------
+
+    private val mixed = listOf(
+        entry(5L, EntryType.PARTNER, note = "Beach trip"),
+        entry(4L, EntryType.SOLO, note = "beach daydream"),
+        entry(3L, EntryType.SOLO, note = "tired"),
+        entry(2L, EntryType.PARTNER, note = ""),
+        entry(1L, EntryType.SOLO, note = ""),
+    )
+
+    @Test
+    fun noQueryAndNoTypeReturnsEverythingInOrder() {
+        assertEquals(mixed, filterEntries(mixed, "", null))
+        assertEquals(mixed, filterEntries(mixed, "  ", null))
+    }
+
+    @Test
+    fun typeFilterAloneKeepsOnlyThatTypeInOrder() {
+        assertEquals(listOf(4L, 3L, 1L), filterEntries(mixed, "", EntryType.SOLO).map { it.timestamp })
+        assertEquals(listOf(5L, 2L), filterEntries(mixed, " ", EntryType.PARTNER).map { it.timestamp })
+    }
+
+    @Test
+    fun queryAndTypeFiltersStack() {
+        assertEquals(listOf(5L, 4L), filterEntries(mixed, "BEACH", null).map { it.timestamp })
+        assertEquals(listOf(4L), filterEntries(mixed, " beach ", EntryType.SOLO).map { it.timestamp })
+        assertEquals(listOf(5L), filterEntries(mixed, "beach", EntryType.PARTNER).map { it.timestamp })
+        assertTrue(filterEntries(mixed, "tired", EntryType.PARTNER).isEmpty())
+    }
+
+    @Test
+    fun noteOnlyFilterIsTheSameAsFilterEntriesWithoutType() {
+        assertEquals(filterEntries(mixed, "beach", null), filterEntriesByNote(mixed, "beach"))
+    }
+
+    // ---- groupEntriesByMonth ------------------------------------------------------------------
+
+    @Test
+    fun monthGroupsKeepNewestFirstOrderOfMonthsAndEntries() {
+        val entries = listOf(
+            entry(millis(2026, 10, 16, 9, 0), EntryType.SOLO),
+            entry(millis(2026, 10, 1, 0, 30), EntryType.PARTNER),
+            entry(millis(2026, 9, 30, 23, 30), EntryType.SOLO),
+            entry(millis(2026, 9, 2, 8, 0), EntryType.SOLO),
+            entry(millis(2025, 12, 31, 22, 0), EntryType.PARTNER),
+        )
+        val groups = groupEntriesByMonth(entries, zone)
+
+        assertEquals(
+            listOf(YearMonth.of(2026, 10), YearMonth.of(2026, 9), YearMonth.of(2025, 12)),
+            groups.map { it.first },
+        )
+        assertEquals(listOf(entries[0], entries[1]), groups[0].second)
+        assertEquals(listOf(entries[2], entries[3]), groups[1].second)
+        assertEquals(listOf(entries[4]), groups[2].second)
+        assertEquals(entries, groups.flatMap { it.second })
+    }
+
+    @Test
+    fun monthBoundaryFollowsTheZone() {
+        // 00:30 on 1 Oct in Shanghai is still 30 Sep in UTC.
+        val entries = listOf(entry(millis(2026, 10, 1, 0, 30), EntryType.SOLO))
+        assertEquals(YearMonth.of(2026, 10), groupEntriesByMonth(entries, zone).single().first)
+        assertEquals(YearMonth.of(2026, 9), groupEntriesByMonth(entries, ZoneId.of("UTC")).single().first)
+    }
+
+    @Test
+    fun sameMonthOfDifferentYearsAreSeparateGroups() {
+        val entries = listOf(
+            entry(millis(2026, 3, 5, 12, 0), EntryType.SOLO),
+            entry(millis(2025, 3, 5, 12, 0), EntryType.SOLO),
+        )
+        assertEquals(
+            listOf(YearMonth.of(2026, 3), YearMonth.of(2025, 3)),
+            groupEntriesByMonth(entries, zone).map { it.first },
+        )
+    }
+
+    @Test
+    fun monthGroupsOfNothingIsEmpty() {
+        assertTrue(groupEntriesByMonth(emptyList(), zone).isEmpty())
+    }
 }

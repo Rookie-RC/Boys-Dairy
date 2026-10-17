@@ -24,6 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.domain.Entry
+import com.rookierc.boysdairy.ui.common.ChunkyButton
 import com.rookierc.boysdairy.ui.common.EmptyState
 import com.rookierc.boysdairy.ui.common.EntryCard
 import com.rookierc.boysdairy.ui.common.SectionHeader
@@ -33,12 +34,19 @@ import com.rookierc.boysdairy.ui.theme.FunShapes
 import com.rookierc.boysdairy.ui.theme.FunTheme
 import java.time.LocalDate
 
-/** Bottom sheet that lists everything logged on one calendar day. */
+/**
+ * Bottom sheet that lists everything logged on one calendar day.
+ *
+ * @param onEntryClick a card was tapped (the caller closes the sheet and opens the editor)
+ * @param onAddForDay "log one for this day"; `null` hides the button (e.g. for future days)
+ */
 @Composable
 fun DayEntriesSheet(
     date: LocalDate,
     entries: List<Entry>,
     onDismiss: () -> Unit,
+    onEntryClick: (Entry) -> Unit,
+    onAddForDay: (() -> Unit)?,
 ) {
     val colors = FunTheme.colors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -82,8 +90,20 @@ fun DayEntriesSheet(
                     color = colors.textSecondary,
                 )
                 entries.forEach { entry ->
-                    EntryCard(entry = entry, showDate = false)
+                    EntryCard(
+                        entry = entry,
+                        showDate = false,
+                        onClick = { onEntryClick(entry) },
+                    )
                 }
+            }
+            if (onAddForDay != null) {
+                ChunkyButton(
+                    text = stringResource(R.string.day_sheet_add),
+                    emoji = "➕",
+                    onClick = onAddForDay,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }

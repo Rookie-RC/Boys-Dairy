@@ -20,13 +20,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -50,7 +57,10 @@ private val keypadRows = listOf(
  * Stateless PIN entry layout: optional hero emoji, title, subtitle, 4 dots, message line and a
  * chunky 3x4 keypad. Shared by the lock screen and the change-PIN screen.
  *
- * Whenever [shakeTrigger] changes to a value > 0 the dots and the message wiggle (wrong PIN).
+ * Whenever [shakeTrigger] changes to a value > 0 the dots and the message wiggle (wrong PIN),
+ * with one firm haptic buzz. Keys give a light tick. Haptics go through Compose's
+ * [LocalHapticFeedback] (the view's own haptic feedback, which follows the system "touch
+ * feedback" setting and needs no VIBRATE permission).
  */
 @Composable
 fun PinEntryContent(
@@ -66,6 +76,10 @@ fun PinEntryContent(
     shakeTrigger: Int = 0,
 ) {
     val colors = FunTheme.colors
+    val haptics = LocalHapticFeedback.current
+    // The last trigger value that was played. Saved, and seeded with the value the screen opens
+    // with, so a rotation or coming back to the screen does not replay an old shake and buzz.
+    var playedShake by rememberSaveable { mutableIntStateOf(shakeTrigger) }
 
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
         val keySize = when {
@@ -78,7 +92,9 @@ fun PinEntryContent(
         val shake = remember { Animatable(0f) }
         val shakeDistancePx = with(LocalDensity.current) { 12.dp.toPx() }
         LaunchedEffect(shakeTrigger) {
-            if (shakeTrigger > 0) {
+            if (shakeTrigger > 0 && shakeTrigger != playedShake) {
+                playedShake = shakeTrigger
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 repeat(3) {
                     shake.animateTo(shakeDistancePx, tween(45))
                     shake.animateTo(-shakeDistancePx, tween(45))
@@ -153,14 +169,20 @@ fun PinEntryContent(
                 keypadRows.forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         row.forEach { digit ->
-                            DigitKey(digit = digit, size = keySize, enabled = enabled, onDigit = onDigit)
+                            DigitKey(
+                                digit = digit,
+                                size = keySize,
+                                enabled = enabled,
+                                onDigit = onDigit,
+                                haptics = haptics,
+                            )
                         }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Spacer(Modifier.size(keySize))
-                    DigitKey(digit = '0', size = keySize, enabled = enabled, onDigit = onDigit)
-                    BackspaceKey(size = keySize, enabled = enabled, onBackspace = onBackspace)
+                    DigitKey(digit = '0', size = keySize, enabled = enabled, onDigit = onDigit, haptics = haptics)
+                    BackspaceKey(size = keySize, enabled = enabled, onBackspace = onBackspace, haptics = haptics)
                 }
             }
         }
@@ -184,12 +206,19 @@ private fun PinDots(filled: Int) {
     }
 }
 
+/**
+ * Light tick for a key press. Compose 1.7 only offers LongPress and TextHandleMove; the latter is
+ * the subtle one (a no-op on API 26, where the platform has no such constant).
+ */
+private fun HapticFeedback.keyTick() = performHapticFeedback(HapticFeedbackType.TextHandleMove)
+
 @Composable
 private fun DigitKey(
     digit: Char,
     size: Dp,
     enabled: Boolean,
     onDigit: (Char) -> Unit,
+    haptics: HapticFeedback,
 ) {
     FunSurface(
         modifier = Modifier
@@ -197,7 +226,10 @@ private fun DigitKey(
             .alpha(if (enabled) 1f else 0.4f),
         shape = FunShapes.key,
         shadowOffset = 3.dp,
-        onClick = { onDigit(digit) },
+        onClick = {
+            haptics.keyTick()
+            onDigit(digit)
+        },
         enabled = enabled,
         role = Role.Button,
         contentAlignment = Alignment.Center,
@@ -211,6 +243,7 @@ private fun BackspaceKey(
     size: Dp,
     enabled: Boolean,
     onBackspace: () -> Unit,
+    haptics: HapticFeedback,
 ) {
     val colors = FunTheme.colors
     FunSurface(
@@ -221,7 +254,10 @@ private fun BackspaceKey(
         containerColor = colors.lemon,
         contentColor = colors.onAccent,
         shadowOffset = 3.dp,
-        onClick = onBackspace,
+        onClick = {
+            haptics.keyTick()
+            onBackspace()
+        },
         enabled = enabled,
         role = Role.Button,
         contentAlignment = Alignment.Center,

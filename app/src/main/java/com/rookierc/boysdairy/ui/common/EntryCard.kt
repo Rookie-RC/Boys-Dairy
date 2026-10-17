@@ -33,13 +33,16 @@ import java.time.ZoneId
 
 /**
  * One diary entry as a sticker card. Shared by the history list and the calendar day sheet.
- * [onDelete] = null hides the trash button; [showDate] = false shows only the time.
+ * [onDelete] = null hides the trash button; [showDate] = false shows only the time;
+ * [onClick] makes the whole card tappable; it is announced as "edit this entry", which is what
+ * callers use it for.
  */
 @Composable
 fun EntryCard(
     entry: Entry,
     modifier: Modifier = Modifier,
     showDate: Boolean = true,
+    onClick: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
 ) {
     val colors = FunTheme.colors
@@ -54,6 +57,8 @@ fun EntryCard(
     val deleteCd = stringResource(R.string.history_delete_cd)
 
     FunCard(
+        onClick = onClick,
+        onClickLabel = if (onClick != null) stringResource(R.string.entry_edit_action) else null,
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(start = 14.dp, top = 14.dp, bottom = 14.dp, end = 8.dp),
     ) {

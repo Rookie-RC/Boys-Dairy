@@ -2,6 +2,7 @@ package com.rookierc.boysdairy.ui.common
 
 import androidx.annotation.StringRes
 import com.rookierc.boysdairy.R
+import com.rookierc.boysdairy.domain.Achievement
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.Mood
 
@@ -65,4 +66,52 @@ fun pleasureTierRes(score: Int): Int = when {
     score <= 6 -> R.string.pleasure_tier_nice
     score <= 8 -> R.string.pleasure_tier_great
     else -> R.string.pleasure_tier_peak
+}
+
+/** Sticker emoji, name and description of an [Achievement] (achievement wall, unlock snackbar). */
+internal class AchievementLabels(val emoji: String, @StringRes val nameRes: Int, @StringRes val descRes: Int)
+
+internal fun Achievement.labels(): AchievementLabels = when (this) {
+    Achievement.FIRST_ENTRY -> AchievementLabels(
+        "🐣", R.string.achievement_first_entry_name, R.string.achievement_first_entry_desc,
+    )
+    Achievement.TOTAL_10 -> AchievementLabels(
+        "🔟", R.string.achievement_total_10_name, R.string.achievement_total_10_desc,
+    )
+    Achievement.TOTAL_50 -> AchievementLabels(
+        "🎖️", R.string.achievement_total_50_name, R.string.achievement_total_50_desc,
+    )
+    Achievement.TOTAL_100 -> AchievementLabels(
+        "💯", R.string.achievement_total_100_name, R.string.achievement_total_100_desc,
+    )
+    Achievement.STREAK_3 -> AchievementLabels(
+        "🔥", R.string.achievement_streak_3_name, R.string.achievement_streak_3_desc,
+    )
+    Achievement.STREAK_7 -> AchievementLabels(
+        "📅", R.string.achievement_streak_7_name, R.string.achievement_streak_7_desc,
+    )
+    Achievement.GAP_7 -> AchievementLabels(
+        "🧘", R.string.achievement_gap_7_name, R.string.achievement_gap_7_desc,
+    )
+    Achievement.GAP_30 -> AchievementLabels(
+        "🏔️", R.string.achievement_gap_30_name, R.string.achievement_gap_30_desc,
+    )
+    Achievement.PARTNER_10 -> AchievementLabels(
+        "💞", R.string.achievement_partner_10_name, R.string.achievement_partner_10_desc,
+    )
+    Achievement.NIGHT_OWL -> AchievementLabels(
+        "🦉", R.string.achievement_night_owl_name, R.string.achievement_night_owl_desc,
+    )
+    Achievement.EARLY_BIRD -> AchievementLabels(
+        "🐓", R.string.achievement_early_bird_name, R.string.achievement_early_bird_desc,
+    )
+    Achievement.MARATHON -> AchievementLabels(
+        "🏃", R.string.achievement_marathon_name, R.string.achievement_marathon_desc,
+    )
+    Achievement.PEAK_PLEASURE -> AchievementLabels(
+        "🎆", R.string.achievement_peak_pleasure_name, R.string.achievement_peak_pleasure_desc,
+    )
+    Achievement.SAGE_MODE -> AchievementLabels(
+        "🔮", R.string.achievement_sage_mode_name, R.string.achievement_sage_mode_desc,
+    )
 }

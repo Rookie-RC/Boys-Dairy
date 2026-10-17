@@ -98,25 +98,32 @@ fun ChunkyButton(
     }
 }
 
-/** Small square-ish button for icons / emoji (back, month arrows, delete). 48dp touch target. */
+/**
+ * Small square-ish button for icons / emoji (back, month arrows, delete). 48dp touch target.
+ * When not [enabled] it uses the same muted look as a disabled [ChunkyButtonSlot].
+ */
 @Composable
 fun ChunkyIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = FunTheme.colors.lemon,
     contentColor: Color = FunTheme.colors.onAccent,
+    enabled: Boolean = true,
     size: Dp = 52.dp,
     shadowOffset: Dp = 3.dp,
     shape: Shape = FunShapes.field,
     content: @Composable () -> Unit,
 ) {
+    val colors = FunTheme.colors
     FunSurface(
         modifier = modifier.size(size),
         shape = shape,
-        containerColor = containerColor,
-        contentColor = contentColor,
+        containerColor = if (enabled) containerColor else colors.disabled,
+        contentColor = if (enabled) contentColor else colors.onDisabled,
+        shadowColor = if (enabled) colors.shadow else colors.shadow.copy(alpha = 0.35f),
         shadowOffset = shadowOffset,
         onClick = onClick,
+        enabled = enabled,
         role = Role.Button,
         contentAlignment = Alignment.Center,
     ) {

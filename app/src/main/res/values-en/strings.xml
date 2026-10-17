@@ -247,6 +247,42 @@
         <item>Deleted. Regret now or never ⏳</item>
     </string-array>
 
+    <!-- Entry editing & history filters -->
+    <string name="edit_title">Edit entry</string>
+    <string name="edit_save">Save changes</string>
+    <string name="edit_loading">Pulling your file from the archives…</string>
+    <string name="edit_entry_missing">That entry is gone. Looks like someone already burned the evidence 🕵️</string>
+    <string-array name="edit_save_toasts">
+        <item>Fixed. History has been quietly revised ✏️</item>
+        <item>Changes saved. Nothing to see here 🤫</item>
+        <item>Dark history retouched. Looks even more legit now 💅</item>
+        <item>Record updated. While you\'re here: drink some water 💧</item>
+    </string-array>
+    <string name="entry_edit_action">Edit entry</string>
+    <string name="add_duration_minus_cd">One minute less</string>
+    <string name="add_duration_plus_cd">One minute more</string>
+    <string name="add_note_counter">%1$d/%2$d</string>
+    <string name="add_discard_title">Ditch this one?</string>
+    <string name="add_discard_message">Nothing\'s saved yet. Leave now and it\'s gone for good: the logbook keeps no secret copy 📭</string>
+    <string name="add_discard_confirm">Ditch it</string>
+    <string name="edit_discard_title">Bailing mid-edit?</string>
+    <string name="edit_discard_message">Your changes aren\'t saved. Leave now and the entry stays exactly as it was, not a word changed.</string>
+    <string name="edit_discard_confirm">Drop my changes</string>
+    <string name="add_discard_keep">Oops, keep going</string>
+    <string name="history_filter_all">All</string>
+    <string name="history_filter_solo">Solo</string>
+    <string name="history_filter_partner">Co-op</string>
+    <plurals name="history_month_header">
+        <item quantity="one">%1$s · %2$d entry</item>
+        <item quantity="other">%1$s · %2$d entries</item>
+    </plurals>
+    <string name="day_sheet_add">Log one for this day</string>
+    <string name="home_this_month">Back to this month</string>
+    <plurals name="home_day_cd">
+        <item quantity="one">%1$s, %2$d entry</item>
+        <item quantity="other">%1$s, %2$d entries</item>
+    </plurals>
+
     <!-- AI roast -->
     <string name="ai_title">AI Roast</string>
     <string name="ai_subtitle">Let an AI read your stats and have opinions</string>
@@ -386,4 +422,111 @@
     <string name="change_pin_confirm">Once more</string>
     <string name="change_pin_confirm_sub">Confirm the new code</string>
     <string name="change_pin_success">Secret code updated 🔐</string>
+
+    <!-- Insights -->
+    <string name="insights_open">See the full report</string>
+    <string name="insights_title">Full Report</string>
+    <string name="insights_empty">No entries yet, so the report has nothing to say</string>
+    <string name="insights_empty_hint">Log something first, then come back for the big picture 📊</string>
+    <string name="insights_overview">Overview</string>
+    <string name="insights_total_label">Entries so far</string>
+    <plurals name="insights_times_unit">
+        <item quantity="one">entry</item>
+        <item quantity="other">entries</item>
+    </plurals>
+    <string name="insights_share_line">%1$s: %2$d (%3$s)</string>
+    <string name="insights_avg_duration">Avg. duration</string>
+    <string name="insights_minutes_value">%1$s min</string>
+    <string name="insights_pleasure_value">%1$s / 10</string>
+    <string name="insights_avg_interval">Recent avg. gap</string>
+    <string name="insights_days_decimal">%1$s days</string>
+    <plurals name="insights_days_value">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <string name="insights_longest_gap">Longest gap</string>
+    <string name="insights_current_streak">Current streak</string>
+    <string name="insights_longest_streak">Best streak ever</string>
+    <string name="insights_overview_note">\"Recent avg. gap\" only looks at your latest 11 entries; days are calendar days.</string>
+    <plurals name="insights_weekly_title">
+        <item quantity="one">Last %1$d week</item>
+        <item quantity="other">Last %1$d weeks</item>
+    </plurals>
+    <plurals name="insights_weekly_peak">
+        <item quantity="one">Peak week: %1$d entry</item>
+        <item quantity="other">Peak week: %1$d entries</item>
+    </plurals>
+    <string name="insights_this_week">Now</string>
+    <string name="pattern_insights_week">MMM d</string>
+    <string name="insights_weekly_empty">Nothing in the last few weeks. The chart is on vacation 🏖️</string>
+    <string name="insights_weekly_cd">Weekly bar chart, weeks shown: %1$d. Total: %2$d, solo: %3$d, with a partner: %4$d. Busiest week started %5$s, count: %6$d.</string>
+    <string name="insights_weekday_title">By day of the week</string>
+    <string name="insights_hour_title">By time of day</string>
+    <string name="insights_hour_night">Night 0–6</string>
+    <string name="insights_hour_morning">Morning 6–12</string>
+    <string name="insights_hour_afternoon">Afternoon 12–18</string>
+    <string name="insights_hour_evening">Evening 18–24</string>
+    <string name="insights_busiest_hint">👑 = when you show up most</string>
+    <string name="insights_busiest_state">Most</string>
+    <string name="insights_mood_title">Mood board</string>
+    <string name="insights_achievements_title">Achievement wall</string>
+    <string name="insights_achievements_count">Unlocked: %1$d/%2$d</string>
+    <string name="insights_achievement_unlocked">Unlocked</string>
+    <string name="insights_achievement_progress">%1$d/%2$d</string>
+    <string name="achievement_first_entry_name">Tutorial Complete</string>
+    <string name="achievement_first_entry_desc">Logged your very first entry. Every legend starts somewhere.</string>
+    <string name="achievement_total_10_name">Getting Started</string>
+    <string name="achievement_total_10_desc">10 entries. The little book is getting some weight.</string>
+    <string name="achievement_total_50_name">Seasoned Veteran</string>
+    <string name="achievement_total_50_desc">50 entries. Your XP bar is overflowing.</string>
+    <string name="achievement_total_100_name">Centurion</string>
+    <string name="achievement_total_100_desc">100 entries. The notebook has filed for retirement.</string>
+    <string name="achievement_streak_3_name">Hat Trick</string>
+    <string name="achievement_streak_3_desc">Three days in a row. Discipline? Sure, let\'s call it that.</string>
+    <string name="achievement_streak_7_name">Perfect Attendance</string>
+    <string name="achievement_streak_7_desc">Seven days straight. Drink water, get some sleep (not medical advice).</string>
+    <string name="achievement_gap_7_name">Week of Zen</string>
+    <string name="achievement_gap_7_desc">Seven days between entries. Solid willpower.</string>
+    <string name="achievement_gap_30_name">Mountain Hermit</string>
+    <string name="achievement_gap_30_desc">Thirty days apart. Did you join a monastery?</string>
+    <string name="achievement_partner_10_name">Dynamic Duo</string>
+    <string name="achievement_partner_10_desc">10 co-op entries. Teamwork makes the dream work.</string>
+    <string name="achievement_night_owl_name">Night Owl</string>
+    <string name="achievement_night_owl_desc">5 entries between midnight and 6 AM. Sleep is free, you know (not medical advice).</string>
+    <string name="achievement_early_bird_name">Early Bird</string>
+    <string name="achievement_early_bird_desc">5 entries between 6 AM and noon. Rise and shine.</string>
+    <string name="achievement_marathon_name">Marathoner</string>
+    <string name="achievement_marathon_desc">One session of 60+ minutes. Hydrate and stretch (not medical advice).</string>
+    <string name="achievement_peak_pleasure_name">Sky High</string>
+    <string name="achievement_peak_pleasure_desc">Rated one a perfect 10. Must have been a good day.</string>
+    <string name="achievement_sage_mode_name">Philosopher\'s Stone</string>
+    <string name="achievement_sage_mode_desc">Felt relaxed afterwards 10 times. Enlightenment, five minutes at a time.</string>
+    <string name="insights_disclaimer">All of this is computed on your phone, just for fun, and is not medical or health advice.</string>
+
+    <!-- Danger zone -->
+    <string name="clear_all_button">Delete all entries</string>
+    <string name="clear_all_empty">Already empty. Nothing to delete 🫙</string>
+    <string name="clear_all_confirm_title">Delete every single entry?</string>
+    <string name="clear_all_confirm_message">All entries will be deleted for good. There is no undo and no way to get them back. Only entries go: your secret code, theme, language and API keys stay as they are. Consider using \"Export backup\" above first.</string>
+    <string name="clear_all_confirm_next">I\'m sure, next step</string>
+    <string name="clear_all_keep">Never mind, keep them</string>
+    <string name="clear_all_pin_title">Last check: your secret code</string>
+    <string name="clear_all_pin_message">Enter your current 4-digit code to prove it\'s really you. Wrong tries count, and too many earn you a time-out.</string>
+    <string name="clear_all_pin_placeholder">4-digit code</string>
+    <string name="clear_all_pin_confirm">Delete everything</string>
+    <string name="clear_all_working">Deleting…</string>
+    <string name="clear_all_failed">Couldn\'t delete the entries 😵 Try again?</string>
+    <string-array name="clear_all_done_toasts">
+        <item>Notebook wiped. Fresh start 🧹</item>
+        <item>All entries gone. Legends never die, they just get deleted 🫥</item>
+        <item>Squeaky clean, like nothing ever happened ✨</item>
+    </string-array>
+
+    <!-- Round 2 polish -->
+    <!-- Second line of the save snackbar when that save unlocked achievements. %1$s = their names joined with achievement_unlocked_separator. -->
+    <plurals name="achievement_unlocked_toast">
+        <item quantity="one">🏆 Ding! Achievement unlocked: %1$s</item>
+        <item quantity="other">🏆 Ding ding! Achievements unlocked: %1$s</item>
+    </plurals>
+    <string name="achievement_unlocked_separator">", "</string>
 </resources>

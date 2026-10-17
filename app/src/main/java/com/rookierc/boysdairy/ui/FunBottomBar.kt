@@ -3,6 +3,8 @@ package com.rookierc.boysdairy.ui
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -29,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -100,10 +104,22 @@ fun FunBottomBar(
                 // Center slot: the button floats above, only its label lives in the bar. It uses the
                 // same column layout as BarItem (with an invisible stand-in for the emoji pill), so
                 // its baseline matches the other labels and keeps a gap below the raised button.
+                // Tapping the label also checks in. For screen readers it does not exist: the
+                // raised button is the one "add entry" control, so TalkBack doesn't announce two.
+                // clearAndSetSemantics must come *before* clickable: semantics are collected from
+                // the end of the chain, and a clearing node drops everything collected after it,
+                // including the click action and the label text.
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxHeight(),
+                        .fillMaxHeight()
+                        .clearAndSetSemantics { }
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            // The bump right above is the visual button; no ripple on the label.
+                            indication = null,
+                            onClick = onAddClick,
+                        ),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
