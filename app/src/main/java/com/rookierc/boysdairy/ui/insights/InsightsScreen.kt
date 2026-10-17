@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -32,8 +34,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +61,8 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -61,6 +70,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -68,9 +78,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rookierc.boysdairy.R
+import com.rookierc.boysdairy.domain.AbstinenceGap
+import com.rookierc.boysdairy.domain.Achievement
+import com.rookierc.boysdairy.domain.AchievementKind
 import com.rookierc.boysdairy.domain.AchievementProgress
 import com.rookierc.boysdairy.domain.EntryStats
 import com.rookierc.boysdairy.domain.EntryType
+import com.rookierc.boysdairy.domain.GapExclusion
 import com.rookierc.boysdairy.domain.HourBucket
 import com.rookierc.boysdairy.domain.InsightsPeriod
 import com.rookierc.boysdairy.domain.KeywordCount
@@ -78,11 +92,18 @@ import com.rookierc.boysdairy.domain.Mood
 import com.rookierc.boysdairy.domain.MonthComparison
 import com.rookierc.boysdairy.domain.WeekBucket
 import com.rookierc.boysdairy.domain.busiestKeys
+import com.rookierc.boysdairy.domain.gapLedger
+import com.rookierc.boysdairy.domain.isExcludedBy
+import com.rookierc.boysdairy.domain.toExclusion
+import com.rookierc.boysdairy.ui.common.ChunkyButton
 import com.rookierc.boysdairy.ui.common.EditionEmoji
 import com.rookierc.boysdairy.ui.common.EmojiChip
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.EmptyState
 import com.rookierc.boysdairy.ui.common.FunCard
+import com.rookierc.boysdairy.ui.common.FunConfirmDialog
+import com.rookierc.boysdairy.ui.common.FunDialog
+import com.rookierc.boysdairy.ui.common.FunSurface
 import com.rookierc.boysdairy.ui.common.FunTopBar
 import com.rookierc.boysdairy.ui.common.LocalEdition
 import com.rookierc.boysdairy.ui.common.SectionHeader
@@ -99,6 +120,7 @@ import com.rookierc.boysdairy.ui.theme.FunShapes
 import com.rookierc.boysdairy.ui.theme.FunTheme
 import com.rookierc.boysdairy.ui.theme.accent
 import java.text.NumberFormat
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -113,15 +135,18 @@ fun InsightsScreen(
     viewModel: InsightsViewModel = viewModel(factory = InsightsViewModel.Factory),
 ) {
     val entries by viewModel.entries.collectAsStateWithLifecycle()
+    val exclusions by viewModel.exclusions.collectAsStateWithLifecycle()
     val period by viewModel.period.collectAsStateWithLifecycle()
     val today by rememberToday()
 
     val loaded = entries
-    val report = remember(loaded, today, period) {
-        if (loaded.isNullOrEmpty()) {
+    val excluded = exclusions
+    // Waits for the exclusions too, so the wall never shows badges that flip back once they arrive.
+    val report = remember(loaded, excluded, today, period) {
+        if (loaded.isNullOrEmpty() || excluded == null) {
             null
         } else {
-            InsightsReport.compute(loaded, period, System.currentTimeMillis(), ZoneId.systemDefault())
+            InsightsReport.compute(loaded, period, System.currentTimeMillis(), ZoneId.systemDefault(), excluded)
         }
     }
 
@@ -135,7 +160,7 @@ fun InsightsScreen(
         when {
             loaded == null -> Box(Modifier.fillMaxSize())
 
-            report == null -> Box(
+            loaded.isEmpty() -> Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .navigationBarsPadding(),
@@ -148,9 +173,14 @@ fun InsightsScreen(
                 )
             }
 
+            report == null -> Box(Modifier.fillMaxSize()) // Exclusions still loading.
+
             else -> InsightsContent(
                 report = report,
+                today = today,
                 onSelectPeriod = viewModel::selectPeriod,
+                onExcludeGap = viewModel::exclude,
+                onRestoreGap = viewModel::restore,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
@@ -159,15 +189,43 @@ fun InsightsScreen(
     }
 }
 
+/**
+ * The report itself, plus the gap ledger of a gap badge and its "does not count?" confirmation.
+ * Which ledger is open is saved as the badge's enum name, so a rotation keeps it. The gap awaiting
+ * confirmation ([GapExclusion.encode]) is only remembered, never written into the saved instance
+ * state, because it holds diary dates; a rotation closes the confirmation. Both are looked up in
+ * [report] again, and state that no longer points at anything (the data changed meanwhile) is
+ * dropped.
+ */
 @Composable
 private fun InsightsContent(
     report: InsightsReport,
+    today: LocalDate,
     onSelectPeriod: (InsightsPeriod) -> Unit,
+    onExcludeGap: (AbstinenceGap) -> Unit,
+    onRestoreGap: (AbstinenceGap) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = FunTheme.colors
     val locale: Locale = LocalConfiguration.current.locales.get(0)
     val periodIsEmpty = report.periodIsEmpty
+
+    var ledgerName by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingExclusion by remember { mutableStateOf<String?>(null) }
+    val ledgerFor = ledgerName?.let { name -> Achievement.entries.firstOrNull { it.name == name && it.isGap } }
+    // Only a gap that is still there and still counted can be confirmed.
+    val pendingGap = if (ledgerFor == null) {
+        null
+    } else {
+        pendingExclusion?.let { GapExclusion.decode(it) }?.let { exclusion ->
+            report.gaps.firstOrNull { exclusion.matches(it) && !it.isExcludedBy(report.exclusions) }
+        }
+    }
+    // Forgets dialog state whose target is gone, so it cannot pop up again later by itself.
+    LaunchedEffect(ledgerFor == null, pendingGap == null) {
+        if (ledgerFor == null) ledgerName = null
+        if (pendingGap == null) pendingExclusion = null
+    }
 
     Column(
         modifier = modifier
@@ -221,7 +279,12 @@ private fun InsightsContent(
             KeywordLeaderboardCard(keywords = report.keywords)
         }
 
-        AchievementWall(achievements = report.achievements)
+        AchievementWall(
+            achievements = report.achievements,
+            onOpenLedger = { achievement -> ledgerName = achievement.name },
+        )
+
+        ShameWall(achievements = report.achievements)
 
         Text(
             text = stringResource(R.string.insights_disclaimer),
@@ -233,6 +296,33 @@ private fun InsightsContent(
                 .padding(horizontal = 8.dp),
         )
         Spacer(Modifier.height(8.dp))
+    }
+
+    // The ledger first, so the confirmation (composed after it) also opens on top after a rotation.
+    if (ledgerFor != null) {
+        GapLedgerDialog(
+            achievement = ledgerFor,
+            gaps = report.gaps,
+            exclusions = report.exclusions,
+            today = today,
+            onExclude = { gap -> pendingExclusion = gap.toExclusion().encode() },
+            onRestore = onRestoreGap,
+            onDismiss = {
+                ledgerName = null
+                pendingExclusion = null
+            },
+        )
+    }
+    if (pendingGap != null) {
+        ExcludeGapConfirmDialog(
+            gap = pendingGap,
+            today = today,
+            onConfirm = {
+                pendingExclusion = null
+                onExcludeGap(pendingGap)
+            },
+            onDismiss = { pendingExclusion = null },
+        )
     }
 }
 
@@ -1216,10 +1306,15 @@ private fun WrappingSectionHeader(
     }
 }
 
+/**
+ * "🏆 成就墙": the [AchievementKind.HONOR] badges. Gap badges are buttons that open their ledger
+ * ([onOpenLedger]); the first-entry badge is not.
+ */
 @Composable
-private fun AchievementWall(achievements: List<AchievementProgress>) {
+private fun AchievementWall(achievements: List<AchievementProgress>, onOpenLedger: (Achievement) -> Unit) {
     val colors = FunTheme.colors
-    val unlockedCount = achievements.count { it.unlocked }
+    val honours = achievements.filter { it.achievement.kind == AchievementKind.HONOR }
+    val unlockedCount = honours.count { it.unlocked }
 
     FunCard(modifier = Modifier.fillMaxWidth()) {
         WrappingSectionHeader(
@@ -1227,46 +1322,130 @@ private fun AchievementWall(achievements: List<AchievementProgress>) {
             title = stringResource(R.string.insights_achievements_title),
             trailing = {
                 StickerBadge(
-                    text = stringResource(R.string.insights_achievements_count, unlockedCount, achievements.size),
+                    text = stringResource(R.string.insights_achievements_count, unlockedCount, honours.size),
                     containerColor = colors.lemon,
                     rotation = 2f,
                 )
             },
         )
         Spacer(Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.insights_achievements_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
+        Spacer(Modifier.height(2.dp))
         AllDataNote()
         Spacer(Modifier.height(14.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            achievements.chunked(2).forEachIndexed { rowIndex, pair ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    pair.forEachIndexed { column, item ->
-                        AchievementSticker(
-                            item = item,
-                            index = rowIndex * 2 + column,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                        )
-                    }
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+        StickerGrid(items = honours) { item, index, modifier ->
+            val achievement = item.achievement
+            AchievementSticker(
+                item = item,
+                index = index,
+                modifier = modifier,
+                onClick = if (achievement.isGap) {
+                    { onOpenLedger(achievement) }
+                } else {
+                    null
+                },
+            )
+        }
+    }
+}
+
+/**
+ * "🫣 黑历史": the [AchievementKind.SHAME] badges, right below the achievement wall. Locked ones
+ * say how far away they are, as a warning; they come from the entries themselves, so there is
+ * nothing to undo here (a wrong entry is edited or deleted instead).
+ */
+@Composable
+private fun ShameWall(achievements: List<AchievementProgress>) {
+    val colors = FunTheme.colors
+    val shames = achievements.filter { it.achievement.kind == AchievementKind.SHAME }
+    val unlockedCount = shames.count { it.unlocked }
+
+    FunCard(modifier = Modifier.fillMaxWidth()) {
+        WrappingSectionHeader(
+            emoji = "🫣",
+            title = stringResource(R.string.insights_shame_title),
+            trailing = {
+                StickerBadge(
+                    text = stringResource(R.string.insights_achievements_count, unlockedCount, shames.size),
+                    containerColor = if (unlockedCount > 0) colors.danger else colors.surfaceAlt,
+                    contentColor = if (unlockedCount > 0) colors.onAccent else colors.textPrimary,
+                    rotation = -2f,
+                )
+            },
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.insights_shame_caption),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
+        Spacer(Modifier.height(14.dp))
+        StickerGrid(items = shames) { item, index, modifier ->
+            AchievementSticker(item = item, index = index, modifier = modifier)
+        }
+    }
+}
+
+/** Two stickers per row, both as tall as the taller one; [sticker] gets the position and the cell modifier. */
+@Composable
+private fun StickerGrid(
+    items: List<AchievementProgress>,
+    sticker: @Composable (item: AchievementProgress, index: Int, modifier: Modifier) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        items.chunked(2).forEachIndexed { rowIndex, pair ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                pair.forEachIndexed { column, item ->
+                    sticker(
+                        item,
+                        rowIndex * 2 + column,
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                    )
                 }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }
 }
 
-/** Unlocked: a tilted, coloured sticker. Locked: flat grey with `progress/target` and a small bar. */
+/**
+ * Unlocked: a tilted, coloured sticker (honours cycle through the accents, shame badges are always
+ * danger red). Locked: flat grey with a small bar and, in the corner, `progress/target` for an
+ * honour or "N to go" for a shame badge. With [onClick] the sticker is a button.
+ */
 @Composable
-private fun AchievementSticker(item: AchievementProgress, index: Int, modifier: Modifier = Modifier) {
+private fun AchievementSticker(
+    item: AchievementProgress,
+    index: Int,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
     val colors = FunTheme.colors
+    val shame = item.achievement.kind == AchievementKind.SHAME
     val ui = item.achievement.labels(LocalEdition.current)
-    val (fill, onFill) = if (item.unlocked) colors.stickerFill(index) else colors.disabled to colors.textPrimary
+    val (fill, onFill) = when {
+        !item.unlocked -> colors.disabled to colors.textPrimary
+        shame -> colors.danger to colors.onAccent
+        else -> colors.stickerFill(index)
+    }
     val secondaryText = if (item.unlocked) onFill else colors.textSecondary
+    val corner = when {
+        item.unlocked && shame -> stringResource(R.string.insights_shame_unlocked)
+        item.unlocked -> stringResource(R.string.insights_achievement_unlocked)
+        shame -> shameRemainingText(item)
+        else -> stringResource(R.string.insights_achievement_progress, item.progress, item.target)
+    }
 
     FunCard(
         modifier = modifier
@@ -1275,6 +1454,8 @@ private fun AchievementSticker(item: AchievementProgress, index: Int, modifier: 
         containerColor = fill,
         contentColor = onFill,
         shadowOffset = if (item.unlocked) 4.dp else 2.dp,
+        onClick = onClick,
+        onClickLabel = if (onClick != null) stringResource(R.string.gap_ledger_open_a11y) else null,
         contentPadding = PaddingValues(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1285,13 +1466,10 @@ private fun AchievementSticker(item: AchievementProgress, index: Int, modifier: 
             )
             Spacer(Modifier.weight(1f))
             Text(
-                text = if (item.unlocked) {
-                    stringResource(R.string.insights_achievement_unlocked)
-                } else {
-                    stringResource(R.string.insights_achievement_progress, item.progress, item.target)
-                },
+                text = corner,
                 style = MaterialTheme.typography.labelMedium,
                 color = secondaryText,
+                textAlign = TextAlign.End,
             )
         }
         Spacer(Modifier.height(6.dp))
@@ -1343,5 +1521,260 @@ private fun FunColors.stickerFill(index: Int): Pair<Color, Color> = when (index 
     3 -> solo to onAccent
     else -> grape to onGrape
 }
+
+/** Corner of a locked shame badge: "还差 N 天" for the streaks, "还差 N 次" for the rest. */
+@Composable
+private fun shameRemainingText(item: AchievementProgress): String {
+    val remaining = (item.target - item.progress).coerceAtLeast(0)
+    val plural = when (item.achievement) {
+        Achievement.STREAK_3, Achievement.STREAK_7 -> R.plurals.insights_shame_remaining_days
+        else -> R.plurals.insights_shame_remaining_times
+    }
+    return quantityString(plural, remaining, remaining)
+}
+
+// ---- Gap ledger -------------------------------------------------------------------------------
+
+/**
+ * The gaps behind a gap badge, newest first ([gapLedger]): those that count, each with
+ * "does not count" ([onExclude] asks for confirmation first), and below them the ones already
+ * marked, each with "restore" ([onRestore], immediate). The list scrolls inside a capped height
+ * ([ledgerListMaxHeight]) so the hint and the close button stay in view even with dozens of gaps.
+ */
+@Composable
+private fun GapLedgerDialog(
+    achievement: Achievement,
+    gaps: List<AbstinenceGap>,
+    exclusions: Set<GapExclusion>,
+    today: LocalDate,
+    onExclude: (AbstinenceGap) -> Unit,
+    onRestore: (AbstinenceGap) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = FunTheme.colors
+    val ui = achievement.labels(LocalEdition.current)
+    val minDays = achievement.minGapDays
+    val ledger = remember(gaps, exclusions, minDays) { gapLedger(gaps, exclusions, minDays) }
+    val excludeText = stringResource(R.string.gap_ledger_exclude)
+    val restoreText = stringResource(R.string.gap_ledger_restore)
+
+    FunDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(ui.nameRes),
+        emoji = ui.emoji,
+        buttons = {
+            ChunkyButton(
+                text = stringResource(R.string.gap_ledger_close),
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+    ) {
+        Text(
+            text = quantityString(R.plurals.gap_ledger_subtitle, minDays, minDays),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textPrimary,
+        )
+        Spacer(Modifier.height(12.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = ledgerListMaxHeight())
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (ledger.counted.isEmpty()) {
+                Text(
+                    text = quantityString(R.plurals.gap_ledger_empty, minDays, minDays),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textPrimary,
+                )
+            }
+            ledger.counted.forEach { gap ->
+                key(gap.start) {
+                    GapLedgerRow(
+                        gap = gap,
+                        today = today,
+                        excluded = false,
+                        actionText = excludeText,
+                        onAction = { onExclude(gap) },
+                    )
+                }
+            }
+            if (ledger.excluded.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.gap_ledger_excluded_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.textPrimary,
+                    modifier = Modifier.semantics { heading() },
+                )
+                ledger.excluded.forEach { gap ->
+                    key(gap.start) {
+                        GapLedgerRow(
+                            gap = gap,
+                            today = today,
+                            excluded = true,
+                            actionText = restoreText,
+                            onAction = { onRestore(gap) },
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.gap_ledger_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
+    }
+}
+
+/**
+ * One gap: its dates and length, merged for screen readers, and the row's action button at the
+ * end (below them when both do not fit, e.g. with a large font). An [excluded] gap is greyed out
+ * and struck through.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GapLedgerRow(
+    gap: AbstinenceGap,
+    today: LocalDate,
+    excluded: Boolean,
+    actionText: String,
+    onAction: () -> Unit,
+) {
+    val colors = FunTheme.colors
+    val textColor = if (excluded) colors.textSecondary else colors.textPrimary
+    val decoration = if (excluded) TextDecoration.LineThrough else TextDecoration.None
+
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.surfaceAlt)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterVertically)
+                .padding(end = 8.dp)
+                .semantics(mergeDescendants = true) {},
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = gapRangeText(gap, today),
+                style = MaterialTheme.typography.titleSmall,
+                color = textColor,
+                textDecoration = decoration,
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = quantityString(R.plurals.gap_ledger_days, gap.days, gap.days),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor,
+                    textDecoration = decoration,
+                    modifier = Modifier.align(Alignment.CenterVertically),
+                )
+                if (gap.isOpen) {
+                    StickerBadge(
+                        text = stringResource(R.string.gap_ledger_ongoing_badge),
+                        containerColor = colors.mint,
+                        contentColor = colors.onAccent,
+                        rotation = -2f,
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                    )
+                }
+            }
+        }
+        LedgerActionButton(
+            text = actionText,
+            onClick = onAction,
+            modifier = Modifier.align(Alignment.CenterVertically),
+        )
+    }
+}
+
+/** Small outlined pill of a ledger row ("不算" / "恢复"), pressing down like the other chunky controls. */
+@Composable
+private fun LedgerActionButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = FunTheme.colors
+    FunSurface(
+        modifier = modifier,
+        shape = FunShapes.chip,
+        containerColor = colors.surface,
+        contentColor = colors.textPrimary,
+        shadowOffset = 2.dp,
+        onClick = onClick,
+        role = Role.Button,
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            modifier = Modifier
+                .defaultMinSize(minHeight = 44.dp)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = text, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+/** Second step of "does not count": names the gap's dates and length; [onConfirm] takes it out. */
+@Composable
+private fun ExcludeGapConfirmDialog(
+    gap: AbstinenceGap,
+    today: LocalDate,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    FunConfirmDialog(
+        title = stringResource(R.string.gap_exclude_confirm_title),
+        emoji = "✂️",
+        message = stringResource(
+            R.string.gap_exclude_confirm_body,
+            gapRangeText(gap, today),
+            quantityString(R.plurals.gap_ledger_days, gap.days, gap.days),
+        ),
+        confirmText = stringResource(R.string.gap_exclude_confirm_ok),
+        confirmColor = FunTheme.colors.danger,
+        onConfirm = onConfirm,
+        dismissText = stringResource(R.string.gap_exclude_confirm_cancel),
+        onDismiss = onDismiss,
+    )
+}
+
+/**
+ * "10月1日 → 10月9日", or "10月1日 → 至今" for the open gap. A day in another year than [today]
+ * also shows its year ([R.string.pattern_gap_date_year] instead of [R.string.pattern_gap_date]).
+ */
+@Composable
+private fun gapRangeText(gap: AbstinenceGap, today: LocalDate): String {
+    val sameYear = rememberFormatter(R.string.pattern_gap_date)
+    val otherYear = rememberFormatter(R.string.pattern_gap_date_year)
+    val format = { day: LocalDate -> day.format(if (day.year == today.year) sameYear else otherYear) }
+    val end = gap.end?.let(format) ?: stringResource(R.string.gap_ledger_ongoing)
+    return stringResource(R.string.gap_ledger_range, format(gap.start), end)
+}
+
+/**
+ * Height cap of the ledger's scrolling list: a share of the screen height, smaller with a larger
+ * font so the title, hint and close button around it still fit on screen.
+ */
+@Composable
+private fun ledgerListMaxHeight(): Dp {
+    val screenHeight = LocalConfiguration.current.screenHeightDp
+    val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
+    return maxOf((screenHeight * LEDGER_LIST_SCREEN_SHARE / fontScale).dp, LEDGER_LIST_MIN_HEIGHT)
+}
+
+private const val LEDGER_LIST_SCREEN_SHARE = 0.42f
+private val LEDGER_LIST_MIN_HEIGHT = 120.dp
 
 private fun Double.oneDecimal(locale: Locale): String = String.format(locale, "%.1f", this)

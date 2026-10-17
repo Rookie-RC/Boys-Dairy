@@ -48,12 +48,11 @@ internal object GirlVariants {
         R.string.entry_keyword_line to R.string.entry_keyword_line_girl,
         R.string.insights_keyword_title to R.string.insights_keyword_title_girl,
         R.string.insights_keyword_caption to R.string.insights_keyword_caption_girl,
-        // Insights
-        R.string.achievement_gap_30_desc to R.string.achievement_gap_30_desc_girl,
-        R.string.achievement_marathon_name to R.string.achievement_marathon_name_girl,
-        R.string.achievement_peak_pleasure_name to R.string.achievement_peak_pleasure_name_girl,
-        R.string.achievement_sage_mode_name to R.string.achievement_sage_mode_name_girl,
-        R.string.achievement_sage_mode_desc to R.string.achievement_sage_mode_desc_girl,
+        // Insights: achievement wall and wall of shame
+        R.string.achievement_gap_30_x1_desc to R.string.achievement_gap_30_x1_desc_girl,
+        R.string.achievement_gap_100_x1_desc to R.string.achievement_gap_100_x1_desc_girl,
+        R.string.achievement_burst_desc to R.string.achievement_burst_desc_girl,
+        R.string.achievement_night_owl_desc to R.string.achievement_night_owl_desc_girl,
         // Insights round 3
         R.string.insights_range_empty to R.string.insights_range_empty_girl,
     )

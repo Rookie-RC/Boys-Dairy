@@ -14,6 +14,7 @@ import com.rookierc.boysdairy.ai.ClaudeTextGenerator
 import com.rookierc.boysdairy.ai.DeepSeekTextGenerator
 import com.rookierc.boysdairy.data.AppDatabase
 import com.rookierc.boysdairy.data.EntryRepository
+import com.rookierc.boysdairy.data.GapExclusionStore
 import com.rookierc.boysdairy.data.SettingsRepository
 import com.rookierc.boysdairy.data.backup.BackupManager
 import com.rookierc.boysdairy.data.settingsDataStore
@@ -35,9 +36,14 @@ class AppContainer(context: Context) {
 
     private val database: AppDatabase by lazy { AppDatabase.create(appContext) }
 
-    val entryRepository: EntryRepository by lazy { EntryRepository(database.entryDao()) }
-
     val settingsRepository: SettingsRepository = SettingsRepository(appContext.settingsDataStore)
+
+    /** Gaps marked "does not count" on the achievement wall; cleared together with the entries. */
+    val gapExclusionStore: GapExclusionStore = GapExclusionStore(appContext.settingsDataStore)
+
+    val entryRepository: EntryRepository by lazy {
+        EntryRepository(database.entryDao(), afterClearAll = { gapExclusionStore.clear() })
+    }
 
     val lockManager: LockManager = LockManager(
         settings = settingsRepository,

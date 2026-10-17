@@ -126,13 +126,6 @@
         <item>Consulting the fairy next door…</item>
     </string-array>
 
-    <!-- Girl: Insights -->
-    <string name="achievement_gap_30_desc_girl">Thirty days apart. Were you off reporting back to Fairyland?</string>
-    <string name="achievement_marathon_name_girl">Joy Marathon</string>
-    <string name="achievement_peak_pleasure_name_girl">Cloud Nine</string>
-    <string name="achievement_sage_mode_name_girl">Glow Getter</string>
-    <string name="achievement_sage_mode_desc_girl">Felt relaxed afterwards 10 times. Peak afterglow, soft as a cloud.</string>
-
     <!-- Girl: Insights round 3 -->
     <string name="insights_range_empty_girl">Nothing logged in this range. Soft life mode? 🌼 Try a wider one.</string>
 
@@ -827,34 +820,104 @@
     <string name="insights_achievements_count">Unlocked: %1$d/%2$d</string>
     <string name="insights_achievement_unlocked">Unlocked</string>
     <string name="insights_achievement_progress">%1$d/%2$d</string>
+    <!-- Under the achievement wall. A gap = calendar days between two entry days; the open one up to today counts too. -->
+    <string name="insights_achievements_hint">Gaps are counted in calendar days (the 1st to the 4th is 3 days), and the one you\'re in right now counts too. Forgot to log something? That stretches a gap: tap a gap badge and hit \"Don\'t count\" on it.</string>
+    <!-- Achievement names and descriptions: achievement_<enum name, lower case>_name / _desc (domain/Achievements.kt). -->
+    <!-- Achievement wall (honours): staying away. A gap = calendar days between two entry days. -->
     <string name="achievement_first_entry_name">Tutorial Complete</string>
     <string name="achievement_first_entry_desc">Logged your very first entry. Every legend starts somewhere.</string>
-    <string name="achievement_total_10_name">Getting Started</string>
-    <string name="achievement_total_10_desc">10 entries. The little book is getting some weight.</string>
-    <string name="achievement_total_50_name">Seasoned Veteran</string>
-    <string name="achievement_total_50_desc">50 entries. Your XP bar is overflowing.</string>
-    <string name="achievement_total_100_name">Centurion</string>
-    <string name="achievement_total_100_desc">100 entries. The notebook has filed for retirement.</string>
-    <string name="achievement_streak_3_name">Hat Trick</string>
-    <string name="achievement_streak_3_desc">Three days in a row. Discipline? Sure, let\'s call it that.</string>
-    <string name="achievement_streak_7_name">Perfect Attendance</string>
-    <string name="achievement_streak_7_desc">Seven days straight. Drink water, get some sleep (not medical advice).</string>
-    <string name="achievement_gap_7_name">Week of Zen</string>
-    <string name="achievement_gap_7_desc">Seven days between entries. Solid willpower.</string>
-    <string name="achievement_gap_30_name">Mountain Hermit</string>
-    <string name="achievement_gap_30_desc">Thirty days apart. Did you join a monastery?</string>
-    <string name="achievement_partner_10_name">Dynamic Duo</string>
-    <string name="achievement_partner_10_desc">10 co-op entries. Teamwork makes the dream work.</string>
+    <string name="achievement_gap_3_x1_name">3 Days Later</string>
+    <string name="achievement_gap_3_x1_desc">3 or more days between two entries. Look at you, all grown up.</string>
+    <string name="achievement_gap_3_x5_name">Work-Life Balance</string>
+    <string name="achievement_gap_3_x5_desc">5 gaps of 3+ days. Knowing when to clock out is a real skill.</string>
+    <string name="achievement_gap_3_x20_name">Slow and Steady</string>
+    <string name="achievement_gap_3_x20_desc">20 gaps of 3+ days. The tortoise sends its regards.</string>
+    <string name="achievement_gap_7_x1_name">Week of Zen</string>
+    <string name="achievement_gap_7_x1_desc">7 or more days between two entries. Solid willpower.</string>
+    <string name="achievement_gap_7_x5_name">Zen Regular</string>
+    <string name="achievement_gap_7_x5_desc">5 gaps of 7+ days. The meditation retreat keeps a cushion with your name on it.</string>
+    <string name="achievement_gap_7_x10_name">Weekly Edition</string>
+    <string name="achievement_gap_7_x10_desc">10 gaps of 7+ days. Readers are begging for more updates. Ignore them.</string>
+    <string name="achievement_gap_15_x1_name">Half-Moon Zen</string>
+    <string name="achievement_gap_15_x1_desc">15 or more days between two entries. Half a month unshaken: your zen just leveled up.</string>
+    <string name="achievement_gap_15_x3_name">Still Waters</string>
+    <string name="achievement_gap_15_x3_desc">3 gaps of 15+ days. Storms outside, not a ripple in here.</string>
+    <string name="achievement_gap_30_x1_name">Mountain Hermit</string>
+    <string name="achievement_gap_30_x1_desc">30 or more days between two entries. Did you join a monastery?</string>
+    <string name="achievement_gap_30_x1_desc_girl">30 or more days between two entries. Were you off reporting back to Fairyland?</string>
+    <string name="achievement_gap_30_x3_name">Once in a Blue Moon</string>
+    <string name="achievement_gap_30_x3_desc">3 gaps of 30+ days. Monthly updates only, and somehow that\'s a flex.</string>
+    <string name="achievement_gap_100_x1_name">Zen Lv. 100</string>
+    <string name="achievement_gap_100_x1_desc">100 or more days between two entries. Cultivation breakthrough achieved. Fellow traveler, we bow.</string>
+    <string name="achievement_gap_100_x1_desc_girl">100 or more days between two entries. Cultivation breakthrough achieved. Fairyland is warming up your throne.</string>
+    <!-- Wall of shame: warning signs of overdoing it. A nudge, never an insult; health jokes say "not medical advice". -->
+    <string name="insights_shame_title">Wall of shame</string>
+    <string name="insights_shame_caption">The emptier this wall, the better. Every badge here is your body holding up a sign: ease off (not medical advice).</string>
+    <!-- Corner label of an unlocked shame badge (the honours use insights_achievement_unlocked). -->
+    <string name="insights_shame_unlocked">Busted</string>
+    <!-- Locked shame badge counted in entries. %1$d = entries still missing before it unlocks. -->
+    <plurals name="insights_shame_remaining_times">
+        <item quantity="one">%1$d entry away</item>
+        <item quantity="other">%1$d entries away</item>
+    </plurals>
+    <!-- Locked shame badge counted in consecutive days (STREAK_*). %1$d = days still missing. -->
+    <plurals name="insights_shame_remaining_days">
+        <item quantity="one">%1$d day away</item>
+        <item quantity="other">%1$d days away</item>
+    </plurals>
+    <string name="achievement_streak_3_name">Losing Streak</string>
+    <string name="achievement_streak_3_desc">Entries 3 days in a row. Willpower 0, temptation 3. Sit the next round out (not medical advice).</string>
+    <string name="achievement_streak_7_name">No Days Off</string>
+    <string name="achievement_streak_7_desc">Entries 7 days in a row. Bring that attendance to work and you\'d be CEO by now. Early night, please (not medical advice).</string>
+    <string name="achievement_same_day_2_name">Doubleheader</string>
+    <string name="achievement_same_day_2_desc">2 entries on the same day. Nice encore, but your body is asking for overtime pay (not medical advice).</string>
+    <string name="achievement_same_day_3_name">Hat Trick</string>
+    <string name="achievement_same_day_3_desc">3 entries on the same day. On the pitch that\'s glory; here it earns you a glass of water and an early night (not medical advice).</string>
+    <string name="achievement_burst_name">Rapid Fire</string>
+    <string name="achievement_burst_desc">5 entries within 7 days. Impressive fire rate, but the ammo depot is calling for backup (not medical advice).</string>
+    <string name="achievement_burst_desc_girl">5 entries within 7 days. Joy bar maxed out, glow bar flashing red (not medical advice).</string>
     <string name="achievement_night_owl_name">Night Owl</string>
-    <string name="achievement_night_owl_desc">5 entries between midnight and 6 AM. Sleep is free, you know (not medical advice).</string>
-    <string name="achievement_early_bird_name">Early Bird</string>
-    <string name="achievement_early_bird_desc">5 entries between 6 AM and noon. Rise and shine.</string>
-    <string name="achievement_marathon_name">Marathoner</string>
-    <string name="achievement_marathon_desc">One session of 60+ minutes. Hydrate and stretch (not medical advice).</string>
-    <string name="achievement_peak_pleasure_name">Sky High</string>
-    <string name="achievement_peak_pleasure_desc">Rated one a perfect 10. Must have been a good day.</string>
-    <string name="achievement_sage_mode_name">Philosopher\'s Stone</string>
-    <string name="achievement_sage_mode_desc">Felt relaxed afterwards 10 times. Enlightenment, five minutes at a time.</string>
+    <string name="achievement_night_owl_desc">5 entries between midnight and 6 AM. Even owls clock out eventually. Sleep is free, go get some (not medical advice).</string>
+    <string name="achievement_night_owl_desc_girl">5 entries between midnight and 6 AM. Even owls clock out eventually. Your beauty sleep is calling (not medical advice).</string>
+    <string name="achievement_regret_name">Buyer\'s Remorse</string>
+    <string name="achievement_regret_desc">Felt guilty or empty afterwards 5 times. Next time, pause for three seconds first: do you actually want this, or is it just habit?</string>
+    <string name="achievement_boredom_name">Idle Hands</string>
+    <string name="achievement_boredom_desc">Felt bored beforehand 5 times. Boredom has other cures: a walk, a shower, a call with a friend. Really.</string>
+    <!-- Gap ledger: dialog of a gap badge listing the gaps it counts (newest first) and those marked "Don't count". -->
+    <!-- %1$d = the badge's minimum gap in days (3, 7, 15, 30 or 100). -->
+    <plurals name="gap_ledger_subtitle">
+        <item quantity="one">Gaps that count (%1$d+ day), newest first</item>
+        <item quantity="other">Gaps that count (%1$d+ days), newest first</item>
+    </plurals>
+    <!-- %1$s / %2$s = first and last day of a gap (pattern_gap_date or pattern_gap_date_year); %2$s is gap_ledger_ongoing for the open gap. -->
+    <string name="gap_ledger_range">%1$s → %2$s</string>
+    <string name="gap_ledger_ongoing">today</string>
+    <string name="gap_ledger_ongoing_badge">Ongoing</string>
+    <!-- %1$d = calendar days of a gap. -->
+    <plurals name="gap_ledger_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <string name="gap_ledger_exclude">Don\'t count</string>
+    <string name="gap_ledger_restore">Restore</string>
+    <string name="gap_ledger_excluded_title">Not counted</string>
+    <!-- %1$d = the badge's minimum gap in days. -->
+    <plurals name="gap_ledger_empty">
+        <item quantity="one">No gaps of %1$d+ day yet. Keep it up 🍵</item>
+        <item quantity="other">No gaps of %1$d+ days yet. Keep it up 🍵</item>
+    </plurals>
+    <string name="gap_ledger_hint">Forgetting to log makes a gap look longer than it was. A gap marked \"Don\'t count\" comes off every gap badge; if you remember roughly when it happened, adding that entry is more accurate.</string>
+    <string name="gap_ledger_close">Got it</string>
+    <!-- Screen-reader label of the click action on a gap badge (opens the gap ledger). -->
+    <string name="gap_ledger_open_a11y">See the gaps that count</string>
+    <string name="gap_exclude_confirm_title">Not counting this one?</string>
+    <!-- %1$s = gap_ledger_range of the gap, %2$s = its gap_ledger_days. -->
+    <string name="gap_exclude_confirm_body">The gap %1$s (%2$s) will no longer count towards any gap badge, and badges it helped unlock may lock again. If you just forgot to log something in between, adding that entry is more accurate. You can restore it here at any time. Honest bookkeeping: karma +1 🙏</string>
+    <string name="gap_exclude_confirm_ok">Don\'t count it</string>
+    <string name="gap_exclude_confirm_cancel">Let me think</string>
+    <!-- Gap ledger dates (java.time DateTimeFormatter); the _year form adds the year, for gaps across years. -->
+    <string name="pattern_gap_date">MMM d</string>
+    <string name="pattern_gap_date_year">MMM d, yyyy</string>
     <string name="insights_disclaimer">All of this is computed on your phone, just for fun, and is not medical or health advice.</string>
 
     <!-- Insights round 3 -->
@@ -918,6 +981,11 @@
         <item quantity="other">🏆 Ding ding! Achievements unlocked: %1$s</item>
     </plurals>
     <string name="achievement_unlocked_separator">", "</string>
+    <!-- Like achievement_unlocked_toast, for shame badges. %1$s = their names joined with achievement_unlocked_separator. -->
+    <plurals name="shame_unlocked_toast">
+        <item quantity="one">🫣 Uh-oh, shame badge unlocked: %1$s</item>
+        <item quantity="other">🫣 Uh-oh, shame badges unlocked: %1$s</item>
+    </plurals>
 
     <!-- Backup reminder, copy, lock now -->
     <!-- %1$s = date formatted with pattern_date_weekday. Shown under "Export backup" in Settings and on the home reminder card. -->

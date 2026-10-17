@@ -94,7 +94,7 @@ BoysDairyRoot
 - 表单的快捷时间（刚刚 / 30 分钟前 / 1 小时前 / 2 小时前）按「真实的现在 − N 分钟」换算成本地时间再截到分钟，跨午夜和夏令时都正确（`EntryFormLogic`）。
 
 - `FunBottomBar`：4 个 emoji tab（首页 🏠 / 战绩 📼 / AI 锐评 🤖 / 设置 ⚙️）+ 凸起的粉色圆形打卡按钮；凸起部分算在栏自身高度内，内容不会被盖住。按钮下方的「打卡」文字也可点，但对读屏不可见（只有圆形按钮这一个「新增」控件）。
-- 保存打卡后，`AddEntryViewModel.save` 用同一个「现在」在保存前后各算一次 `computeAchievements`，`newlyUnlocked` 得出这次解锁的成就，附在保存提示里（读取失败就当没有，不影响保存）。
+- 保存打卡后，`AddEntryViewModel.save` 用同一个「现在」和同一份「不算」的间隔在保存前后各算一次 `computeAchievements`，`newlyUnlocked` 得出这次解锁的成就，附在保存提示里：正面成就一行「🏆 叮！解锁成就」，黑历史另起一行「🫣 解锁黑历史」（读取失败就当没有，不影响保存）。
 - `AI` 页没配 Key 时有「去设置 Key」：置位 `openKeyDialogRequest` 并切到设置 tab，设置页消费这个请求并弹出 Key 对话框。
 - 全局 `FunSnackbarController`（`LocalSnackbar`）在导航层，所以删除后的「撤销」提示在切 tab 后仍在。
 - 备份流程的对话框由 `BackupFlowHost` 在导航层渲染。
@@ -117,9 +117,10 @@ Room 数据库 `boysdairy.db`，`version = 2`，`exportSchema = true`（schema �
 
 - **迁移**：`AppDatabase.MIGRATIONS` 注册在建库处。`1 → 2` 是 ``ALTER TABLE `entries` ADD COLUMN `keyword` TEXT``（可空、无默认值，与 `2.json` 一致），老数据的 keyword 为 `NULL`。`AppDatabaseMigrationTest` 校验迁移 SQL 并比对 `1.json` / `2.json`。不准用 `fallbackToDestructiveMigration`。
 - 枚举按名字存字符串，不依赖序号；读取时遇到未知名字退回默认值（`SOLO` / `NEUTRAL`）。`EntryEntity` ⇄ `domain.Entry` 的转换在 `EntryEntity.kt`。
-- `EntryRepository`：`entries`（Flow，新到旧，同一时刻按 id 新到旧）、`get(id)`、`add`、`update`（id 必须 > 0；行已不存在时什么也不做）、`delete`、`clearAll`（设置里的「清空所有战绩」）、`snapshot`（一次性读，新到旧）、`addAll`（备份合并）、`replaceAll`（`@Transaction`：先清空再插入，失败整体回滚）。
+- `EntryRepository`：`entries`（Flow，新到旧，同一时刻按 id 新到旧）、`get(id)`、`add`、`update`（id 必须 > 0；行已不存在时什么也不做）、`delete`、`clearAll`（设置里的「清空所有战绩」；删完行再调构造时传入的 `afterClearAll`，`AppContainer` 用它清掉 `GapExclusionStore`）、`snapshot`（一次性读，新到旧）、`addAll`（备份合并）、`replaceAll`（`@Transaction`：先清空再插入，失败整体回滚）。
 - `domain/Stats.kt` 的 `computeStats()` 一次性算出 `EntryStats`（总数 / 单人 / 双人、近 7 / 30 天、距上次天数、连续天数、最长间隔、平均间隔、平均时长 / 愉悦度、事前事后心情分布、最忙的星期几和时段）。首页和 AI 提示词共用它。「天」一律按日历日算。
-- `domain/Insights.kt` 给「完整战报」页补充：`weeklyCounts`（近 N 个周一起始的周，空周也在）、`weekdayCounts` / `hourBucketCounts`（全部键都在）、`longestStreakDays`（历史最长连续）、`busiestKeys`（并列最多的都算），以及成就 `Achievement` / `computeAchievements`（每个成就有 `target`，进度封顶）/ `newlyUnlocked`。成就的名字、描述和 emoji 在 `ui/common/Labels.kt`（`Achievement.labels(edition)`），战报页和保存提示共用。战报页的时间范围是 `InsightsPeriod` + `entriesInPeriod`（「近 N 天」按日历日、含今天，与 `last30DaysCount` 同口径），只作用于总览、星期 / 时段分布和心情；近 12 周柱状图、成就墙和 `monthOverMonth`（本月 vs 上月同期，上月没有这一天时取月末）始终基于全部战绩。不改 `EntryStats`，所以 AI 提示词不受影响。
+- `domain/Insights.kt` 给「完整战报」页补充：`weeklyCounts`（近 N 个周一起始的周，空周也在）、`weekdayCounts` / `hourBucketCounts`（全部键都在）、`longestStreakDays`（历史最长连续）、`busiestKeys`（并列最多的都算）。
+- `domain/Achievements.kt`：成就墙。`Achievement` 分两类（`AchievementKind`）：`HONOR`（成就墙：首条记录 + 间隔 ≥ 3 / 7 / 15 / 30 / 100 天累计若干次，`minGapDays` 是档位）和 `SHAME`（黑历史：连续 3 / 7 天、单日 2 / 3 条、任意 7 个日历日内 5 条、凌晨 5 条、事后内疚或空虚 5 条、事前无聊 5 条）；`computeAchievements` 按声明顺序给出进度（封顶在 `target`），`newlyUnlocked` 比较前后两次。间隔是 `abstinenceGaps`：相邻两个有记录的日历日之差（同一天多条算一天），外加从最近一个记录日到今天的进行中间隔；今天之后的记录不参与。一段长间隔同时计入所有更低的档位。`GapExclusion` 是用户标的「这段不算」：已结束的按（起始日，结束日）精确匹配——中间补记一条，拆出来的两段就不再匹配、重新计入；进行中时标的记到标记当天 T（`orLater`），匹配同一起始日、仍在进行或在 T 及之后结束的间隔，所以结束后仍然不算，而补记在 T 之前的日子照样会把它拆开、两段重新计入。只有间隔成就看排除标记。标记由 `data/GapExclusionStore` 存在 `settings` DataStore 的字符串集合 `excludedGaps` 里（`2026-10-01/2026-10-09`、`2026-10-01/2026-10-16+`），不进备份；「清空所有战绩」时清掉，覆盖导入（`replaceAll`）不清。成就的名字、描述和 emoji 在 `ui/common/Labels.kt`（`Achievement.labels(edition)`），战报页和保存提示共用。战报页点间隔成就打开「间隔账本」（`gapLedger`：达到该档位的间隔，新到旧，分计入 / 已标不算），「不算」要二次确认，「恢复」直接生效；黑历史不能撤销，记错了改 / 删那条记录。战报页的时间范围是 `InsightsPeriod` + `entriesInPeriod`（「近 N 天」按日历日、含今天，与 `last30DaysCount` 同口径），只作用于总览、星期 / 时段分布和心情；近 12 周柱状图、成就墙和 `monthOverMonth`（本月 vs 上月同期，上月没有这一天时取月末）始终基于全部战绩。不改 `EntryStats`，所以 AI 提示词不受影响。
 - `domain/SoloKeyword.kt`：关键词的规范化（`normalizeKeyword`）、表单里「最近用过」的 chip（`recentKeywords`，最多 5 个，忽略大小写去重、按最近使用排序）和战报的「老师排行榜」（`topKeywords`，所选范围内单人记录 Top 5，次数相同按最近使用）。
 - `domain/TodayAdvice.kt`：首页「今日宜忌」。`todayAdvice(entries, now, zone)` 按顺序判定、命中即停：今天已有记录（或最近记录在未来）→ 忌；截至昨天连续 ≥ 3 天 → 忌（带天数）；能算出典型间隔（最近至多 10 个有记录的日历日，相邻间隔的中位数，偶数个取中间两个的平均四舍五入，至少 1 天；少于 3 个日子算不出）时，距上次 < 典型间隔 → 不宜，否则 → 宜；算不出时昨天有记录 → 不宜，否则 / 没有记录 → 平。文案刻意不出现倒数天数。卡片上的两条宜、两条忌和一句正经话由 `pickDistinctByDay` / `pickByDay` 按 epochDay 挑选，同一天不变。由 `HomeViewModel` 计算（跨午夜、回前台时重算），只在内存里，不进备份，也不进 AI 提示词。
 - `domain/DateLogic.kt` 另有战绩列表和月历用的 `filterEntries(entries, query, type)`（笔记或关键词搜索 + 类型筛选）、`groupEntriesByMonth`（保持输入顺序）、`buildDaySummaries`（每天的类型 + 条数，月历角标用；`buildDayMarkers` 由它派生）。

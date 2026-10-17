@@ -5,6 +5,7 @@ package com.rookierc.boysdairy.ui.add
 import android.content.res.Resources
 import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
+import androidx.annotation.PluralsRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.expandVertically
@@ -68,6 +69,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.data.Edition
 import com.rookierc.boysdairy.domain.Achievement
+import com.rookierc.boysdairy.domain.AchievementKind
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.Mood
 import com.rookierc.boysdairy.domain.keywordKey
@@ -118,7 +120,8 @@ import kotlinx.coroutines.delay
  *
  * @param onClose back / close without saving
  * @param onSaved called after the entry was stored, with a random funny message for the snackbar
- *   (plus a line naming the achievements this save unlocked, if any; [celebrate] is then true).
+ *   (plus a line naming the achievements this save unlocked and another for the dark-history
+ *   badges, each only if there are any; [celebrate] is true when at least one line was added).
  *   Edit mode: `undo` writes the entry back as it was before (null if the save changed nothing).
  *   It outlives this screen and its ViewModel, so the caller runs it in a scope of its own.
  * @param onDeleted edit mode: the entry was deleted from the form; close and show the message
@@ -435,8 +438,9 @@ private fun EntryForm(
 }
 
 /**
- * The save snackbar text: [toast], plus "🏆 解锁成就：夜猫子、马拉松选手" on a second line when the
- * save unlocked achievements. Built when the save completes, so it reads [resources] then, in the
+ * The save snackbar text: [toast], then one line per wall the save unlocked badges on, honours
+ * first ("🏆 叮！解锁成就：…", [AchievementKind.HONOR]), then the dark history ("🫣 解锁黑历史：…",
+ * [AchievementKind.SHAME]). Built when the save completes, so it reads [resources] then, in the
  * [edition] that was showing when "save" was tapped.
  */
 private fun saveMessage(
@@ -445,13 +449,20 @@ private fun saveMessage(
     toast: String,
     unlocked: List<Achievement>,
 ): String {
-    if (unlocked.isEmpty()) return toast
     val separator = resources.editionString(R.string.achievement_unlocked_separator, edition)
-    val names = unlocked.joinToString(separator = separator) {
-        resources.editionString(it.labels(edition).nameRes, edition)
+    fun line(@PluralsRes lineRes: Int, badges: List<Achievement>): String? {
+        if (badges.isEmpty()) return null
+        val names = badges.joinToString(separator = separator) {
+            resources.editionString(it.labels(edition).nameRes, edition)
+        }
+        return resources.editionQuantityString(lineRes, badges.size, edition, names)
     }
-    return toast + "\n" +
-        resources.editionQuantityString(R.plurals.achievement_unlocked_toast, unlocked.size, edition, names)
+    val (honours, shames) = unlocked.partition { it.kind == AchievementKind.HONOR }
+    return listOfNotNull(
+        toast,
+        line(R.plurals.achievement_unlocked_toast, honours),
+        line(R.plurals.shame_unlocked_toast, shames),
+    ).joinToString(separator = "\n")
 }
 
 /**

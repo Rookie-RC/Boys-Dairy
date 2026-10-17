@@ -11,10 +11,12 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.rookierc.boysdairy.appContainer
 import com.rookierc.boysdairy.data.EntryRepository
+import com.rookierc.boysdairy.data.GapExclusionStore
 import com.rookierc.boysdairy.domain.Achievement
 import com.rookierc.boysdairy.domain.AchievementProgress
 import com.rookierc.boysdairy.domain.Entry
 import com.rookierc.boysdairy.domain.EntryType
+import com.rookierc.boysdairy.domain.GapExclusion
 import com.rookierc.boysdairy.domain.Mood
 import com.rookierc.boysdairy.domain.computeAchievements
 import com.rookierc.boysdairy.domain.newlyUnlocked
@@ -24,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -86,6 +89,8 @@ data class AddEntryUiState(
 /**
  * Form for logging a new entry or editing an existing one.
  *
+ * @param gapExclusionStore gaps marked "does not count", read (never written) for the unlock line
+ *   of the save message
  * @param entryId edit this stored entry; `null` logs a new one
  * @param presetDate new entries only: back-fill this day (current time of day, never in the future)
  *
@@ -95,6 +100,7 @@ data class AddEntryUiState(
  */
 class AddEntryViewModel(
     private val repository: EntryRepository,
+    private val gapExclusionStore: GapExclusionStore,
     entryId: Long? = null,
     presetDate: LocalDate? = null,
 ) : ViewModel() {
@@ -296,8 +302,10 @@ class AddEntryViewModel(
      * once it is persisted. If storing throws, the form is kept, [AddEntryUiState.saving] is reset
      * and [AddEntryUiState.saveFailed] is raised so the user can retry.
      *
-     * [onSaved] receives the achievements this save unlocked (see [newlyUnlocked]), in display
-     * order; empty when there are none or when the diary could not be read before / after. In edit
+     * [onSaved] receives the badges this save unlocked (see [newlyUnlocked]), honours and shame
+     * badges alike, in display order; empty when there are none or when the diary could not be read
+     * before / after. Both computations use the gap exclusions as read once before saving (an
+     * unreadable set counts as empty), so only the entry itself can make a difference. In edit
      * mode it also receives an undo that writes the entry back exactly as it was loaded (see
      * [revertOfEdit]); `null` for new entries and for saves that changed nothing.
      */
@@ -331,7 +339,8 @@ class AddEntryViewModel(
             ?.let { revert -> undoWith { update(revert) } }
 
         viewModelScope.launch {
-            val before = achievementsOrNull(nowMillis)
+            val exclusions = gapExclusionsOrEmpty()
+            val before = achievementsOrNull(nowMillis, exclusions)
             try {
                 if (editing != null) repository.update(entry) else repository.add(entry)
             } catch (cancelled: CancellationException) {
@@ -340,7 +349,7 @@ class AddEntryViewModel(
                 _uiState.update { it.copy(saving = false, saveFailed = true) }
                 return@launch
             }
-            val after = if (before != null) achievementsOrNull(nowMillis) else null
+            val after = if (before != null) achievementsOrNull(nowMillis, exclusions) else null
             val unlocked = if (before != null && after != null) newlyUnlocked(before, after) else emptyList()
             // `saving` intentionally stays true: the screen is being closed and a second tap
             // on "save" during the exit transition must not create a duplicate.
@@ -374,14 +383,29 @@ class AddEntryViewModel(
         }
     }
 
-    /** Achievement progress of the whole diary right now, or `null` if it cannot be read. */
-    private suspend fun achievementsOrNull(nowMillis: Long): List<AchievementProgress>? = try {
+    /**
+     * Achievement progress of the whole diary right now, without the gaps in [exclusions], or
+     * `null` if the diary cannot be read.
+     */
+    private suspend fun achievementsOrNull(
+        nowMillis: Long,
+        exclusions: Set<GapExclusion>,
+    ): List<AchievementProgress>? = try {
         val entries = repository.snapshot()
-        withContext(Dispatchers.Default) { computeAchievements(entries, nowMillis, zone) }
+        withContext(Dispatchers.Default) { computeAchievements(entries, nowMillis, zone, exclusions) }
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Exception) {
         null // Only a celebration: never let it get in the way of saving.
+    }
+
+    /** The gaps marked "does not count"; empty if they cannot be read (like [achievementsOrNull]). */
+    private suspend fun gapExclusionsOrEmpty(): Set<GapExclusion> = try {
+        gapExclusionStore.exclusions.first()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        emptySet()
     }
 
     companion object {
@@ -423,7 +447,8 @@ class AddEntryViewModel(
                 val presetDate = args.get<Long>(ARG_EPOCH_DAY)
                     ?.takeIf { it != NO_EPOCH_DAY }
                     ?.let { runCatching { LocalDate.ofEpochDay(it) }.getOrNull() }
-                AddEntryViewModel(appContainer().entryRepository, entryId, presetDate)
+                val container = appContainer()
+                AddEntryViewModel(container.entryRepository, container.gapExclusionStore, entryId, presetDate)
             }
         }
     }

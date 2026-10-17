@@ -4,7 +4,14 @@ import com.rookierc.boysdairy.domain.Entry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class EntryRepository(private val dao: EntryDao) {
+/**
+ * @param afterClearAll runs once [clearAll] has deleted the rows: drops data derived from them that
+ *   lives elsewhere (the achievement wall's gap exclusions).
+ */
+class EntryRepository(
+    private val dao: EntryDao,
+    private val afterClearAll: suspend () -> Unit = {},
+) {
 
     /** All entries, newest first. */
     val entries: Flow<List<Entry>> = dao.observeAll().map { rows -> rows.map { it.toDomain() } }
@@ -42,8 +49,14 @@ class EntryRepository(private val dao: EntryDao) {
         dao.replaceAll(entries.map { it.toNewRow() })
     }
 
-    /** Deletes every entry. Settings, the PIN and API keys live elsewhere and are not touched. */
-    suspend fun clearAll() = dao.deleteAll()
+    /**
+     * Deletes every entry, then runs `afterClearAll`. Settings, the PIN and API keys live elsewhere
+     * and are not touched.
+     */
+    suspend fun clearAll() {
+        dao.deleteAll()
+        afterClearAll()
+    }
 
     private fun Entry.toNewRow(): EntryEntity = copy(id = 0).toEntity()
 }

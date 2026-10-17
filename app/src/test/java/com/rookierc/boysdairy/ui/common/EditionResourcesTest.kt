@@ -86,8 +86,8 @@ class EditionResourcesTest {
         assertEquals("💪", CooldownTier.RELOADING.emoji(Edition.BOY))
         assertEquals("☯️", CooldownTier.MONK.emoji(Edition.BOY))
         assertEquals("🥤", StreakLevel.SUPPLIES.emoji(Edition.BOY))
-        assertEquals("🐓", Achievement.EARLY_BIRD.labels(Edition.BOY).emoji)
-        assertEquals("🏃", Achievement.MARATHON.labels(Edition.BOY).emoji)
+        assertEquals("🧘", Achievement.GAP_7_X1.labels(Edition.BOY).emoji)
+        assertEquals("🎩", Achievement.SAME_DAY_3.labels(Edition.BOY).emoji)
     }
 
     @Test
@@ -96,11 +96,23 @@ class EditionResourcesTest {
         assertEquals("💞", EntryType.PARTNER.emoji(Edition.GIRL))
         assertEquals(EditionEmoji.MEDITATE.girl, CooldownTier.FRESH.emoji(Edition.GIRL))
         assertEquals("🔋", CooldownTier.RECOVERING.emoji(Edition.GIRL))
-        assertEquals(EditionEmoji.EARLY_BIRD.girl, Achievement.EARLY_BIRD.labels(Edition.GIRL).emoji)
+        assertEquals(EditionEmoji.MEDITATE.girl, Achievement.GAP_7_X1.labels(Edition.GIRL).emoji)
+        assertEquals("🎩", Achievement.SAME_DAY_3.labels(Edition.GIRL).emoji)
         // Names and descriptions come from strings (and their girl variants), not from here.
         Achievement.entries.forEach { achievement ->
             assertEquals(achievement.labels(Edition.BOY).nameRes, achievement.labels(Edition.GIRL).nameRes)
             assertEquals(achievement.labels(Edition.BOY).descRes, achievement.labels(Edition.GIRL).descRes)
+        }
+    }
+
+    @Test
+    fun everyAchievementUsesTheStringsNamedAfterIt() {
+        val strings = names(R.string::class.java)
+        Achievement.entries.forEach { achievement ->
+            val key = "achievement_${achievement.name.lowercase()}"
+            val labels = achievement.labels(Edition.BOY)
+            assertEquals("${achievement.name} name", strings["${key}_name"], labels.nameRes)
+            assertEquals("${achievement.name} description", strings["${key}_desc"], labels.descRes)
         }
     }
 }

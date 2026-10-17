@@ -105,6 +105,21 @@ class EntryRepositoryTest {
     }
 
     @Test
+    fun clearAllRunsAfterClearAllOnceTheRowsAreGone() = runBlocking {
+        val rowsSeenByCallback = mutableListOf<Int>()
+        val clearing = EntryRepository(dao, afterClearAll = { rowsSeenByCallback += dao.getAll().size })
+        clearing.add(testEntry(timestamp = 1))
+        clearing.add(testEntry(timestamp = 2))
+        assertTrue(rowsSeenByCallback.isEmpty()) // only clearAll runs it
+
+        clearing.clearAll()
+        assertEquals(listOf(0), rowsSeenByCallback)
+
+        clearing.clearAll() // once per call, even on an empty diary
+        assertEquals(listOf(0, 0), rowsSeenByCallback)
+    }
+
+    @Test
     fun clearAllOnAnEmptyDiaryIsHarmlessAndNewEntriesStillWork() = runBlocking {
         repository.clearAll()
         assertTrue(repository.snapshot().isEmpty())

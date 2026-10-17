@@ -87,58 +87,76 @@ fun pleasureTierRes(score: Int): Int = when {
     else -> R.string.pleasure_tier_peak
 }
 
-/** Sticker emoji, name and description of an [Achievement] (achievement wall, unlock snackbar). */
+/**
+ * Sticker emoji, name and description of an [Achievement] (achievement wall, wall of shame, unlock
+ * snackbar). Strings are `achievement_<enum name in lower case>_name` / `_desc`; the girl edition's
+ * wording comes from their variants, its emoji from [EditionEmoji].
+ */
 internal class AchievementLabels(val emoji: String, @StringRes val nameRes: Int, @StringRes val descRes: Int)
 
 internal fun Achievement.labels(edition: Edition): AchievementLabels = when (this) {
+    // Achievement wall
     Achievement.FIRST_ENTRY -> AchievementLabels(
         "🐣", R.string.achievement_first_entry_name, R.string.achievement_first_entry_desc,
     )
-    Achievement.TOTAL_10 -> AchievementLabels(
-        "🔟", R.string.achievement_total_10_name, R.string.achievement_total_10_desc,
+    Achievement.GAP_3_X1 -> AchievementLabels(
+        "👀", R.string.achievement_gap_3_x1_name, R.string.achievement_gap_3_x1_desc,
     )
-    Achievement.TOTAL_50 -> AchievementLabels(
-        "🎖️", R.string.achievement_total_50_name, R.string.achievement_total_50_desc,
+    Achievement.GAP_3_X5 -> AchievementLabels(
+        "⚖️", R.string.achievement_gap_3_x5_name, R.string.achievement_gap_3_x5_desc,
     )
-    Achievement.TOTAL_100 -> AchievementLabels(
-        "💯", R.string.achievement_total_100_name, R.string.achievement_total_100_desc,
+    Achievement.GAP_3_X20 -> AchievementLabels(
+        "🌊", R.string.achievement_gap_3_x20_name, R.string.achievement_gap_3_x20_desc,
     )
+    Achievement.GAP_7_X1 -> AchievementLabels(
+        EditionEmoji.MEDITATE.of(edition),
+        R.string.achievement_gap_7_x1_name,
+        R.string.achievement_gap_7_x1_desc,
+    )
+    Achievement.GAP_7_X5 -> AchievementLabels(
+        "🍵", R.string.achievement_gap_7_x5_name, R.string.achievement_gap_7_x5_desc,
+    )
+    Achievement.GAP_7_X10 -> AchievementLabels(
+        "📰", R.string.achievement_gap_7_x10_name, R.string.achievement_gap_7_x10_desc,
+    )
+    Achievement.GAP_15_X1 -> AchievementLabels(
+        "🌗", R.string.achievement_gap_15_x1_name, R.string.achievement_gap_15_x1_desc,
+    )
+    Achievement.GAP_15_X3 -> AchievementLabels(
+        "🪷", R.string.achievement_gap_15_x3_name, R.string.achievement_gap_15_x3_desc,
+    )
+    Achievement.GAP_30_X1 -> AchievementLabels(
+        "🏔️", R.string.achievement_gap_30_x1_name, R.string.achievement_gap_30_x1_desc,
+    )
+    Achievement.GAP_30_X3 -> AchievementLabels(
+        "🌕", R.string.achievement_gap_30_x3_name, R.string.achievement_gap_30_x3_desc,
+    )
+    Achievement.GAP_100_X1 -> AchievementLabels(
+        "🏯", R.string.achievement_gap_100_x1_name, R.string.achievement_gap_100_x1_desc,
+    )
+    // Wall of shame
     Achievement.STREAK_3 -> AchievementLabels(
         "🔥", R.string.achievement_streak_3_name, R.string.achievement_streak_3_desc,
     )
     Achievement.STREAK_7 -> AchievementLabels(
         "📅", R.string.achievement_streak_7_name, R.string.achievement_streak_7_desc,
     )
-    Achievement.GAP_7 -> AchievementLabels(
-        EditionEmoji.MEDITATE.of(edition),
-        R.string.achievement_gap_7_name,
-        R.string.achievement_gap_7_desc,
+    Achievement.SAME_DAY_2 -> AchievementLabels(
+        "🌸", R.string.achievement_same_day_2_name, R.string.achievement_same_day_2_desc,
     )
-    Achievement.GAP_30 -> AchievementLabels(
-        "🏔️", R.string.achievement_gap_30_name, R.string.achievement_gap_30_desc,
+    Achievement.SAME_DAY_3 -> AchievementLabels(
+        "🎩", R.string.achievement_same_day_3_name, R.string.achievement_same_day_3_desc,
     )
-    Achievement.PARTNER_10 -> AchievementLabels(
-        "💞", R.string.achievement_partner_10_name, R.string.achievement_partner_10_desc,
+    Achievement.BURST -> AchievementLabels(
+        "🧨", R.string.achievement_burst_name, R.string.achievement_burst_desc,
     )
     Achievement.NIGHT_OWL -> AchievementLabels(
         "🦉", R.string.achievement_night_owl_name, R.string.achievement_night_owl_desc,
     )
-    Achievement.EARLY_BIRD -> AchievementLabels(
-        EditionEmoji.EARLY_BIRD.of(edition),
-        R.string.achievement_early_bird_name,
-        R.string.achievement_early_bird_desc,
+    Achievement.REGRET -> AchievementLabels(
+        "🫠", R.string.achievement_regret_name, R.string.achievement_regret_desc,
     )
-    Achievement.MARATHON -> AchievementLabels(
-        EditionEmoji.RUNNER.of(edition),
-        R.string.achievement_marathon_name,
-        R.string.achievement_marathon_desc,
-    )
-    Achievement.PEAK_PLEASURE -> AchievementLabels(
-        EditionEmoji.PLEASURE.of(edition),
-        R.string.achievement_peak_pleasure_name,
-        R.string.achievement_peak_pleasure_desc,
-    )
-    Achievement.SAGE_MODE -> AchievementLabels(
-        "🔮", R.string.achievement_sage_mode_name, R.string.achievement_sage_mode_desc,
+    Achievement.BOREDOM -> AchievementLabels(
+        "🥱", R.string.achievement_boredom_name, R.string.achievement_boredom_desc,
     )
 }

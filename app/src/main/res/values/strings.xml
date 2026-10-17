@@ -125,13 +125,6 @@
         <item>正在请教隔壁的仙女……</item>
     </string-array>
 
-    <!-- Girl: Insights -->
-    <string name="achievement_gap_30_desc_girl">一隔就是 30 天，你是回天庭述职了吗？</string>
-    <string name="achievement_marathon_name_girl">快乐马拉松</string>
-    <string name="achievement_peak_pleasure_name_girl">原地成仙</string>
-    <string name="achievement_sage_mode_name_girl">余韵绕梁</string>
-    <string name="achievement_sage_mode_desc_girl">事后心情「放松」10 次，余韵拉满，整个人软成一朵云。</string>
-
     <!-- Girl: Insights round 3 -->
     <string name="insights_range_empty_girl">这个范围里一条战绩都没有，岁月静好中 🌼 换个范围看看？</string>
 
@@ -804,34 +797,99 @@
     <string name="insights_achievements_count">已解锁 %1$d / %2$d</string>
     <string name="insights_achievement_unlocked">已解锁</string>
     <string name="insights_achievement_progress">%1$d/%2$d</string>
+    <!-- Under the achievement wall. A gap = calendar days between two entry days; the open one up to today counts too. -->
+    <string name="insights_achievements_hint">间隔按日历日算（1 号到 4 号算 3 天），正在进行的这段也算。忘了记录会让间隔虚长：点开间隔成就，把那次标成「不算」就行。</string>
+    <!-- Achievement names and descriptions: achievement_<enum name, lower case>_name / _desc (domain/Achievements.kt). -->
+    <!-- Achievement wall (honours): staying away. "间隔" = calendar days between two entry days. -->
     <string name="achievement_first_entry_name">新手村毕业</string>
     <string name="achievement_first_entry_desc">记下第一条战绩，传奇从这里开始。</string>
-    <string name="achievement_total_10_name">小有战绩</string>
-    <string name="achievement_total_10_desc">累计 10 条，小本本开始有分量了。</string>
-    <string name="achievement_total_50_name">半百老将</string>
-    <string name="achievement_total_50_desc">累计 50 条，经验值已经溢出来了。</string>
-    <string name="achievement_total_100_name">百战成精</string>
-    <string name="achievement_total_100_desc">累计 100 条，小本本申请退休。</string>
-    <string name="achievement_streak_3_name">三连击</string>
-    <string name="achievement_streak_3_desc">连续 3 天都有记录，自律（？）的证明。</string>
-    <string name="achievement_streak_7_name">一周全勤</string>
-    <string name="achievement_streak_7_desc">连续 7 天打卡。多喝水、早点睡（此条非医嘱）。</string>
-    <string name="achievement_gap_7_name">一周清修</string>
-    <string name="achievement_gap_7_desc">两次之间隔了 7 天，定力不错。</string>
-    <string name="achievement_gap_30_name">闭关大师</string>
-    <string name="achievement_gap_30_desc">一隔就是 30 天，你是去山里修炼了吗？</string>
-    <string name="achievement_partner_10_name">最佳拍档</string>
-    <string name="achievement_partner_10_desc">双人成行 10 次，默契拉满。</string>
+    <string name="achievement_gap_3_x1_name">士别三日</string>
+    <string name="achievement_gap_3_x1_desc">两次记录之间隔了 3 天以上，当刮目相看。</string>
+    <string name="achievement_gap_3_x5_name">张弛有度</string>
+    <string name="achievement_gap_3_x5_desc">间隔 3 天以上累计 5 次。一张一弛，文武之道。</string>
+    <string name="achievement_gap_3_x20_name">细水长流</string>
+    <string name="achievement_gap_3_x20_desc">间隔 3 天以上累计 20 次。不争一朝一夕，才能长长久久。</string>
+    <string name="achievement_gap_7_x1_name">一周清修</string>
+    <string name="achievement_gap_7_x1_desc">两次记录之间隔了 7 天以上，定力不错。</string>
+    <string name="achievement_gap_7_x5_name">清修常客</string>
+    <string name="achievement_gap_7_x5_desc">间隔 7 天以上累计 5 次，禅房已经给你留了专座。</string>
+    <string name="achievement_gap_7_x10_name">周更达人</string>
+    <string name="achievement_gap_7_x10_desc">间隔 7 天以上累计 10 次。读者在催更？别理，保持这个更新频率。</string>
+    <string name="achievement_gap_15_x1_name">半月禅定</string>
+    <string name="achievement_gap_15_x1_desc">两次记录之间隔了 15 天以上，半个月不动如山，禅定小成。</string>
+    <string name="achievement_gap_15_x3_name">心如止水</string>
+    <string name="achievement_gap_15_x3_desc">间隔 15 天以上累计 3 次。外面风浪再大，你这儿波澜不惊。</string>
+    <string name="achievement_gap_30_x1_name">闭关大师</string>
+    <string name="achievement_gap_30_x1_desc">两次记录之间隔了 30 天以上，你是去山里修炼了吗？</string>
+    <string name="achievement_gap_30_x1_desc_girl">两次记录之间隔了 30 天以上，你是回天庭述职了吗？</string>
+    <string name="achievement_gap_30_x3_name">月更选手</string>
+    <string name="achievement_gap_30_x3_desc">间隔 30 天以上累计 3 次。月更都能更得这么稳，佩服佩服。</string>
+    <string name="achievement_gap_100_x1_name">百日筑基</string>
+    <string name="achievement_gap_100_x1_desc">两次记录之间隔了 100 天以上。修行第一步已成，道友请受我一拜。</string>
+    <string name="achievement_gap_100_x1_desc_girl">两次记录之间隔了 100 天以上。修仙第一步已成，离位列仙班不远了。</string>
+    <!-- Wall of shame (黑历史): warning signs of overdoing it. A nudge, never an insult; health jokes say 非医嘱. -->
+    <string name="insights_shame_title">黑历史</string>
+    <string name="insights_shame_caption">这面墙越空越好。每上榜一块，都是身体在举牌提醒你：悠着点（非医嘱）。</string>
+    <!-- Corner label of an unlocked shame badge (the honours use insights_achievement_unlocked). -->
+    <string name="insights_shame_unlocked">已上榜</string>
+    <!-- Locked shame badge counted in entries. %1$d = entries still missing before it unlocks. -->
+    <plurals name="insights_shame_remaining_times">
+        <item quantity="other">还差 %1$d 次</item>
+    </plurals>
+    <!-- Locked shame badge counted in consecutive days (STREAK_*). %1$d = days still missing. -->
+    <plurals name="insights_shame_remaining_days">
+        <item quantity="other">还差 %1$d 天</item>
+    </plurals>
+    <string name="achievement_streak_3_name">三连败</string>
+    <string name="achievement_streak_3_desc">连续 3 天都有记录，自制力连输三局。今天让身体歇一场吧（非医嘱）。</string>
+    <string name="achievement_streak_7_name">全勤狂魔</string>
+    <string name="achievement_streak_7_desc">连续 7 天都有记录。这份全勤用在上班早升职了，今晚早点睡（非医嘱）。</string>
+    <string name="achievement_same_day_2_name">梅开二度</string>
+    <string name="achievement_same_day_2_desc">同一天记了 2 次。返场是挺精彩，身体在后台喊加班费（非医嘱）。</string>
+    <string name="achievement_same_day_3_name">帽子戏法</string>
+    <string name="achievement_same_day_3_desc">同一天记了 3 次。球场上这叫荣耀，在这儿只换来一杯温水和早点睡（非医嘱）。</string>
+    <string name="achievement_burst_name">火力全开</string>
+    <string name="achievement_burst_desc">连续 7 天之内记了 5 次。火力是真猛，弹药库已经在喊救命了（非医嘱）。</string>
+    <string name="achievement_burst_desc_girl">连续 7 天之内记了 5 次。快乐条是满格了，气血条已经在亮红灯（非医嘱）。</string>
     <string name="achievement_night_owl_name">夜猫子</string>
-    <string name="achievement_night_owl_desc">凌晨 0–6 点记录 5 次。熬夜伤身，早点睡（非医嘱）。</string>
-    <string name="achievement_early_bird_name">早起的鸟儿</string>
-    <string name="achievement_early_bird_desc">上午 6–12 点记录 5 次，一日之计在于晨。</string>
-    <string name="achievement_marathon_name">马拉松选手</string>
-    <string name="achievement_marathon_desc">单次 60 分钟以上。记得补水、拉伸（非医嘱）。</string>
-    <string name="achievement_peak_pleasure_name">直接升天</string>
-    <string name="achievement_peak_pleasure_desc">打出一次满分 10 分，那天一定很美好。</string>
-    <string name="achievement_sage_mode_name">贤者之石</string>
-    <string name="achievement_sage_mode_desc">事后心情「放松」10 次，看破红尘只需五分钟。</string>
+    <string name="achievement_night_owl_desc">凌晨 0–6 点累计记了 5 次。猫头鹰都下班了你还在加班，快去睡觉（非医嘱）。</string>
+    <string name="achievement_night_owl_desc_girl">凌晨 0–6 点累计记了 5 次。猫头鹰都下班了你还在营业，欠下的美容觉快去补上（非医嘱）。</string>
+    <string name="achievement_regret_name">悔不当初</string>
+    <string name="achievement_regret_desc">事后心情「内疚」或「空虚」累计 5 次。下次开始前先停三秒：是真想要，还是只是顺手？</string>
+    <string name="achievement_boredom_name">无聊使然</string>
+    <string name="achievement_boredom_desc">事前心情「无聊」累计 5 次。治无聊的方子还有散步、洗澡、找朋友聊天，真的。</string>
+    <!-- Gap ledger: dialog of a gap badge listing the gaps it counts (newest first) and those marked "不算". -->
+    <!-- %1$d = the badge's minimum gap in days (3, 7, 15, 30 or 100). -->
+    <plurals name="gap_ledger_subtitle">
+        <item quantity="other">计入的间隔（≥ %1$d 天），新的在前</item>
+    </plurals>
+    <!-- %1$s / %2$s = first and last day of a gap (pattern_gap_date or pattern_gap_date_year); %2$s is gap_ledger_ongoing for the open gap. -->
+    <string name="gap_ledger_range">%1$s → %2$s</string>
+    <string name="gap_ledger_ongoing">至今</string>
+    <string name="gap_ledger_ongoing_badge">进行中</string>
+    <!-- %1$d = calendar days of a gap. -->
+    <plurals name="gap_ledger_days">
+        <item quantity="other">%1$d 天</item>
+    </plurals>
+    <string name="gap_ledger_exclude">不算</string>
+    <string name="gap_ledger_restore">恢复</string>
+    <string name="gap_ledger_excluded_title">已标记不算</string>
+    <!-- %1$d = the badge's minimum gap in days. -->
+    <plurals name="gap_ledger_empty">
+        <item quantity="other">还没有 ≥ %1$d 天的间隔，继续保持 🍵</item>
+    </plurals>
+    <string name="gap_ledger_hint">忘了记录会让间隔虚长。标成「不算」的间隔会从所有间隔成就里扣掉；要是记得大概是哪天，去补记一条更准确。</string>
+    <string name="gap_ledger_close">知道了</string>
+    <!-- Screen-reader label of the click action on a gap badge (opens the gap ledger). -->
+    <string name="gap_ledger_open_a11y">查看计入的间隔</string>
+    <string name="gap_exclude_confirm_title">这次真的不算？</string>
+    <!-- %1$s = gap_ledger_range of the gap, %2$s = its gap_ledger_days. -->
+    <string name="gap_exclude_confirm_body">「%1$s」这段 %2$s 的间隔将不再计入任何间隔成就，靠它解锁的成就可能会重新上锁。如果只是中间忘了记，去那几天补记一条会更准确。之后随时可以在这里恢复。诚实记账，功德 +1 🙏</string>
+    <string name="gap_exclude_confirm_ok">确定不算</string>
+    <string name="gap_exclude_confirm_cancel">再想想</string>
+    <!-- Gap ledger dates (java.time DateTimeFormatter); the _year form adds the year, for gaps across years. -->
+    <string name="pattern_gap_date">M月d日</string>
+    <string name="pattern_gap_date_year">yyyy年M月d日</string>
     <string name="insights_disclaimer">以上数据都在本机计算，仅供一乐，不构成任何医疗或健康建议。</string>
 
     <!-- Insights round 3 -->
@@ -890,6 +948,10 @@
         <item quantity="other">🏆 叮！解锁成就：%1$s</item>
     </plurals>
     <string name="achievement_unlocked_separator">、</string>
+    <!-- Like achievement_unlocked_toast, for shame badges. %1$s = their names joined with achievement_unlocked_separator. -->
+    <plurals name="shame_unlocked_toast">
+        <item quantity="other">🫣 解锁黑历史：%1$s</item>
+    </plurals>
 
     <!-- Backup reminder, copy, lock now -->
     <!-- %1$s = date formatted with pattern_date_weekday. Shown under "Export backup" in Settings and on the home reminder card. -->

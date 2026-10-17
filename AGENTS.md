@@ -45,8 +45,8 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 | --- | --- |
 | `BoysDairyApp.kt` | `Application` + `AppContainer`（手动依赖注入，进程内单例）；在 `ProcessLifecycleOwner` `ON_STOP` 时调用 `lockManager.lock()` |
 | `MainActivity.kt` | `FLAG_SECURE`（由 `BuildConfig.SECURE_SCREEN` 控制）、edge-to-edge |
-| `domain/` | 纯 Kotlin，零 Android 依赖：`Entry`、`Mood`、`EntryType`、`DateLogic`（距今天数、月历网格与每日汇总、分组、搜索 / 筛选）、`Stats`（`computeStats`，AI 提示词也用）、`Insights`（完整战报的周 / 星期 / 时段分布、最长连续、成就）、`TodayAdvice`（首页「今日宜忌」的判定与按天挑选）、`SoloKeyword`（单人关键词的规范化、最近使用、排行榜） |
-| `data/` | Room（`AppDatabase` / `EntryDao` / `EntryEntity`，schema 版本 2，迁移在 `AppDatabase.MIGRATIONS`）、`EntryRepository`、`SettingsRepository`（DataStore `settings`：主题、PIN 哈希、所选 AI 服务商 `aiProvider`、男 / 女生版 `edition`）、`Edition`（`BOY` / `GIRL`） |
+| `domain/` | 纯 Kotlin，零 Android 依赖：`Entry`、`Mood`、`EntryType`、`DateLogic`（距今天数、月历网格与每日汇总、分组、搜索 / 筛选）、`Stats`（`computeStats`，AI 提示词也用）、`Insights`（完整战报的周 / 星期 / 时段分布、最长连续）、`Achievements`（成就墙与黑历史、两次记录之间的间隔、「不算」的间隔标记）、`TodayAdvice`（首页「今日宜忌」的判定与按天挑选）、`SoloKeyword`（单人关键词的规范化、最近使用、排行榜） |
+| `data/` | Room（`AppDatabase` / `EntryDao` / `EntryEntity`，schema 版本 2，迁移在 `AppDatabase.MIGRATIONS`）、`EntryRepository`、`SettingsRepository`（DataStore `settings`：主题、PIN 哈希、所选 AI 服务商 `aiProvider`、男 / 女生版 `edition`）、`Edition`（`BOY` / `GIRL`）、`GapExclusionStore`（同一个 `settings` DataStore 里的 `excludedGaps`：成就墙标成「不算」的间隔，随「清空所有战绩」清掉） |
 | `data/backup/` | JSON 备份：`BackupCodec`（格式）、`BackupMerge`（去重）、`BackupEngine`（流读写，可纯 JVM 测试）、`BackupManager`（SAF Uri） |
 | `security/` | `PinHasher`（加盐 SHA-256）、`PinAttemptLimiter` + `DataStorePinLockoutStore`（持久化锁定）、`LockManager`（锁状态）、`BiometricUnlock` + `KeystoreBiometricKeys` + `BiometricPolicy`（可选的指纹解锁） |
 | `ai/` | AI 锐评。`AiProvider.kt`：服务商枚举 + `AiProvider.spec`（**固定的**模型、推理强度、主机名记录）；`AiPromptBuilder`（纯函数，决定发什么）；`AiAnalysisService`（编排）；`ApiKeyStore`（每个服务商一个 Key 槽，Keystore 加密，DataStore `secure`）；`DeepSeekTextGenerator`（OkHttp）与 `ClaudeTextGenerator`（Anthropic Java SDK）及各自的配置常量；`AiModels.kt`（`AiRequest` / `AiResult` / `AiError`）。**唯一允许联网的包** |
@@ -74,7 +74,7 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 - 备份文件只含战绩；永远不要把 PIN 哈希 / 盐、API Key、设置写进去。
 - AI 提示词保持品牌与性别中性；男 / 女生版是纯界面设置，永远不作为提示词的输入，也不进备份。
 - AI 服务商的模型和推理强度固定在 `AiProvider.spec`，这是产品决定：不要加用户可选的模型 / 参数界面，也不要把模型 id 写到别处。
-- 持久化键不能改名：`AiProvider.id`（`deepseek` / `claude`）、`Edition.id`（`boy` / `girl`）、DataStore 键 `aiProvider`、`aiIncludeNotes`、`edition`、`biometricUnlock` 和 `api_key_<id>`、Keystore 别名 `boysdairy_claude_key`（最初为 Claude 创建，现在所有服务商共用，不能要求用户认证）和 `boysdairy_biometric_key`（指纹解锁专用）。改了会让用户已存的选择和 Key 失效。
+- 持久化键不能改名：`AiProvider.id`（`deepseek` / `claude`）、`Edition.id`（`boy` / `girl`）、DataStore 键 `aiProvider`、`aiIncludeNotes`、`edition`、`biometricUnlock`、`excludedGaps`（值的格式 `起始日/结束日`、`起始日/结束日+` 也不能改）和 `api_key_<id>`、Keystore 别名 `boysdairy_claude_key`（最初为 Claude 创建，现在所有服务商共用，不能要求用户认证）和 `boysdairy_biometric_key`（指纹解锁专用）。改了会让用户已存的选择和 Key 失效。
 - 每个服务商实现都要：Key 只放请求头；不跟随重定向；不打印请求 / 响应体；错误映射到 `AiError`；`previewPayload()` 返回的两段提示词必须与 `analyze()` 实际发送的一致（界面不再展示，测试靠它核对）。新增服务商的步骤见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 - 保留 `FLAG_SECURE` 仅 release 生效的逻辑（`BuildConfig.SECURE_SCREEN`：release = true，debug = false）。不要在 release 里关掉它，也不要让 debug 的放宽泄漏到 release。
 - 保持 `allowBackup="false"` 与 `data_extraction_rules.xml` 排除所有域。

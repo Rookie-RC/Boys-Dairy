@@ -22,7 +22,7 @@ enum class EditionEmoji(val boy: String, val girl: String) {
     /** "Pick a mode" card of the entry form. */
     MODE_PICKER("🎮", "🎀"),
 
-    /** Calm / abstinence: fresh cooldown, "longest gap", gap achievement, empty history. */
+    /** Calm / abstinence: fresh cooldown, "longest gap", the first 7-day gap achievement, empty history. */
     MEDITATE("🧘", "🧘‍♀️"),
 
     /** Cooldown tier "reloading" (3–6 days). */
@@ -34,14 +34,8 @@ enum class EditionEmoji(val boy: String, val girl: String) {
     /** Streak warning "mind your supplies". */
     SUPPLIES("🥤", "☕"),
 
-    /** Pleasure: home stats, report overview, peak-pleasure achievement. */
+    /** Pleasure: home stats, report overview. */
     PLEASURE("🎆", "✨"),
-
-    /** Early-bird achievement (a rooster is a boy). */
-    EARLY_BIRD("🐓", "🐤"),
-
-    /** Marathon achievement. */
-    RUNNER("🏃", "🏃‍♀️"),
 
     /** Solo keyword: form card, entry card line, report leaderboard (the boy edition's 「老师」). */
     MUSE("👩‍🏫", "💡"),
