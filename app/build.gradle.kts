@@ -13,8 +13,8 @@ android {
         applicationId = "com.rookierc.boysdairy"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.2.1"
+        versionCode = 4
+        versionName = "0.3.0"
 
         // FLAG_SECURE (blocks screenshots and hides content in recents).
         buildConfigField("boolean", "SECURE_SCREEN", "true")
