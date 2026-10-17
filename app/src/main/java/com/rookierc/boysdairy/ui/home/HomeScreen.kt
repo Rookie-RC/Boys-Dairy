@@ -35,12 +35,14 @@ import com.rookierc.boysdairy.domain.Entry
 import com.rookierc.boysdairy.domain.buildDaySummaries
 import com.rookierc.boysdairy.domain.computeStats
 import com.rookierc.boysdairy.domain.groupEntriesByDate
+import com.rookierc.boysdairy.domain.shouldRemindBackup
 import com.rookierc.boysdairy.ui.common.ChunkyButton
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.FunCard
 import com.rookierc.boysdairy.ui.common.ScreenTitle
 import com.rookierc.boysdairy.ui.common.SectionHeader
 import com.rookierc.boysdairy.ui.common.StickerBadge
+import com.rookierc.boysdairy.ui.common.lastExportText
 import com.rookierc.boysdairy.ui.common.quantityString
 import com.rookierc.boysdairy.ui.common.rememberFormatter
 import com.rookierc.boysdairy.ui.common.rememberToday
@@ -56,6 +58,7 @@ import java.util.Locale
  * @param onOpenInsights opens the full report
  * @param onEditEntry open an entry (tapped in the calendar's day sheet) for editing
  * @param onAddForDate log a new entry back-filled for a day picked in the calendar
+ * @param onBackUpNow "back up now" on the backup reminder card (opens Settings)
  *
  * Navigation stays in MainNavigation.
  */
@@ -64,6 +67,7 @@ fun HomeScreen(
     onOpenInsights: () -> Unit,
     onEditEntry: (entryId: Long) -> Unit,
     onAddForDate: (LocalDate) -> Unit,
+    onBackUpNow: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
 ) {
@@ -77,6 +81,15 @@ fun HomeScreen(
     val daySummaries = remember(entries) { buildDaySummaries(entries, ZoneId.systemDefault()) }
     val entriesByDay = remember(entries) { groupEntriesByDate(entries, ZoneId.systemDefault()) }
     val lastEntry = remember(entries) { entries.maxByOrNull { it.timestamp } }
+    val remindBackup = remember(entries.size, state.lastExportAt, state.backupReminderSnoozedUntil, today) {
+        shouldRemindBackup(
+            entryCount = entries.size,
+            lastExportAt = state.lastExportAt,
+            snoozedUntil = state.backupReminderSnoozedUntil,
+            nowMillis = System.currentTimeMillis(),
+            zone = ZoneId.systemDefault(),
+        )
+    }
 
     var selectedDay by remember { mutableStateOf<LocalDate?>(null) }
 
@@ -110,6 +123,15 @@ fun HomeScreen(
                 last30Days = stats.last30DaysCount,
                 averagePleasure = stats.averagePleasure,
             )
+
+            if (remindBackup) {
+                BackupReminderCard(
+                    entryCount = entries.size,
+                    lastExportAt = state.lastExportAt,
+                    onBackUpNow = onBackUpNow,
+                    onSnooze = viewModel::snoozeBackupReminder,
+                )
+            }
 
             if (entries.isNotEmpty()) {
                 ChunkyButton(
@@ -338,6 +360,50 @@ private fun StatCard(
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
+
+/** Diary lives only on this phone: nudge towards an export. Shown per [shouldRemindBackup]. */
+@Composable
+private fun BackupReminderCard(
+    entryCount: Int,
+    lastExportAt: Long?,
+    onBackUpNow: () -> Unit,
+    onSnooze: () -> Unit,
+) {
+    val colors = FunTheme.colors
+    FunCard(
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = colors.lemonTint,
+    ) {
+        SectionHeader(emoji = "💾", title = stringResource(R.string.backup_reminder_title))
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = quantityString(R.plurals.backup_reminder_body, entryCount, entryCount),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = lastExportText(lastExportAt),
+            style = MaterialTheme.typography.labelLarge,
+        )
+        Spacer(Modifier.height(12.dp))
+        ChunkyButton(
+            text = stringResource(R.string.backup_reminder_go),
+            emoji = "📤",
+            onClick = onBackUpNow,
+            containerColor = colors.lemon,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(10.dp))
+        ChunkyButton(
+            text = stringResource(R.string.backup_reminder_snooze),
+            emoji = "😴",
+            onClick = onSnooze,
+            containerColor = colors.surface,
+            contentColor = colors.textPrimary,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

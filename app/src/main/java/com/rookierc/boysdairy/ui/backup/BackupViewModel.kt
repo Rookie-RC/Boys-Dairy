@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.rookierc.boysdairy.appContainer
+import com.rookierc.boysdairy.data.SettingsRepository
 import com.rookierc.boysdairy.data.backup.BackupError
 import com.rookierc.boysdairy.data.backup.BackupManager
 import com.rookierc.boysdairy.data.backup.BackupResult
@@ -45,7 +46,11 @@ sealed interface BackupPhase {
  * must only continue once the user has entered the PIN again: [BackupFlowHost] is only composed
  * while unlocked, so [ExportPicked] / [ChooseImportMode] just wait here until then.
  */
-class BackupViewModel(private val backupManager: BackupManager) : ViewModel() {
+class BackupViewModel(
+    private val backupManager: BackupManager,
+    private val settings: SettingsRepository,
+    private val clock: () -> Long = System::currentTimeMillis,
+) : ViewModel() {
 
     private val _phase = MutableStateFlow<BackupPhase>(BackupPhase.Idle)
     val phase: StateFlow<BackupPhase> = _phase.asStateFlow()
@@ -66,6 +71,8 @@ class BackupViewModel(private val backupManager: BackupManager) : ViewModel() {
         _phase.value = BackupPhase.Working
         viewModelScope.launch {
             val result = guarded { backupManager.export(uri) }
+            // Only a written file counts; EMPTY and failures leave the reminder state alone.
+            if (result is BackupResult.Exported) recordExport()
             _phase.value = BackupPhase.Done(result)
         }
     }
@@ -90,6 +97,17 @@ class BackupViewModel(private val backupManager: BackupManager) : ViewModel() {
         }
     }
 
+    /** Best effort: the file is already written, so a failed write here must not turn it into an error. */
+    private suspend fun recordExport() {
+        try {
+            settings.setLastExportAt(clock())
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            // Worst case the backup reminder shows up again; nothing is logged.
+        }
+    }
+
     private suspend fun guarded(block: suspend () -> BackupResult): BackupResult =
         try {
             block()
@@ -101,7 +119,10 @@ class BackupViewModel(private val backupManager: BackupManager) : ViewModel() {
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer { BackupViewModel(appContainer().backupManager) }
+            initializer {
+                val container = appContainer()
+                BackupViewModel(container.backupManager, container.settingsRepository)
+            }
         }
     }
 }

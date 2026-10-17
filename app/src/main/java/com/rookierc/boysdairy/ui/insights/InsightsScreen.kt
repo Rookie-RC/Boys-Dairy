@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -53,6 +57,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -67,9 +72,12 @@ import com.rookierc.boysdairy.domain.AchievementProgress
 import com.rookierc.boysdairy.domain.EntryStats
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.HourBucket
+import com.rookierc.boysdairy.domain.InsightsPeriod
 import com.rookierc.boysdairy.domain.Mood
+import com.rookierc.boysdairy.domain.MonthComparison
 import com.rookierc.boysdairy.domain.WeekBucket
 import com.rookierc.boysdairy.domain.busiestKeys
+import com.rookierc.boysdairy.ui.common.EmojiChip
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.EmptyState
 import com.rookierc.boysdairy.ui.common.FunCard
@@ -101,14 +109,15 @@ fun InsightsScreen(
     viewModel: InsightsViewModel = viewModel(factory = InsightsViewModel.Factory),
 ) {
     val entries by viewModel.entries.collectAsStateWithLifecycle()
+    val period by viewModel.period.collectAsStateWithLifecycle()
     val today by rememberToday()
 
     val loaded = entries
-    val report = remember(loaded, today) {
+    val report = remember(loaded, today, period) {
         if (loaded.isNullOrEmpty()) {
             null
         } else {
-            InsightsReport.compute(loaded, System.currentTimeMillis(), ZoneId.systemDefault())
+            InsightsReport.compute(loaded, period, System.currentTimeMillis(), ZoneId.systemDefault())
         }
     }
 
@@ -137,6 +146,7 @@ fun InsightsScreen(
 
             else -> InsightsContent(
                 report = report,
+                onSelectPeriod = viewModel::selectPeriod,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
@@ -146,9 +156,14 @@ fun InsightsScreen(
 }
 
 @Composable
-private fun InsightsContent(report: InsightsReport, modifier: Modifier = Modifier) {
+private fun InsightsContent(
+    report: InsightsReport,
+    onSelectPeriod: (InsightsPeriod) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = FunTheme.colors
     val locale: Locale = LocalConfiguration.current.locales.get(0)
+    val periodIsEmpty = report.periodIsEmpty
 
     Column(
         modifier = modifier
@@ -157,6 +172,8 @@ private fun InsightsContent(report: InsightsReport, modifier: Modifier = Modifie
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        PeriodChips(selected = report.period, onSelect = onSelectPeriod)
+
         OverviewCard(report = report, locale = locale)
 
         WeeklyChartCard(weeks = report.weeks, locale = locale)
@@ -173,6 +190,7 @@ private fun InsightsContent(report: InsightsReport, modifier: Modifier = Modifie
                 )
             },
             labelWidth = 56.dp,
+            isEmpty = periodIsEmpty,
             caption = stringResource(R.string.insights_busiest_hint),
         )
 
@@ -189,6 +207,7 @@ private fun InsightsContent(report: InsightsReport, modifier: Modifier = Modifie
                 )
             },
             labelWidth = 132.dp,
+            isEmpty = periodIsEmpty,
         )
 
         MoodCard(stats = report.stats)
@@ -208,21 +227,103 @@ private fun InsightsContent(report: InsightsReport, modifier: Modifier = Modifie
     }
 }
 
+// ---- Period -----------------------------------------------------------------------------------
+
+/** "Last 30 days / Last 90 days / This year / All time" single-choice chips. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PeriodChips(selected: InsightsPeriod, onSelect: (InsightsPeriod) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.insights_range_label),
+            style = MaterialTheme.typography.labelLarge,
+            color = FunTheme.colors.textSecondary,
+        )
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            InsightsPeriod.entries.forEach { period ->
+                EmojiChip(
+                    label = stringResource(period.labelRes()),
+                    emoji = period.emoji(),
+                    selected = period == selected,
+                    onClick = { onSelect(period) },
+                )
+            }
+        }
+    }
+}
+
+@StringRes
+private fun InsightsPeriod.labelRes(): Int = when (this) {
+    InsightsPeriod.LAST_30_DAYS -> R.string.insights_range_30d
+    InsightsPeriod.LAST_90_DAYS -> R.string.insights_range_90d
+    InsightsPeriod.THIS_YEAR -> R.string.insights_range_year
+    InsightsPeriod.ALL -> R.string.insights_range_all
+}
+
+private fun InsightsPeriod.emoji(): String = when (this) {
+    InsightsPeriod.LAST_30_DAYS -> "🌙"
+    InsightsPeriod.LAST_90_DAYS -> "🍂"
+    InsightsPeriod.THIS_YEAR -> "🎊"
+    InsightsPeriod.ALL -> "♾️"
+}
+
+/** Shown instead of a card's figures when the picked range has no entries. */
+@Composable
+private fun PeriodEmptyHint() {
+    Text(
+        text = stringResource(R.string.insights_range_empty),
+        style = MaterialTheme.typography.bodyMedium,
+        color = FunTheme.colors.textPrimary,
+    )
+}
+
+/** Small print under a card header saying the card ignores the picked range. */
+@Composable
+private fun AllDataNote() {
+    Text(
+        text = stringResource(R.string.insights_all_data_note),
+        style = MaterialTheme.typography.bodySmall,
+        color = FunTheme.colors.textSecondary,
+    )
+}
+
 // ---- Overview ---------------------------------------------------------------------------------
 
 @Composable
 private fun OverviewCard(report: InsightsReport, locale: Locale) {
+    FunCard(modifier = Modifier.fillMaxWidth()) {
+        SectionHeader(emoji = "🧾", title = stringResource(R.string.insights_overview))
+        Spacer(Modifier.height(8.dp))
+
+        if (report.periodIsEmpty) {
+            PeriodEmptyHint()
+        } else {
+            OverviewFigures(report = report, locale = locale)
+        }
+
+        Spacer(Modifier.height(16.dp))
+        MonthComparisonPanel(comparison = report.monthComparison)
+    }
+}
+
+/** Total, solo / partner split and the tiles: everything in the overview that follows the range. */
+@Composable
+private fun OverviewFigures(report: InsightsReport, locale: Locale) {
     val colors = FunTheme.colors
     val stats = report.stats
+    val wholeDiary = report.period == InsightsPeriod.ALL
     val noValue = stringResource(R.string.stats_no_value)
     val totalText = remember(stats.totalCount, locale) {
         NumberFormat.getIntegerInstance(locale).format(stats.totalCount)
     }
 
-    FunCard(modifier = Modifier.fillMaxWidth()) {
-        SectionHeader(emoji = "🧾", title = stringResource(R.string.insights_overview))
-        Spacer(Modifier.height(8.dp))
-
+    Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -231,7 +332,9 @@ private fun OverviewCard(report: InsightsReport, locale: Locale) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.insights_total_label),
+                    text = stringResource(
+                        if (wholeDiary) R.string.insights_total_label else R.string.insights_range_total_label,
+                    ),
                     style = MaterialTheme.typography.labelLarge,
                     color = colors.textSecondary,
                 )
@@ -306,7 +409,9 @@ private fun OverviewCard(report: InsightsReport, locale: Locale) {
             MiniStatData(
                 emoji = "🏅",
                 value = quantityString(R.plurals.insights_days_value, report.longestStreak, report.longestStreak),
-                label = stringResource(R.string.insights_longest_streak),
+                label = stringResource(
+                    if (wholeDiary) R.string.insights_longest_streak else R.string.insights_range_longest_streak,
+                ),
                 containerColor = colors.surfaceAlt,
             ),
         )
@@ -334,6 +439,62 @@ private fun OverviewCard(report: InsightsReport, locale: Locale) {
         Spacer(Modifier.height(10.dp))
         Text(
             text = stringResource(R.string.insights_overview_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
+        if (!wholeDiary) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.insights_range_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textSecondary,
+            )
+        }
+    }
+}
+
+/** "This month vs. the same stretch of last month". Always the whole diary, whatever the range. */
+@Composable
+private fun MonthComparisonPanel(comparison: MonthComparison) {
+    val colors = FunTheme.colors
+    val formatter = rememberFormatter(R.string.pattern_insights_week)
+    val difference = comparison.difference
+    val verdict = when {
+        difference > 0 -> quantityString(R.plurals.insights_mom_more, difference, difference)
+        difference < 0 -> quantityString(R.plurals.insights_mom_fewer, -difference, -difference)
+        comparison.thisMonth == 0 -> stringResource(R.string.insights_mom_both_zero)
+        else -> stringResource(R.string.insights_mom_same)
+    }
+
+    FunCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {},
+        containerColor = colors.surfaceAlt,
+        shadowOffset = 3.dp,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            EmojiText(text = "🗓️", fontSize = 18.sp)
+            Spacer(Modifier.width(6.dp))
+            Text(text = stringResource(R.string.insights_mom_title), style = MaterialTheme.typography.labelMedium)
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = quantityString(R.plurals.insights_mom_this_month, comparison.thisMonth, comparison.thisMonth),
+            style = MaterialTheme.typography.titleLarge,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(text = verdict, style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = quantityString(
+                R.plurals.insights_mom_caption,
+                comparison.lastMonthSamePeriod,
+                comparison.lastMonthStart.format(formatter),
+                comparison.lastMonthEnd.format(formatter),
+                comparison.lastMonthSamePeriod,
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = colors.textSecondary,
         )
@@ -442,6 +603,7 @@ private fun MiniStat(data: MiniStatData, modifier: Modifier = Modifier) {
 
 // ---- Weekly chart -----------------------------------------------------------------------------
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WeeklyChartCard(weeks: List<WeekBucket>, locale: Locale) {
     val colors = FunTheme.colors
@@ -454,10 +616,23 @@ private fun WeeklyChartCard(weeks: List<WeekBucket>, locale: Locale) {
             emoji = "📈",
             title = quantityString(R.plurals.insights_weekly_title, weeks.size, weeks.size),
         )
+        Spacer(Modifier.height(4.dp))
+        AllDataNote()
         Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             LegendItem(color = soloColor, label = stringResource(R.string.home_legend_solo))
             LegendItem(color = partnerColor, label = stringResource(R.string.home_legend_partner))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PleasureLegendMark()
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = stringResource(R.string.insights_weekly_pleasure_legend),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -478,7 +653,7 @@ private fun WeeklyChartCard(weeks: List<WeekBucket>, locale: Locale) {
                 DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
             }
             val busiest = weeks.last { it.total == maxTotal }
-            val description = stringResource(
+            val barsDescription = stringResource(
                 R.string.insights_weekly_cd,
                 weeks.size,
                 weeks.sumOf { it.total },
@@ -487,6 +662,16 @@ private fun WeeklyChartCard(weeks: List<WeekBucket>, locale: Locale) {
                 busiest.weekStart.format(longDate),
                 maxTotal,
             )
+            // maxTotal > 0, so at least one week has an average.
+            val averages = weeks.mapNotNull { it.averagePleasure }
+            val lineDescription = stringResource(
+                R.string.insights_weekly_pleasure_cd,
+                averages.size,
+                averages.min().oneDecimal(locale),
+                averages.max().oneDecimal(locale),
+                averages.last().oneDecimal(locale),
+            )
+            val description = "$barsDescription $lineDescription"
             Column(modifier = Modifier.clearAndSetSemantics { contentDescription = description }) {
                 WeeklyBars(
                     weeks = weeks,
@@ -514,9 +699,75 @@ private fun LegendItem(color: Color, label: String) {
     }
 }
 
+/** Legend mark of the pleasure line: a short ink-outlined lemon stroke with a dot, as in the chart. */
+@Composable
+private fun PleasureLegendMark() {
+    val colors = FunTheme.colors
+    Canvas(modifier = Modifier.size(width = 22.dp, height = 14.dp)) {
+        val y = size.height / 2f
+        val capInset = PLEASURE_OUTLINE_WIDTH.toPx() / 2f // keeps the round caps inside the canvas
+        val start = Offset(capInset, y)
+        val end = Offset(size.width - capInset, y)
+        drawLine(colors.ink, start, end, strokeWidth = PLEASURE_OUTLINE_WIDTH.toPx(), cap = StrokeCap.Round)
+        drawLine(colors.lemon, start, end, strokeWidth = PLEASURE_LINE_WIDTH.toPx(), cap = StrokeCap.Round)
+        drawPleasureDot(Offset(size.width / 2f, y), colors)
+    }
+}
+
+/** Lemon dot with an ink ring: readable on the cream and the dark purple card, and over both bar colours. */
+private fun DrawScope.drawPleasureDot(center: Offset, colors: FunColors) {
+    drawCircle(color = colors.lemon, radius = PLEASURE_DOT_RADIUS.toPx(), center = center)
+    drawCircle(
+        color = colors.ink,
+        radius = PLEASURE_DOT_RADIUS.toPx(),
+        center = center,
+        style = Stroke(width = PLEASURE_DOT_RING.toPx()),
+    )
+}
+
+/**
+ * Weekly average pleasure on its own 1-10 scale (1 near the baseline, 10 near the top), centred on
+ * each week's slot. Consecutive weeks with entries are joined; an empty week breaks the line.
+ */
+private fun DrawScope.drawPleasureLine(
+    weeks: List<WeekBucket>,
+    slot: Float,
+    top: Float,
+    baseline: Float,
+    colors: FunColors,
+) {
+    val inset = PLEASURE_DOT_RADIUS.toPx() + PLEASURE_DOT_RING.toPx()
+    val highest = top + inset
+    val lowest = baseline - inset
+    val points = weeks.mapIndexed { index, week ->
+        week.averagePleasure?.let { average ->
+            val fraction = ((average.coerceIn(PLEASURE_MIN, PLEASURE_MAX) - PLEASURE_MIN) / (PLEASURE_MAX - PLEASURE_MIN)).toFloat()
+            Offset(x = index * slot + slot / 2f, y = lowest - fraction * (lowest - highest))
+        }
+    }
+    val segments = points.zipWithNext().mapNotNull { (from, to) -> if (from != null && to != null) from to to else null }
+
+    // Outline first, then the lemon core on top, so joins stay clean.
+    segments.forEach { (from, to) ->
+        drawLine(colors.ink, from, to, strokeWidth = PLEASURE_OUTLINE_WIDTH.toPx(), cap = StrokeCap.Round)
+    }
+    segments.forEach { (from, to) ->
+        drawLine(colors.lemon, from, to, strokeWidth = PLEASURE_LINE_WIDTH.toPx(), cap = StrokeCap.Round)
+    }
+    points.filterNotNull().forEach { drawPleasureDot(it, colors) }
+}
+
+private val PLEASURE_LINE_WIDTH = 2.5.dp
+private val PLEASURE_OUTLINE_WIDTH = 5.5.dp
+private val PLEASURE_DOT_RADIUS = 4.5.dp
+private val PLEASURE_DOT_RING = 2.dp
+private const val PLEASURE_MIN = 1.0
+private const val PLEASURE_MAX = 10.0
+
 /**
  * Stacked weekly bars (solo at the bottom, partner on top), outlined in ink with a hard offset
- * shadow; the current week's slot gets a quiet highlight.
+ * shadow; the current week's slot gets a quiet highlight. The weekly average pleasure is drawn on
+ * top as a line with dots ([drawPleasureLine]).
  */
 @Composable
 private fun WeeklyBars(
@@ -612,6 +863,8 @@ private fun WeeklyBars(
             strokeWidth = stroke,
             cap = StrokeCap.Round,
         )
+
+        drawPleasureLine(weeks = weeks, slot = slot, top = top, baseline = baseline, colors = colors)
     }
 }
 
@@ -670,19 +923,24 @@ private fun DistributionCard(
     title: String,
     rows: List<BarRow>,
     labelWidth: Dp,
+    isEmpty: Boolean,
     caption: String? = null,
 ) {
     FunCard(modifier = Modifier.fillMaxWidth()) {
         SectionHeader(emoji = emoji, title = title)
         Spacer(Modifier.height(12.dp))
-        DistributionBars(rows = rows, labelWidth = labelWidth)
-        if (caption != null) {
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = caption,
-                style = MaterialTheme.typography.bodySmall,
-                color = FunTheme.colors.textSecondary,
-            )
+        if (isEmpty) {
+            PeriodEmptyHint()
+        } else {
+            DistributionBars(rows = rows, labelWidth = labelWidth)
+            if (caption != null) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = caption,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = FunTheme.colors.textSecondary,
+                )
+            }
         }
     }
 }
@@ -792,19 +1050,23 @@ private fun MoodCard(stats: EntryStats) {
     FunCard(modifier = Modifier.fillMaxWidth()) {
         SectionHeader(emoji = "🎭", title = stringResource(R.string.insights_mood_title))
         Spacer(Modifier.height(12.dp))
-        Text(
-            text = stringResource(R.string.add_mood_before_label),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Spacer(Modifier.height(8.dp))
-        DistributionBars(rows = moodRows(stats.moodBeforeCounts), labelWidth = 116.dp)
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = stringResource(R.string.add_mood_after_label),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Spacer(Modifier.height(8.dp))
-        DistributionBars(rows = moodRows(stats.moodAfterCounts), labelWidth = 116.dp)
+        if (stats.totalCount == 0) {
+            PeriodEmptyHint()
+        } else {
+            Text(
+                text = stringResource(R.string.add_mood_before_label),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Spacer(Modifier.height(8.dp))
+            DistributionBars(rows = moodRows(stats.moodBeforeCounts), labelWidth = 116.dp)
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.add_mood_after_label),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Spacer(Modifier.height(8.dp))
+            DistributionBars(rows = moodRows(stats.moodAfterCounts), labelWidth = 116.dp)
+        }
     }
 }
 
@@ -826,13 +1088,51 @@ private fun moodRows(counts: Map<Mood, Int>): List<BarRow> {
 
 // ---- Achievements -----------------------------------------------------------------------------
 
+/**
+ * [SectionHeader] look (emoji + title, [trailing] at the end), except that [trailing] moves onto
+ * its own line below the title when both do not fit side by side. The title then gets the full
+ * width, so a large font scale never squeezes it into breaking in the middle of a word.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WrappingSectionHeader(
+    emoji: String,
+    title: String,
+    trailing: @Composable () -> Unit,
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        // One line: title at the start, trailing at the end. Wrapped: both start-aligned.
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .align(Alignment.CenterVertically)
+                .padding(end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            EmojiText(text = emoji, fontSize = 22.sp)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
+        }
+        Box(modifier = Modifier.align(Alignment.CenterVertically)) {
+            trailing()
+        }
+    }
+}
+
 @Composable
 private fun AchievementWall(achievements: List<AchievementProgress>) {
     val colors = FunTheme.colors
     val unlockedCount = achievements.count { it.unlocked }
 
     FunCard(modifier = Modifier.fillMaxWidth()) {
-        SectionHeader(
+        WrappingSectionHeader(
             emoji = "🏆",
             title = stringResource(R.string.insights_achievements_title),
             trailing = {
@@ -843,6 +1143,8 @@ private fun AchievementWall(achievements: List<AchievementProgress>) {
                 )
             },
         )
+        Spacer(Modifier.height(4.dp))
+        AllDataNote()
         Spacer(Modifier.height(14.dp))
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             achievements.chunked(2).forEachIndexed { rowIndex, pair ->

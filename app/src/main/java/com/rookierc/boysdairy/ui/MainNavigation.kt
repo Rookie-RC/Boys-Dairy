@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -27,6 +28,7 @@ import androidx.navigation.navArgument
 import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.ui.add.AddEntryScreen
 import com.rookierc.boysdairy.ui.add.AddEntryViewModel
+import com.rookierc.boysdairy.ui.add.EntryUndo
 import com.rookierc.boysdairy.ui.ai.AiScreen
 import com.rookierc.boysdairy.ui.backup.BackupFlowHost
 import com.rookierc.boysdairy.ui.backup.BackupViewModel
@@ -42,6 +44,8 @@ import com.rookierc.boysdairy.ui.settings.ChangePinScreen
 import com.rookierc.boysdairy.ui.settings.SettingsScreen
 import com.rookierc.boysdairy.ui.theme.FunTheme
 import java.time.LocalDate
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 object Routes {
     const val HOME = "home"
@@ -156,6 +160,7 @@ fun MainNavigation(
                             onAddForDate = { date ->
                                 navController.navigate(Routes.addEntry(date = date)) { launchSingleTop = true }
                             },
+                            onBackUpNow = { openTab(Routes.SETTINGS) },
                         )
                     }
                     composable(Routes.HISTORY) {
@@ -202,11 +207,37 @@ fun MainNavigation(
                                 navController.popBackStack()
                             }
                         }
+                        val undoLabel = stringResource(R.string.action_undo)
+                        val undoFailedMessage = stringResource(R.string.undo_failed)
+                        // "Undo" of a save / delete in the form. By the time it is tapped the form and
+                        // its ViewModel are gone, so it runs in `scope` (this composition's
+                        // rememberCoroutineScope): that belongs to the unlocked session and is
+                        // cancelled when the app locks, like everything else of the session.
+                        val runUndo: (EntryUndo) -> Unit = { undo ->
+                            scope.launch {
+                                try {
+                                    undo()
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (error: Exception) {
+                                    snackbar.show(undoFailedMessage)
+                                }
+                            }
+                        }
                         AddEntryScreen(
                             onClose = { closeForm() },
-                            onSaved = { message, celebrate ->
+                            onSaved = { message, celebrate, undo ->
                                 closeForm()
-                                snackbar.show(message, long = celebrate)
+                                snackbar.show(
+                                    message = message,
+                                    actionLabel = undo?.let { undoLabel },
+                                    onAction = undo?.let { action -> { runUndo(action) } },
+                                    long = celebrate,
+                                )
+                            },
+                            onDeleted = { message, undo ->
+                                closeForm()
+                                snackbar.show(message, actionLabel = undoLabel, onAction = { runUndo(undo) })
                             },
                             onEntryMissing = { message ->
                                 closeForm()

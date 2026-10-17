@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.rookierc.boysdairy.ai.AiProvider
@@ -51,6 +52,30 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { prefs -> prefs[KEY_AI_PROVIDER] = provider.id }
     }
 
+    /**
+     * When the diary was last exported successfully (epoch millis, wall clock); `null` = never.
+     * A setting that drives the backup reminder, not diary content: never written into a backup.
+     */
+    val lastExportAt: Flow<Long?> = preferences
+        .map { prefs -> prefs[KEY_LAST_EXPORT_AT] }
+        .distinctUntilChanged()
+
+    suspend fun setLastExportAt(epochMillis: Long) {
+        dataStore.edit { prefs -> prefs[KEY_LAST_EXPORT_AT] = epochMillis }
+    }
+
+    /**
+     * The home screen's backup reminder stays hidden until this moment (epoch millis, wall clock);
+     * `null` = never snoozed. Not backed up.
+     */
+    val backupReminderSnoozedUntil: Flow<Long?> = preferences
+        .map { prefs -> prefs[KEY_BACKUP_REMINDER_SNOOZED_UNTIL] }
+        .distinctUntilChanged()
+
+    suspend fun setBackupReminderSnoozedUntil(epochMillis: Long) {
+        dataStore.edit { prefs -> prefs[KEY_BACKUP_REMINDER_SNOOZED_UNTIL] = epochMillis }
+    }
+
     suspend fun loadPinCredentials(): PinCredentials? {
         val prefs = preferences.first()
         val salt = prefs[KEY_PIN_SALT]
@@ -75,5 +100,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val KEY_PIN_SALT = stringPreferencesKey("pinSalt")
         val KEY_PIN_HASH = stringPreferencesKey("pinHash")
         val KEY_THEME_MODE = stringPreferencesKey("themeMode")
+
+        // Backup reminder; both are persistence keys and must never be renamed.
+        val KEY_LAST_EXPORT_AT = longPreferencesKey("lastExportAt")
+        val KEY_BACKUP_REMINDER_SNOOZED_UNTIL = longPreferencesKey("backupReminderSnoozedUntil")
     }
 }

@@ -67,6 +67,7 @@ import com.rookierc.boysdairy.ui.common.ScreenTitle
 import com.rookierc.boysdairy.ui.common.SectionHeader
 import com.rookierc.boysdairy.ui.common.StickerBadge
 import com.rookierc.boysdairy.ui.common.emoji
+import com.rookierc.boysdairy.ui.common.lastExportText
 import com.rookierc.boysdairy.ui.common.nameRes
 import com.rookierc.boysdairy.ui.common.taglineRes
 import com.rookierc.boysdairy.ui.lock.pinMessageText
@@ -94,6 +95,7 @@ fun SettingsScreen(
     var showClearKeyConfirm by remember { mutableStateOf(false) }
     val hasEntries by viewModel.hasEntries.collectAsStateWithLifecycle()
     val clearAll by viewModel.clearAll.collectAsStateWithLifecycle()
+    val lastExport by viewModel.lastExport.collectAsStateWithLifecycle()
     val snackbar = LocalSnackbar.current
     val clearedMessages = stringArrayResource(R.array.clear_all_done_toasts)
 
@@ -182,6 +184,13 @@ fun SettingsScreen(
                 subtitle = stringResource(R.string.settings_change_pin_desc),
                 onClick = onChangePinClick,
             )
+            RowDivider()
+            SettingsRow(
+                emoji = "🔒",
+                title = stringResource(R.string.settings_lock_now),
+                subtitle = stringResource(R.string.settings_lock_now_desc),
+                onClick = viewModel::lockNow,
+            )
         }
 
         // Data
@@ -191,6 +200,7 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_export),
                 subtitle = stringResource(R.string.settings_export_desc),
                 onClick = fileActions.launchExport,
+                detail = lastExport?.let { lastExportText(it.atMillis) },
             )
             RowDivider()
             SettingsRow(
@@ -513,6 +523,7 @@ private fun SettingsRow(
     title: String,
     subtitle: String?,
     onClick: () -> Unit,
+    detail: String? = null,
 ) {
     Row(
         modifier = Modifier
@@ -529,6 +540,14 @@ private fun SettingsRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
+                    color = FunTheme.colors.textSecondary,
+                )
+            }
+            if (detail != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.labelLarge,
                     color = FunTheme.colors.textSecondary,
                 )
             }

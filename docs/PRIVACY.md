@@ -12,6 +12,7 @@
 | PIN | DataStore `settings`（`files/datastore/settings.preferences_pb`） | 16 字节随机盐（Base64）+ `SHA-256(盐 ‖ PIN)`（十六进制）；不存 PIN 明文 |
 | PIN 锁定记录 | DataStore `settings` | 连续错误次数、锁定截止时间、最后更新时间（均为毫秒时间戳） |
 | 主题 | DataStore `settings` | `SYSTEM` / `LIGHT` / `DARK` |
+| 备份提醒 | DataStore `settings`，键 `lastExportAt`、`backupReminderSnoozedUntil` | 上次成功导出的时间、首页备份提醒暂缓到何时（均为毫秒时间戳）；不是日记内容，不进备份，「清空所有战绩」也不动它们 |
 | 所选 AI 服务商 | DataStore `settings`，键 `aiProvider` | `deepseek` / `claude`（默认 DeepSeek）；明文，不是秘密，也不进备份。模型和推理强度固定在代码里，不存储 |
 | API Key（每家服务商一个槽：`api_key_deepseek`、`api_key_claude`） | DataStore `secure`（`files/datastore/secure.preferences_pb`，与 `settings` 分开） | Base64(`iv ‖ 密文 ‖ tag`)，AES-256/GCM 加密 |
 | 加密 API Key 的密钥 | Android Keystore，别名 `boysdairy_claude_key`（最初为 Claude 的 Key 创建，现在两个槽共用，名字为兼容而保留） | AES-256 / GCM，不可导出；是否由硬件保护取决于设备 |
@@ -63,7 +64,7 @@ AI 页的「看看会发送什么」会原样展示本次将发送的**系统提
 
 ### 返回的内容
 
-AI 的回复只放在内存里显示，不写入数据库；上锁、重启应用后就没了。DeepSeek 返回的思维链（`reasoning_content`）会被直接忽略，不显示也不保存。界面上附有免责提示（仅供一乐，不构成医疗建议）。
+AI 的回复只放在内存里显示，不写入数据库；上锁、重启应用后就没了。只有你点「复制」时，回复文本才会进入系统剪贴板：剪贴板条目不带标签，并在 Android 13+ 标记为敏感（`EXTRA_IS_SENSITIVE`），系统不会在剪贴板预览里显示它；但之后谁能读剪贴板、输入法会不会把它记进剪贴板历史，就不在应用控制范围内了。DeepSeek 返回的思维链（`reasoning_content`）会被直接忽略，不显示也不保存。界面上附有免责提示（仅供一乐，不构成医疗建议）。
 
 ### 想让任何东西都不出门
 
@@ -87,10 +88,11 @@ AI 的回复只放在内存里显示，不写入数据库；上锁、重启应�
 - **不包含**：PIN / 盐 / 哈希、API Key、任何设置、行 id。
 - **没有加密**。它保存在你用系统文件选择器选的位置；如果那是云盘或同步文件夹，文件就会随之上传——这是你的选择，应用不会替你上传，也不会记住这个位置。用完请自行删除或妥善保管。
 - 导入时文件只被读取，且有 20 MiB 上限；格式不对的文件整体被拒绝。
+- 应用只记住**上次成功导出的时间**（不记位置、文件名），用于设置页的「上次导出」和首页的备份提醒：战绩 ≥ 10 条、且从没导出过或上次导出已超过 30 天时提醒，可暂缓 7 天。
 
 ## 屏幕与会话安全
 
-- **自动上锁**：整个应用离开前台（`ProcessLifecycleOwner` `ON_STOP`）就上锁；系统文件选择器也会触发上锁，选完回来要重新输入 PIN。
+- **自动上锁**：整个应用离开前台（`ProcessLifecycleOwner` `ON_STOP`）就上锁；系统文件选择器也会触发上锁，选完回来要重新输入 PIN。设置 →「安全」里还有「立刻上锁」，把手机递给别人前一键锁上。
 - **会话清空**：上锁时，解锁后界面的所有 ViewModel 被销毁（未保存的打卡 / 修改表单、屏幕上的 AI 回复、进行中的 AI 请求都会消失）；锁住期间只有锁屏界面在组合树里。
 - **导航状态**：打开「修改战绩」或「在这天补一条」时，路由参数（那条战绩的行 id、补记日期）和其他路由一样，会随导航状态进入系统为 Activity 保存的实例状态；表单内容（笔记、心情、时长等）从不写进去。战绩列表的搜索词和类型筛选只在内存里。
 - **`FLAG_SECURE`（仅 release）**：禁止截屏 / 录屏，最近任务里不显示内容，对话框同样受保护。debug 构建关闭它，方便 `adb screencap`；所以不要把 debug 版当作安全版本使用。

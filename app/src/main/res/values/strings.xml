@@ -242,6 +242,21 @@
         <item>已删除，要后悔就趁现在 ⏳</item>
     </string-array>
 
+    <!-- History & form round 3 -->
+    <!-- Quick-time chips under the date-time button of the add / edit form. -->
+    <string name="add_quick_time_now">刚刚</string>
+    <plurals name="add_quick_time_minutes_ago">
+        <item quantity="other">%1$d 分钟前</item>
+    </plurals>
+    <plurals name="add_quick_time_hours_ago">
+        <item quantity="other">%1$d 小时前</item>
+    </plurals>
+    <string name="edit_delete">删掉这条</string>
+    <string name="edit_deleting">销毁中……</string>
+    <string name="edit_delete_failed">没删掉 😵 这条还在，再点一次试试</string>
+    <!-- Shown when "undo" after editing / deleting in the form fails. -->
+    <string name="undo_failed">撤销失败了 😵 去战绩回放里看看，可能得手动改回来</string>
+
     <!-- Entry editing & history filters -->
     <string name="edit_title">修改战绩</string>
     <string name="edit_save">保存修改</string>
@@ -489,6 +504,37 @@
     <string name="achievement_sage_mode_desc">事后心情「放松」10 次，看破红尘只需五分钟。</string>
     <string name="insights_disclaimer">以上数据都在本机计算，仅供一乐，不构成任何医疗或健康建议。</string>
 
+    <!-- Insights round 3 -->
+    <string name="insights_range_label">统计范围</string>
+    <string name="insights_range_30d">近 30 天</string>
+    <string name="insights_range_90d">近 90 天</string>
+    <string name="insights_range_year">今年</string>
+    <string name="insights_range_all">全部</string>
+    <string name="insights_range_empty">这个范围里一条战绩都没有，清心寡欲中 🍵 换个范围看看？</string>
+    <string name="insights_range_total_label">范围内战绩</string>
+    <string name="insights_range_longest_streak">范围内最长连续</string>
+    <string name="insights_range_note">只算所选范围内的战绩：间隔和连续天数也只在范围里数。</string>
+    <string name="insights_all_data_note">始终统计全部战绩，不受上方范围影响。</string>
+    <string name="insights_mom_title">本月 vs 上月同期</string>
+    <plurals name="insights_mom_this_month">
+        <item quantity="other">本月 %1$d 次</item>
+    </plurals>
+    <plurals name="insights_mom_more">
+        <item quantity="other">比上月同期多 %1$d 次，势头正猛 📈</item>
+    </plurals>
+    <plurals name="insights_mom_fewer">
+        <item quantity="other">比上月同期少 %1$d 次，修身养性中 🧘</item>
+    </plurals>
+    <string name="insights_mom_same">和上月同期持平，稳如老狗 ⚖️</string>
+    <string name="insights_mom_both_zero">两边都还没开张，佛系到底 🪷</string>
+    <!-- %1$s / %2$s = first and last day of last month's stretch (pattern_insights_week), %3$d = entries in it. -->
+    <plurals name="insights_mom_caption">
+        <item quantity="other">上月同期（%1$s–%2$s）%3$d 次。只按自然月算，不受上方范围影响。</item>
+    </plurals>
+    <string name="insights_weekly_pleasure_legend">平均愉悦度（1–10）</string>
+    <!-- Appended to insights_weekly_cd. %1$d = weeks with entries, %2$s / %3$s / %4$s = lowest, highest and latest weekly average. -->
+    <string name="insights_weekly_pleasure_cd">平均愉悦度折线（1–10 分，独立纵轴）：有记录的周数 %1$d，周平均最低 %2$s、最高 %3$s，最近有记录的一周 %4$s。</string>
+
     <!-- Danger zone -->
     <string name="clear_all_button">清空所有战绩</string>
     <string name="clear_all_empty">本来就是空的，没什么可清的 🫙</string>
@@ -514,4 +560,20 @@
         <item quantity="other">🏆 叮！解锁成就：%1$s</item>
     </plurals>
     <string name="achievement_unlocked_separator">、</string>
+
+    <!-- Backup reminder, copy, lock now -->
+    <!-- %1$s = date formatted with pattern_date_weekday. Shown under "Export backup" in Settings and on the home reminder card. -->
+    <string name="backup_last_export">上次导出：%1$s</string>
+    <string name="backup_never_exported">还没导出过</string>
+    <string name="backup_reminder_title">该存档了！</string>
+    <!-- %1$d = number of entries (always 10 or more). -->
+    <plurals name="backup_reminder_body">
+        <item quantity="other">你的 %1$d 条战绩只存在这台手机上：卸载 App、换手机，或者手机不幸阵亡，它们就跟着一起没了，没有云端，也没有后悔药。花十秒导出一份备份，自己找个安全的地方藏好。</item>
+    </plurals>
+    <string name="backup_reminder_go">去备份</string>
+    <string name="backup_reminder_snooze">过几天再说</string>
+    <string name="ai_copy">复制</string>
+    <string name="ai_copied">已复制 📋 粘贴前看清发给谁</string>
+    <string name="settings_lock_now">立刻上锁</string>
+    <string name="settings_lock_now_desc">要把手机递给别人？先一键锁上再说</string>
 </resources>

@@ -47,8 +47,18 @@ data class AddEntryUiState(
     val saving: Boolean = false,
     /** True after the last save attempt threw; the form stays editable and the button is enabled. */
     val saveFailed: Boolean = false,
+    /** Edit mode: the entry is being deleted; like [saving], the screen then closes by itself. */
+    val deleting: Boolean = false,
+    /** Edit mode: true after the last delete attempt threw; the entry and the form are unchanged. */
+    val deleteFailed: Boolean = false,
 ) {
-    val canSave: Boolean get() = !loading && !entryMissing && !saving
+    /** A save or delete is in flight: leaving now could cancel it. */
+    val busy: Boolean get() = saving || deleting
+
+    val canSave: Boolean get() = !loading && !entryMissing && !busy
+
+    /** Edit mode only: the loaded entry can be deleted from the form. */
+    val canDelete: Boolean get() = isEditing && canSave
 
     fun formValues(note: String) = EntryFormValues(
         dateTime = dateTime,
@@ -199,6 +209,12 @@ class AddEntryViewModel(
         _uiState.update { it.copy(dateTime = if (value.isAfter(now)) now else value) }
     }
 
+    /** A quick-time chip: the time becomes [minutesAgo] minutes before now (see [quickTimeDateTime]). */
+    fun setMinutesAgo(minutesAgo: Int) {
+        val dateTime = quickTimeDateTime(System.currentTimeMillis(), minutesAgo.coerceAtLeast(0), zone)
+        _uiState.update { it.copy(dateTime = dateTime) }
+    }
+
     fun setType(value: EntryType) {
         typeTouched = true
         _uiState.update { it.copy(type = value) }
@@ -224,20 +240,28 @@ class AddEntryViewModel(
     /** Hides the "could not save" message. */
     fun dismissSaveError() = _uiState.update { it.copy(saveFailed = false) }
 
+    /** The repository alone, for undo lambdas that must not keep this (soon cleared) ViewModel alive. */
+    private fun undoWith(block: suspend EntryRepository.() -> Unit): EntryUndo {
+        val repo = repository
+        return { repo.block() }
+    }
+
     /**
      * Stores the entry (new: insert, edit: update in place) and calls [onSaved] on the main thread
      * once it is persisted. If storing throws, the form is kept, [AddEntryUiState.saving] is reset
      * and [AddEntryUiState.saveFailed] is raised so the user can retry.
      *
      * [onSaved] receives the achievements this save unlocked (see [newlyUnlocked]), in display
-     * order; empty when there are none or when the diary could not be read before / after.
+     * order; empty when there are none or when the diary could not be read before / after. In edit
+     * mode it also receives an undo that writes the entry back exactly as it was loaded (see
+     * [revertOfEdit]); `null` for new entries and for saves that changed nothing.
      */
-    fun save(onSaved: (unlocked: List<Achievement>) -> Unit) {
+    fun save(onSaved: (unlocked: List<Achievement>, undo: EntryUndo?) -> Unit) {
         val snapshot = _uiState.value
         if (!snapshot.canSave) return
         val editing = original
         if (snapshot.isEditing && editing == null) return
-        _uiState.update { it.copy(saving = true, saveFailed = false) }
+        _uiState.update { it.copy(saving = true, saveFailed = false, deleteFailed = false) }
 
         // One "now" for the timestamp and both achievement computations, so time-based badges
         // (gaps) cannot flip just because the clock moved between the two reads.
@@ -257,6 +281,8 @@ class AddEntryViewModel(
             pleasure = snapshot.pleasure,
             note = noteToStore(note, editing?.note),
         )
+        val undo = editing?.let { revertOfEdit(original = it, saved = entry) }
+            ?.let { revert -> undoWith { update(revert) } }
 
         viewModelScope.launch {
             val before = achievementsOrNull(nowMillis)
@@ -272,7 +298,33 @@ class AddEntryViewModel(
             val unlocked = if (before != null && after != null) newlyUnlocked(before, after) else emptyList()
             // `saving` intentionally stays true: the screen is being closed and a second tap
             // on "save" during the exit transition must not create a duplicate.
-            onSaved(unlocked)
+            onSaved(unlocked, undo)
+        }
+    }
+
+    /**
+     * Edit mode: deletes the entry and calls [onDeleted] on the main thread once it is gone, with
+     * an undo that stores the entry again as it was loaded, under a fresh id (like undoing a delete
+     * in the history list). Unsaved changes in the form are dropped. If deleting throws, the form
+     * stays open and [AddEntryUiState.deleteFailed] is raised.
+     */
+    fun delete(onDeleted: (undo: EntryUndo) -> Unit) {
+        val snapshot = _uiState.value
+        val stored = original
+        if (!snapshot.canDelete || stored == null) return
+        _uiState.update { it.copy(deleting = true, deleteFailed = false, saveFailed = false) }
+
+        viewModelScope.launch {
+            try {
+                repository.delete(stored.id)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _uiState.update { it.copy(deleting = false, deleteFailed = true) }
+                return@launch
+            }
+            // `deleting` stays true for the same reason `saving` does after a save.
+            onDeleted(undoWith { add(stored.copy(id = 0)) })
         }
     }
 

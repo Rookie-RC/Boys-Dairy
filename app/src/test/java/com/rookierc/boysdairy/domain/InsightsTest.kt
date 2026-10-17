@@ -497,4 +497,219 @@ class InsightsTest {
         assertEquals(listOf(Achievement.FIRST_ENTRY), newlyUnlocked(beforeWithoutFirstEntry, after))
         assertEquals(emptyList<Achievement>(), newlyUnlocked(after, emptyList()))
     }
+
+    // ---- entriesInPeriod ----------------------------------------------------------------------
+
+    private fun inPeriod(entries: List<Entry>, period: InsightsPeriod, nowMillis: Long = now, zone: ZoneId = TEST_ZONE) =
+        entriesInPeriod(entries, period, nowMillis, zone)
+
+    @Test
+    fun everyPeriodOfAnEmptyDiaryIsEmpty() {
+        InsightsPeriod.entries.forEach { period ->
+            assertEquals("$period", emptyList<Entry>(), inPeriod(emptyList(), period))
+        }
+    }
+
+    @Test
+    fun periodStartDates() {
+        val today = LocalDate.of(2026, 10, 16)
+        assertEquals(LocalDate.of(2026, 9, 17), InsightsPeriod.LAST_30_DAYS.startDate(today))
+        assertEquals(LocalDate.of(2026, 7, 19), InsightsPeriod.LAST_90_DAYS.startDate(today))
+        assertEquals(LocalDate.of(2026, 1, 1), InsightsPeriod.THIS_YEAR.startDate(today))
+        assertNull(InsightsPeriod.ALL.startDate(today))
+    }
+
+    @Test
+    fun last30DaysStartsOnItsFirstDayAndEndsToday() {
+        // Today is 16 Oct, so the window is 17 Sep - 16 Oct.
+        val firstDay = entryOn(9, 17, hour = 0, minute = 0)
+        val dayBefore = entryOn(9, 16, hour = 23, minute = 59)
+        val lateToday = entryOn(10, 16, hour = 23, minute = 59) // later than "now" but still today
+        val tomorrow = entryOn(10, 17, hour = 0, minute = 0)
+        val result = inPeriod(listOf(tomorrow, lateToday, firstDay, dayBefore), InsightsPeriod.LAST_30_DAYS)
+        assertEquals(listOf(lateToday, firstDay), result)
+    }
+
+    @Test
+    fun last90DaysStartsOnItsFirstDay() {
+        // 90 days ending 16 Oct start on 19 Jul.
+        val firstDay = entryOn(7, 19, hour = 0, minute = 0)
+        val dayBefore = entryOn(7, 18, hour = 23, minute = 59)
+        val inside = entryOn(8, 30)
+        assertEquals(listOf(firstDay, inside), inPeriod(listOf(firstDay, dayBefore, inside), InsightsPeriod.LAST_90_DAYS))
+    }
+
+    @Test
+    fun last30DaysMatchesTheStatsWindow() {
+        val entries = (0 until 200).map { testEntry(now - it * 7L * 3_600_000L) } // every 7 hours, ~58 days back
+        val stats = computeStats(entries, now, TEST_ZONE)
+        assertEquals(stats.last30DaysCount, inPeriod(entries, InsightsPeriod.LAST_30_DAYS).size)
+    }
+
+    @Test
+    fun lastNDaysCrossTheYearBoundary() {
+        // 10 Jan 2027: 30 days start on 12 Dec 2026, 90 days on 13 Oct 2026.
+        val nowJan = millisOf(2027, 1, 10, 9, 0)
+        val dec12 = entryOn(12, 12, hour = 0, minute = 0)
+        val dec11 = entryOn(12, 11, hour = 23, minute = 59)
+        val jan1 = entryOn(1, 1, year = 2027)
+        val oct13 = entryOn(10, 13, hour = 0, minute = 0)
+        val oct12 = entryOn(10, 12, hour = 23, minute = 59)
+        val all = listOf(jan1, dec12, dec11, oct13, oct12)
+        assertEquals(listOf(jan1, dec12), inPeriod(all, InsightsPeriod.LAST_30_DAYS, nowJan))
+        assertEquals(listOf(jan1, dec12, dec11, oct13), inPeriod(all, InsightsPeriod.LAST_90_DAYS, nowJan))
+    }
+
+    @Test
+    fun last30DaysAcrossALeapFebruary() {
+        // 1 Mar 2028 (leap year): the window starts on 1 Feb. In 2027 it starts on 31 Jan.
+        val leap = listOf(entryOn(2, 1, year = 2028, hour = 0, minute = 0), entryOn(1, 31, year = 2028, hour = 23, minute = 59))
+        assertEquals(listOf(leap[0]), inPeriod(leap, InsightsPeriod.LAST_30_DAYS, millisOf(2028, 3, 1)))
+
+        val common = listOf(entryOn(1, 31, year = 2027, hour = 0, minute = 0), entryOn(1, 30, year = 2027, hour = 23, minute = 59))
+        assertEquals(listOf(common[0]), inPeriod(common, InsightsPeriod.LAST_30_DAYS, millisOf(2027, 3, 1)))
+    }
+
+    @Test
+    fun thisYearStartsOnTheFirstOfJanuary() {
+        val newYear = entryOn(1, 1, hour = 0, minute = 0)
+        val newYearsEve = entryOn(12, 31, year = 2025, hour = 23, minute = 59)
+        val summer = entryOn(7, 1)
+        val tomorrow = entryOn(10, 17)
+        val result = inPeriod(listOf(tomorrow, summer, newYear, newYearsEve), InsightsPeriod.THIS_YEAR)
+        assertEquals(listOf(summer, newYear), result)
+    }
+
+    @Test
+    fun thisYearInJanuaryOnlyHasTheNewYear() {
+        val nowJan = millisOf(2027, 1, 5, 8, 0)
+        val dec31 = entryOn(12, 31, hour = 23, minute = 59)
+        val jan1 = entryOn(1, 1, year = 2027, hour = 0, minute = 0)
+        val jan5 = entryOn(1, 5, year = 2027, hour = 22, minute = 0)
+        assertEquals(listOf(jan5, jan1), inPeriod(listOf(jan5, jan1, dec31), InsightsPeriod.THIS_YEAR, nowJan))
+
+        // On 1 January itself only that day counts.
+        val newYearsMorning = millisOf(2027, 1, 1, 0, 1)
+        assertEquals(listOf(jan1), inPeriod(listOf(jan5, jan1, dec31), InsightsPeriod.THIS_YEAR, newYearsMorning))
+    }
+
+    @Test
+    fun thisYearFollowsTheZone() {
+        // 20:00 UTC on 31 Dec 2026 is 04:00 on 1 Jan 2027 in Shanghai.
+        val entry = testEntry(millisOf(2026, 12, 31, 20, 0, zone = utc))
+        val nowJan = millisOf(2027, 1, 5, 12, 0, zone = utc)
+        assertEquals(listOf(entry), inPeriod(listOf(entry), InsightsPeriod.THIS_YEAR, nowJan, TEST_ZONE))
+        assertEquals(emptyList<Entry>(), inPeriod(listOf(entry), InsightsPeriod.THIS_YEAR, nowJan, utc))
+    }
+
+    @Test
+    fun allKeepsEverythingIncludingFutureEntries() {
+        val entries = listOf(entryOn(12, 1), entryOn(10, 16), entryOn(1, 1, year = 2019))
+        assertEquals(entries, inPeriod(entries, InsightsPeriod.ALL))
+    }
+
+    // ---- monthOverMonth -----------------------------------------------------------------------
+
+    @Test
+    fun monthOverMonthOfAnEmptyDiary() {
+        val comparison = monthOverMonth(emptyList(), now, TEST_ZONE)
+        assertEquals(MonthComparison(0, 0, LocalDate.of(2026, 9, 16)), comparison)
+        assertEquals(0, comparison.difference)
+    }
+
+    @Test
+    fun monthOverMonthComparesTheSameStretch() {
+        // Today is 16 Oct: 1-16 Oct against 1-16 Sep.
+        val entries = listOf(
+            entryOn(10, 17), // future: ignored
+            entryOn(10, 16, hour = 23, minute = 59),
+            entryOn(10, 1, hour = 0, minute = 0),
+            entryOn(10, 8),
+            entryOn(9, 30), // after the same day last month: ignored
+            entryOn(9, 17, hour = 0, minute = 0), // ignored
+            entryOn(9, 16, hour = 23, minute = 59),
+            entryOn(9, 1, hour = 0, minute = 0),
+            entryOn(8, 31, hour = 23, minute = 59), // ignored
+        )
+        val comparison = monthOverMonth(entries, now, TEST_ZONE)
+        assertEquals(3, comparison.thisMonth)
+        assertEquals(2, comparison.lastMonthSamePeriod)
+        assertEquals(1, comparison.difference)
+        assertEquals(LocalDate.of(2026, 9, 1), comparison.lastMonthStart)
+        assertEquals(LocalDate.of(2026, 9, 16), comparison.lastMonthEnd)
+    }
+
+    @Test
+    fun monthOverMonthCanBeBehindOrEven() {
+        val behind = monthOverMonth(listOf(entryOn(10, 2), entryOn(9, 2), entryOn(9, 3), entryOn(9, 4)), now, TEST_ZONE)
+        assertEquals(-2, behind.difference)
+        val even = monthOverMonth(listOf(entryOn(10, 2), entryOn(9, 2)), now, TEST_ZONE)
+        assertEquals(0, even.difference)
+        assertEquals(1, even.thisMonth)
+    }
+
+    @Test
+    fun monthOverMonthOnTheFirstOfTheMonth() {
+        val nov1 = millisOf(2026, 11, 1, 9, 0)
+        val comparison = monthOverMonth(listOf(entryOn(11, 1), entryOn(10, 1), entryOn(10, 2)), nov1, TEST_ZONE)
+        assertEquals(MonthComparison(1, 1, LocalDate.of(2026, 10, 1)), comparison)
+    }
+
+    @Test
+    fun monthOverMonthInJanuaryLooksAtLastDecember() {
+        val jan15 = millisOf(2027, 1, 15, 9, 0)
+        val entries = listOf(
+            entryOn(1, 3, year = 2027),
+            entryOn(12, 15, hour = 23, minute = 59),
+            entryOn(12, 16), // ignored
+            entryOn(1, 3), // January of the year before: ignored
+        )
+        assertEquals(MonthComparison(1, 1, LocalDate.of(2026, 12, 15)), monthOverMonth(entries, jan15, TEST_ZONE))
+    }
+
+    @Test
+    fun march31stComparesWithTheWholeOfFebruary() {
+        val entries = listOf(
+            entryOn(3, 31, year = 2027),
+            entryOn(3, 1, year = 2027, hour = 0, minute = 0),
+            entryOn(2, 28, year = 2027, hour = 23, minute = 59),
+            entryOn(2, 1, year = 2027, hour = 0, minute = 0),
+            entryOn(1, 31, year = 2027), // ignored
+        )
+        val comparison = monthOverMonth(entries, millisOf(2027, 3, 31), TEST_ZONE)
+        assertEquals(MonthComparison(2, 2, LocalDate.of(2027, 2, 28)), comparison)
+        // 30 March maps to the last day of February as well.
+        assertEquals(LocalDate.of(2027, 2, 28), monthOverMonth(entries, millisOf(2027, 3, 30), TEST_ZONE).lastMonthEnd)
+    }
+
+    @Test
+    fun monthOverMonthInALeapYearIncludesThe29th() {
+        val feb29 = entryOn(2, 29, year = 2028)
+        val feb28 = entryOn(2, 28, year = 2028)
+        val entries = listOf(feb29, feb28)
+
+        val mar31 = monthOverMonth(entries, millisOf(2028, 3, 31), TEST_ZONE)
+        assertEquals(LocalDate.of(2028, 2, 29), mar31.lastMonthEnd)
+        assertEquals(2, mar31.lastMonthSamePeriod)
+
+        val mar29 = monthOverMonth(entries, millisOf(2028, 3, 29), TEST_ZONE)
+        assertEquals(LocalDate.of(2028, 2, 29), mar29.lastMonthEnd)
+        assertEquals(2, mar29.lastMonthSamePeriod)
+
+        val mar28 = monthOverMonth(entries, millisOf(2028, 3, 28), TEST_ZONE)
+        assertEquals(LocalDate.of(2028, 2, 28), mar28.lastMonthEnd)
+        assertEquals(1, mar28.lastMonthSamePeriod)
+    }
+
+    @Test
+    fun monthOverMonthFollowsTheZone() {
+        // 17:00 UTC on 30 Sep is 01:00 on 1 Oct in Shanghai.
+        val entries = listOf(testEntry(millisOf(2026, 9, 30, 17, 0, zone = utc)))
+        val shanghai = monthOverMonth(entries, now, TEST_ZONE)
+        assertEquals(1, shanghai.thisMonth)
+        assertEquals(0, shanghai.lastMonthSamePeriod)
+        val inUtc = monthOverMonth(entries, now, utc)
+        assertEquals(0, inUtc.thisMonth)
+        assertEquals(0, inUtc.lastMonthSamePeriod) // 30 Sep is after 16 Sep
+    }
 }

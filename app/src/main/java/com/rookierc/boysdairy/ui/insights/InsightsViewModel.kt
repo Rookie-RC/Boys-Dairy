@@ -11,15 +11,21 @@ import com.rookierc.boysdairy.domain.AchievementProgress
 import com.rookierc.boysdairy.domain.Entry
 import com.rookierc.boysdairy.domain.EntryStats
 import com.rookierc.boysdairy.domain.HourBucket
+import com.rookierc.boysdairy.domain.InsightsPeriod
+import com.rookierc.boysdairy.domain.MonthComparison
 import com.rookierc.boysdairy.domain.WeekBucket
 import com.rookierc.boysdairy.domain.computeAchievements
 import com.rookierc.boysdairy.domain.computeStats
+import com.rookierc.boysdairy.domain.entriesInPeriod
 import com.rookierc.boysdairy.domain.hourBucketCounts
 import com.rookierc.boysdairy.domain.longestStreakDays
+import com.rookierc.boysdairy.domain.monthOverMonth
 import com.rookierc.boysdairy.domain.weekdayCounts
 import com.rookierc.boysdairy.domain.weeklyCounts
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import java.time.DayOfWeek
 import java.time.ZoneId
@@ -37,6 +43,15 @@ class InsightsViewModel(repository: EntryRepository) : ViewModel() {
         initialValue = null,
     )
 
+    private val _period = MutableStateFlow(InsightsPeriod.ALL)
+
+    /** Range picked with the chips at the top. In memory only: every visit starts at "all". */
+    val period: StateFlow<InsightsPeriod> = _period.asStateFlow()
+
+    fun selectPeriod(period: InsightsPeriod) {
+        _period.value = period
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer { InsightsViewModel(appContainer().entryRepository) }
@@ -47,23 +62,43 @@ class InsightsViewModel(repository: EntryRepository) : ViewModel() {
 /** Number of weeks in the bar chart. */
 const val INSIGHTS_WEEKS = 12
 
-/** Everything the report screen shows, computed in one go. */
+/**
+ * Everything the report screen shows, computed in one go.
+ *
+ * [stats], [weekdays], [hourBuckets] and [longestStreak] only look at the entries inside [period];
+ * [weeks], [achievements] and [monthComparison] always use the whole diary.
+ */
 data class InsightsReport(
+    val period: InsightsPeriod,
     val stats: EntryStats,
     val weeks: List<WeekBucket>,
     val weekdays: Map<DayOfWeek, Int>,
     val hourBuckets: Map<HourBucket, Int>,
     val longestStreak: Int,
     val achievements: List<AchievementProgress>,
+    val monthComparison: MonthComparison,
 ) {
+    /** True when [period] holds no entries at all (the diary itself may still have some). */
+    val periodIsEmpty: Boolean get() = stats.totalCount == 0
+
     companion object {
-        fun compute(entries: List<Entry>, nowMillis: Long, zone: ZoneId) = InsightsReport(
-            stats = computeStats(entries, nowMillis, zone),
-            weeks = weeklyCounts(entries, nowMillis, zone, INSIGHTS_WEEKS),
-            weekdays = weekdayCounts(entries, zone),
-            hourBuckets = hourBucketCounts(entries, zone),
-            longestStreak = longestStreakDays(entries, zone),
-            achievements = computeAchievements(entries, nowMillis, zone),
-        )
+        fun compute(
+            entries: List<Entry>,
+            period: InsightsPeriod,
+            nowMillis: Long,
+            zone: ZoneId,
+        ): InsightsReport {
+            val scoped = entriesInPeriod(entries, period, nowMillis, zone)
+            return InsightsReport(
+                period = period,
+                stats = computeStats(scoped, nowMillis, zone),
+                weeks = weeklyCounts(entries, nowMillis, zone, INSIGHTS_WEEKS),
+                weekdays = weekdayCounts(scoped, zone),
+                hourBuckets = hourBucketCounts(scoped, zone),
+                longestStreak = longestStreakDays(scoped, zone),
+                achievements = computeAchievements(entries, nowMillis, zone),
+                monthComparison = monthOverMonth(entries, nowMillis, zone),
+            )
+        }
     }
 }

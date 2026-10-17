@@ -51,6 +51,9 @@ data class ClearAllUiState(
     val inputEnabled: Boolean get() = !working && lockoutSeconds == 0
 }
 
+/** The last successful export as read from settings; [atMillis] `null` = never exported. */
+data class LastExport(val atMillis: Long?)
+
 class SettingsViewModel(
     private val settings: SettingsRepository,
     private val apiKeyStore: ApiKeyStore,
@@ -88,6 +91,20 @@ class SettingsViewModel(
 
     fun clearApiKey(provider: AiProvider) {
         viewModelScope.launch { apiKeyStore.clear(provider) }
+    }
+
+    /** Shown under "Export backup"; `null` until the first read so "never" does not flash. */
+    val lastExport: StateFlow<LastExport?> = settings.lastExportAt
+        .map { LastExport(it) }
+        .stateIn<LastExport?>(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = null,
+        )
+
+    /** "Lock now": back to the PIN screen right away; the session (and this ViewModel) is torn down. */
+    fun lockNow() {
+        lockManager.lock()
     }
 
     // ---- Danger zone: delete all entries ----------------------------------------------------

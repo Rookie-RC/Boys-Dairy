@@ -60,7 +60,7 @@ Unlocked ──ProcessLifecycleOwner ON_STOP──► Locked
 - `BoysDairyApp` 订阅 `ProcessLifecycleOwner`，整个应用离开前台时调用 `lockManager.lock()`（该回调自带约 700 ms 防抖，旋转屏幕不会上锁）。进程被杀后重启一律从 `Locked` 开始。
 - `BoysDairyRoot`（`ui/AppRoot.kt`）是锁闸门：状态不是 `Unlocked` 时只组合 `LockScreen`，导航图、屏幕、列表根本不在组合树里。
 - **会话 store**：解锁后的内容放在 `UnlockedSession` 里，它给内容提供一个 `SessionViewModelStoreOwner`。里面所有 ViewModel 都存在 `SessionStoreHolder.store`（一个 Activity 级 ViewModel 持有）。上锁 → `UnlockedSession` 离开组合 → `holder.end()` 清空 store 并换新的。所以上锁后，未保存的打卡表单、屏幕上的 AI 结果、进行中的 AI 请求都会消失；而配置变更（旋转、切语言）不会触发 `end()`。
-- **要跨越上锁存活的东西放在闸门之上**：系统文件选择器 launcher（`CreateDocument` / `OpenDocument`）和 Activity 级的 `BackupViewModel`。原因：打开系统选择器会让应用进入后台、触发上锁；如果 launcher 注册在解锁后的界面里，结果回来时它已被注销。回来后 `BackupFlowHost` 只在解锁状态下组合，所以选好的文件会等用户重新输入 PIN 之后才开始导出 / 导入。
+- **要跨越上锁存活的东西放在闸门之上**：系统文件选择器 launcher（`CreateDocument` / `OpenDocument`）和 Activity 级的 `BackupViewModel`。原因：打开系统选择器会让应用进入后台、触发上锁；如果 launcher 注册在解锁后的界面里，结果回来时它已被注销。回来后 `BackupFlowHost` 只在解锁状态下组合，所以选好的文件会等用户重新输入 PIN 之后才开始导出 / 导入。导出成功后 `BackupViewModel` 把当前时间写进 `SettingsRepository.lastExportAt`（写失败不影响导出结果），首页的备份提醒（`domain/BackupReminder.kt` 的纯函数 `shouldRemindBackup`）和设置页的「上次导出」都读它。
 - 输错 PIN 的计数与锁定见 `PinAttemptLimiter`：连续错 5 次 → 锁定 30 秒 → 之后重新给 5 次（不递增）。状态写进 DataStore（失败次数、截止时间、最后更新时间，均为墙钟毫秒），内存里留一份，`LockManager.lockoutRemainingMillis()` 是非挂起读取。读到「最后更新时间在未来」说明系统时间被往回拨过，此时从现在起锁满一个周期；剩余时间最多显示一个周期。改密码时先用 `verifyPin` 验证当前 PIN，同样计入次数。
 
 ## 导航
@@ -85,6 +85,8 @@ BoysDairyRoot
 - 修改模式：加载完成前不能保存；那条已被删掉 → 关闭表单并提示。没改时间就**原样保留原 timestamp（毫秒不变）**，只改了首尾空白的笔记也原样保留，这样备份合并的去重键 `(timestamp, type, durationMinutes, note)` 不会因为一次无关修改而变化；时长超过 120 的旧数据不动就原样保存。这些规则是 `ui/add/EntryFormLogic.kt` 里的纯函数，有单元测试。
 - 新增模式：类型和时长默认取最近一条战绩的（用户先动过就不覆盖）。表单有改动时，返回键 / 关闭按钮先弹「放弃确认」。笔记上限 1000 字符（更长的旧笔记不会被截断，只是不能再变长）。
 - 关闭表单只在它仍在栈顶时才 `popBackStack`，连点两次不会把下面的 tab 也弹掉。
+- 修改模式下还能「删掉这条」。保存修改和删除后的 snackbar 带「撤销」：ViewModel 交出一个只捕获仓库和条目的 `EntryUndo`（`suspend () -> Unit`），由 `MainNavigation` 在自己的 `rememberCoroutineScope()` 里执行——表单和它的 ViewModel 那时已经销毁，而这个 scope 属于解锁会话，上锁即取消。撤销修改 = 按加载时的原样 `update` 回去（id、时间戳不变）；撤销删除 = 以新 id 重新插入。
+- 表单的快捷时间（刚刚 / 30 分钟前 / 1 小时前 / 2 小时前）按「真实的现在 − N 分钟」换算成本地时间再截到分钟，跨午夜和夏令时都正确（`EntryFormLogic`）。
 
 - `FunBottomBar`：4 个 emoji tab（首页 🏠 / 战绩 📼 / AI 锐评 🤖 / 设置 ⚙️）+ 凸起的粉色圆形打卡按钮；凸起部分算在栏自身高度内，内容不会被盖住。按钮下方的「打卡」文字也可点，但对读屏不可见（只有圆形按钮这一个「新增」控件）。
 - 保存打卡后，`AddEntryViewModel.save` 用同一个「现在」在保存前后各算一次 `computeAchievements`，`newlyUnlocked` 得出这次解锁的成就，附在保存提示里（读取失败就当没有，不影响保存）。
@@ -110,7 +112,7 @@ Room 数据库 `boysdairy.db`，`version = 1`，`exportSchema = true`（schema �
 - 枚举按名字存字符串，不依赖序号；读取时遇到未知名字退回默认值（`SOLO` / `NEUTRAL`）。`EntryEntity` ⇄ `domain.Entry` 的转换在 `EntryEntity.kt`。
 - `EntryRepository`：`entries`（Flow，新到旧，同一时刻按 id 新到旧）、`get(id)`、`add`、`update`（id 必须 > 0；行已不存在时什么也不做）、`delete`、`clearAll`（设置里的「清空所有战绩」）、`snapshot`（一次性读，新到旧）、`addAll`（备份合并）、`replaceAll`（`@Transaction`：先清空再插入，失败整体回滚）。
 - `domain/Stats.kt` 的 `computeStats()` 一次性算出 `EntryStats`（总数 / 单人 / 双人、近 7 / 30 天、距上次天数、连续天数、最长间隔、平均间隔、平均时长 / 愉悦度、事前事后心情分布、最忙的星期几和时段）。首页和 AI 提示词共用它。「天」一律按日历日算。
-- `domain/Insights.kt` 给「完整战报」页补充：`weeklyCounts`（近 N 个周一起始的周，空周也在）、`weekdayCounts` / `hourBucketCounts`（全部键都在）、`longestStreakDays`（历史最长连续）、`busiestKeys`（并列最多的都算），以及成就 `Achievement` / `computeAchievements`（每个成就有 `target`，进度封顶）/ `newlyUnlocked`。成就的名字、描述和 emoji 在 `ui/common/Labels.kt`（`Achievement.labels()`），战报页和保存提示共用。不改 `EntryStats`，所以 AI 提示词不受影响。
+- `domain/Insights.kt` 给「完整战报」页补充：`weeklyCounts`（近 N 个周一起始的周，空周也在）、`weekdayCounts` / `hourBucketCounts`（全部键都在）、`longestStreakDays`（历史最长连续）、`busiestKeys`（并列最多的都算），以及成就 `Achievement` / `computeAchievements`（每个成就有 `target`，进度封顶）/ `newlyUnlocked`。成就的名字、描述和 emoji 在 `ui/common/Labels.kt`（`Achievement.labels()`），战报页和保存提示共用。战报页的时间范围是 `InsightsPeriod` + `entriesInPeriod`（「近 N 天」按日历日、含今天，与 `last30DaysCount` 同口径），只作用于总览、星期 / 时段分布和心情；近 12 周柱状图、成就墙和 `monthOverMonth`（本月 vs 上月同期，上月没有这一天时取月末）始终基于全部战绩。不改 `EntryStats`，所以 AI 提示词不受影响。
 - `domain/DateLogic.kt` 另有战绩列表和月历用的 `filterEntries(entries, query, type)`（笔记搜索 + 类型筛选）、`groupEntriesByMonth`（保持输入顺序）、`buildDaySummaries`（每天的类型 + 条数，月历角标用；`buildDayMarkers` 由它派生）。
 - 其他存储（DataStore、Keystore）见 [PRIVACY.md](PRIVACY.md#存储位置)。语言不存 DataStore，由 AppCompat 的 per-app locale 管理。
 

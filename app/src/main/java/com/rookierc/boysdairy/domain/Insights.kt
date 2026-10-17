@@ -3,6 +3,7 @@ package com.rookierc.boysdairy.domain
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
@@ -11,6 +12,88 @@ import java.time.temporal.TemporalAdjusters
  * Extra figures for the full report screen. Like Stats.kt everything works on calendar days and
  * local times in the zone passed in; "now" is always injected.
  */
+
+/** Time range the full report can be narrowed to. */
+enum class InsightsPeriod {
+    /** The last 30 calendar days, today included (same window as [EntryStats.last30DaysCount]). */
+    LAST_30_DAYS,
+
+    /** The last 90 calendar days, today included. */
+    LAST_90_DAYS,
+
+    /** 1 January of the current local calendar year up to today. */
+    THIS_YEAR,
+
+    /** Everything, future-dated entries included. */
+    ALL,
+}
+
+/** First calendar day of [period] for [today] (inclusive); null for [InsightsPeriod.ALL]. */
+fun InsightsPeriod.startDate(today: LocalDate): LocalDate? = when (this) {
+    InsightsPeriod.LAST_30_DAYS -> today.minusDays(29)
+    InsightsPeriod.LAST_90_DAYS -> today.minusDays(89)
+    InsightsPeriod.THIS_YEAR -> today.withDayOfYear(1)
+    InsightsPeriod.ALL -> null
+}
+
+/**
+ * Entries whose local date falls in [period]: from [startDate] to today, both inclusive, so
+ * entries dated after today only show up under [InsightsPeriod.ALL] (which returns [entries]
+ * as is). Keeps the input order.
+ */
+fun entriesInPeriod(
+    entries: List<Entry>,
+    period: InsightsPeriod,
+    nowMillis: Long,
+    zone: ZoneId,
+): List<Entry> {
+    val today = nowMillis.toLocalDate(zone)
+    val start = period.startDate(today) ?: return entries
+    return entries.filter { it.timestamp.toLocalDate(zone) in start..today }
+}
+
+/**
+ * Entries of the current calendar month so far against the same stretch of the previous month.
+ *
+ * @property thisMonth entries from the 1st of this month to today.
+ * @property lastMonthSamePeriod entries from the 1st of last month to [lastMonthEnd].
+ * @property lastMonthEnd the same day of the month last month, or that month's last day when it
+ *   is shorter (31 March compares with 1-28 or 1-29 February).
+ */
+data class MonthComparison(
+    val thisMonth: Int,
+    val lastMonthSamePeriod: Int,
+    val lastMonthEnd: LocalDate,
+) {
+    /** Positive when this month is ahead. */
+    val difference: Int get() = thisMonth - lastMonthSamePeriod
+
+    /** The 1st of the month [lastMonthEnd] is in. */
+    val lastMonthStart: LocalDate get() = lastMonthEnd.withDayOfMonth(1)
+}
+
+/**
+ * Month-over-month comparison on calendar days in [zone]; entries dated after today are ignored.
+ * Independent of any [InsightsPeriod].
+ */
+fun monthOverMonth(entries: List<Entry>, nowMillis: Long, zone: ZoneId): MonthComparison {
+    val today = nowMillis.toLocalDate(zone)
+    val thisMonthStart = today.withDayOfMonth(1)
+    val lastMonth = YearMonth.from(today).minusMonths(1)
+    val lastMonthStart = lastMonth.atDay(1)
+    val lastMonthEnd = lastMonth.atDay(minOf(today.dayOfMonth, lastMonth.lengthOfMonth()))
+
+    var thisMonth = 0
+    var previous = 0
+    for (entry in entries) {
+        val day = entry.timestamp.toLocalDate(zone)
+        when (day) {
+            in thisMonthStart..today -> thisMonth++
+            in lastMonthStart..lastMonthEnd -> previous++
+        }
+    }
+    return MonthComparison(thisMonth = thisMonth, lastMonthSamePeriod = previous, lastMonthEnd = lastMonthEnd)
+}
 
 /**
  * Entries of one Monday-first calendar week.

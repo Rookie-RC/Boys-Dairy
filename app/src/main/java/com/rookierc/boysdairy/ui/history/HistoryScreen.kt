@@ -4,8 +4,6 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,16 +13,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -52,11 +52,16 @@ import com.rookierc.boysdairy.ui.theme.FunTheme
 import com.rookierc.boysdairy.ui.theme.accent
 import java.time.YearMonth
 import java.time.ZoneId
+import kotlinx.coroutines.flow.drop
 
 /**
  * "战绩回放": every entry, newest first and grouped by month, searchable by note, filterable by
  * type, deletable with undo. Tapping a card opens it for editing via [onEditEntry].
+ *
+ * Title, search field and type chips are the first items of the list and scroll away with it
+ * (only the month headers stick), so with large system fonts the list keeps most of the screen.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HistoryScreen(
     onEditEntry: (entryId: Long) -> Unit,
@@ -81,19 +86,34 @@ fun HistoryScreen(
         groupEntriesByMonth(visibleEntries, ZoneId.systemDefault())
     }
 
-    Column(
+    val listState = rememberLazyListState()
+    // A new search term or filter jumps back to the top, so the search field and the first results
+    // are in view: the focused field never stays scrolled off screen with the keyboard still up.
+    // The first value is skipped, so coming back to this tab keeps the restored scroll position.
+    LaunchedEffect(listState) {
+        snapshotFlow { query to typeFilter }
+            .drop(1)
+            .collect { listState.scrollToItem(0) }
+    }
+
+    // The 16 dp side gutter is applied per item instead of as content padding: that way a stuck
+    // month header can paint its opaque background across the full width and the cards scrolling
+    // underneath it (shadows included) never show through at the edges.
+    LazyColumn(
+        state = listState,
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding(),
+        contentPadding = PaddingValues(bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
+        item(key = "title", contentType = "title") {
             ScreenTitle(
                 emoji = "📼",
                 title = stringResource(R.string.history_title),
                 subtitle = stringResource(R.string.history_subtitle),
+                // Top padding here, not as content padding: a stuck month header sits flush at the top.
+                modifier = Modifier.padding(start = ListGutter, end = ListGutter, top = 12.dp),
                 trailing = if (allEntries != null && allEntries.isNotEmpty()) {
                     {
                         StickerBadge(
@@ -105,11 +125,15 @@ fun HistoryScreen(
                     null
                 },
             )
+        }
 
+        item(key = "search", contentType = "search") {
             FunTextField(
                 value = query,
                 onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ListGutter),
                 placeholder = stringResource(R.string.history_search_hint),
                 leadingEmoji = "🔍",
                 singleLine = true,
@@ -126,20 +150,21 @@ fun HistoryScreen(
                     null
                 },
             )
+        }
 
+        item(key = "filters", contentType = "filters") {
             TypeFilterChips(
                 selected = typeFilter,
                 onSelect = { typeFilter = it },
+                modifier = Modifier.padding(horizontal = ListGutter),
             )
         }
 
         when {
-            allEntries == null -> Box(Modifier.fillMaxSize())
+            allEntries == null -> Unit
 
-            visibleEntries.isEmpty() -> Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
+            // Right under the search field, which stays usable when nothing matched.
+            visibleEntries.isEmpty() -> item(key = "empty", contentType = "empty") {
                 if (allEntries.isEmpty()) {
                     EmptyState(
                         emoji = "🧘",
@@ -154,11 +179,19 @@ fun HistoryScreen(
                 }
             }
 
-            else -> MonthList(
-                monthGroups = monthGroups,
-                onEditEntry = onEditEntry,
-                onDeleteEntry = { pendingDelete = it },
-            )
+            else -> monthGroups.forEach { (month, monthEntries) ->
+                stickyHeader(key = "month-$month", contentType = "month") {
+                    MonthHeader(month = month, count = monthEntries.size)
+                }
+                items(items = monthEntries, key = { it.id }, contentType = { "entry" }) { entry ->
+                    EntryCard(
+                        entry = entry,
+                        onClick = { onEditEntry(entry.id) },
+                        onDelete = { pendingDelete = entry },
+                        modifier = Modifier.padding(horizontal = ListGutter),
+                    )
+                }
+            }
         }
     }
 
@@ -184,41 +217,6 @@ fun HistoryScreen(
     }
 }
 
-/**
- * The month groups with sticky month headers, so the current month stays visible while scrolling.
- *
- * The 16 dp side gutter is applied per item instead of as content padding: that way a stuck header
- * can paint its opaque background across the full width and the cards scrolling underneath it
- * (shadows included) never show through at the edges.
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun MonthList(
-    monthGroups: List<Pair<YearMonth, List<Entry>>>,
-    onEditEntry: (entryId: Long) -> Unit,
-    onDeleteEntry: (Entry) -> Unit,
-) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        monthGroups.forEach { (month, monthEntries) ->
-            stickyHeader(key = "month-$month", contentType = "month") {
-                MonthHeader(month = month, count = monthEntries.size)
-            }
-            items(items = monthEntries, key = { it.id }, contentType = { "entry" }) { entry ->
-                EntryCard(
-                    entry = entry,
-                    onClick = { onEditEntry(entry.id) },
-                    onDelete = { onDeleteEntry(entry) },
-                    modifier = Modifier.padding(horizontal = ListGutter),
-                )
-            }
-        }
-    }
-}
-
 private val ListGutter = 16.dp
 
 /** "All / Solo / Co-op" chips; `null` = all types. */
@@ -227,9 +225,10 @@ private val ListGutter = 16.dp
 private fun TypeFilterChips(
     selected: EntryType?,
     onSelect: (EntryType?) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     FlowRow(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

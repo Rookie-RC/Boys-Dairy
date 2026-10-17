@@ -1,5 +1,11 @@
 package com.rookierc.boysdairy.ui.ai
 
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
+import android.content.Context
+import android.os.Build
+import android.os.PersistableBundle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -40,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -59,6 +66,7 @@ import com.rookierc.boysdairy.ui.common.ChoiceCard
 import com.rookierc.boysdairy.ui.common.ChunkyButton
 import com.rookierc.boysdairy.ui.common.EmojiChip
 import com.rookierc.boysdairy.ui.common.FunCard
+import com.rookierc.boysdairy.ui.common.LocalSnackbar
 import com.rookierc.boysdairy.ui.common.ScreenTitle
 import com.rookierc.boysdairy.ui.common.SectionHeader
 import com.rookierc.boysdairy.ui.common.StickerBadge
@@ -508,6 +516,9 @@ private fun ResultCard(
     onDone: () -> Unit,
 ) {
     val colors = FunTheme.colors
+    val context = LocalContext.current
+    val snackbar = LocalSnackbar.current
+    val copiedMessage = stringResource(R.string.ai_copied)
     FunCard(modifier = Modifier.fillMaxWidth()) {
         SectionHeader(
             emoji = "🔥",
@@ -530,6 +541,19 @@ private fun ResultCard(
         )
         Spacer(Modifier.height(14.dp))
         ChunkyButton(
+            text = stringResource(R.string.ai_copy),
+            emoji = "📋",
+            onClick = {
+                // Android 13+ shows its own "copied" confirmation; only older versions need ours.
+                if (copySensitiveText(context, text) && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                    snackbar.show(copiedMessage)
+                }
+            },
+            containerColor = colors.mint,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(10.dp))
+        ChunkyButton(
             text = stringResource(R.string.ai_again),
             emoji = "🔁",
             onClick = onAgain,
@@ -544,6 +568,23 @@ private fun ResultCard(
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+/**
+ * Puts [text] on the system clipboard, flagged as sensitive so Android 13+ does not show it in the
+ * clipboard preview (Compose's clipboard API cannot set this extra). The clip has no label, so
+ * nothing about the app shows up next to it. Returns false if there is no clipboard service.
+ */
+private fun copySensitiveText(context: Context, text: String): Boolean {
+    val clipboard = context.getSystemService(ClipboardManager::class.java) ?: return false
+    val clip = ClipData.newPlainText(null, text)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        clip.description.extras = PersistableBundle().apply {
+            putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+        }
+    }
+    clipboard.setPrimaryClip(clip)
+    return true
 }
 
 @Composable

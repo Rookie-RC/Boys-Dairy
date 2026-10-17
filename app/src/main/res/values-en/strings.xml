@@ -247,6 +247,23 @@
         <item>Deleted. Regret now or never ⏳</item>
     </string-array>
 
+    <!-- History & form round 3 -->
+    <!-- Quick-time chips under the date-time button of the add / edit form. -->
+    <string name="add_quick_time_now">Just now</string>
+    <plurals name="add_quick_time_minutes_ago">
+        <item quantity="one">%1$d min ago</item>
+        <item quantity="other">%1$d min ago</item>
+    </plurals>
+    <plurals name="add_quick_time_hours_ago">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+    <string name="edit_delete">Delete this one</string>
+    <string name="edit_deleting">Shredding…</string>
+    <string name="edit_delete_failed">Couldn\'t delete it 😵 It\'s still here. Tap again to retry</string>
+    <!-- Shown when "undo" after editing / deleting in the form fails. -->
+    <string name="undo_failed">Undo didn\'t go through 😵 Check Replay, you may have to fix it by hand</string>
+
     <!-- Entry editing & history filters -->
     <string name="edit_title">Edit entry</string>
     <string name="edit_save">Save changes</string>
@@ -503,6 +520,41 @@
     <string name="achievement_sage_mode_desc">Felt relaxed afterwards 10 times. Enlightenment, five minutes at a time.</string>
     <string name="insights_disclaimer">All of this is computed on your phone, just for fun, and is not medical or health advice.</string>
 
+    <!-- Insights round 3 -->
+    <string name="insights_range_label">Time range</string>
+    <string name="insights_range_30d">Last 30 days</string>
+    <string name="insights_range_90d">Last 90 days</string>
+    <string name="insights_range_year">This year</string>
+    <string name="insights_range_all">All time</string>
+    <string name="insights_range_empty">Nothing logged in this range. Monk mode? 🍵 Try a wider one.</string>
+    <string name="insights_range_total_label">Entries in range</string>
+    <string name="insights_range_longest_streak">Best streak in range</string>
+    <string name="insights_range_note">Only entries inside the range count, so gaps and streaks are measured within it too.</string>
+    <string name="insights_all_data_note">Always counts every entry, whatever range you pick above.</string>
+    <string name="insights_mom_title">This month vs. last month</string>
+    <plurals name="insights_mom_this_month">
+        <item quantity="one">%1$d entry this month</item>
+        <item quantity="other">%1$d entries this month</item>
+    </plurals>
+    <plurals name="insights_mom_more">
+        <item quantity="one">%1$d more than this time last month. Someone\'s on a roll 📈</item>
+        <item quantity="other">%1$d more than this time last month. Someone\'s on a roll 📈</item>
+    </plurals>
+    <plurals name="insights_mom_fewer">
+        <item quantity="one">%1$d fewer than this time last month. Zen mode engaged 🧘</item>
+        <item quantity="other">%1$d fewer than this time last month. Zen mode engaged 🧘</item>
+    </plurals>
+    <string name="insights_mom_same">Dead even with this time last month. Steady as a rock ⚖️</string>
+    <string name="insights_mom_both_zero">Both still at zero. Peak chill 🪷</string>
+    <!-- %1$s / %2$s = first and last day of last month's stretch (pattern_insights_week), %3$d = entries in it. -->
+    <plurals name="insights_mom_caption">
+        <item quantity="one">Same stretch last month (%1$s–%2$s): %3$d entry. Calendar months only; the range above doesn\'t apply.</item>
+        <item quantity="other">Same stretch last month (%1$s–%2$s): %3$d entries. Calendar months only; the range above doesn\'t apply.</item>
+    </plurals>
+    <string name="insights_weekly_pleasure_legend">Avg. pleasure (1–10)</string>
+    <!-- Appended to insights_weekly_cd. %1$d = weeks with entries, %2$s / %3$s / %4$s = lowest, highest and latest weekly average. -->
+    <string name="insights_weekly_pleasure_cd">Average pleasure line (1 to 10, separate scale). Weeks with entries: %1$d. Lowest weekly average: %2$s, highest: %3$s, most recent: %4$s.</string>
+
     <!-- Danger zone -->
     <string name="clear_all_button">Delete all entries</string>
     <string name="clear_all_empty">Already empty. Nothing to delete 🫙</string>
@@ -529,4 +581,21 @@
         <item quantity="other">🏆 Ding ding! Achievements unlocked: %1$s</item>
     </plurals>
     <string name="achievement_unlocked_separator">", "</string>
+
+    <!-- Backup reminder, copy, lock now -->
+    <!-- %1$s = date formatted with pattern_date_weekday. Shown under "Export backup" in Settings and on the home reminder card. -->
+    <string name="backup_last_export">Last export: %1$s</string>
+    <string name="backup_never_exported">Never exported</string>
+    <string name="backup_reminder_title">Save your game!</string>
+    <!-- %1$d = number of entries (always 10 or more). -->
+    <plurals name="backup_reminder_body">
+        <item quantity="one">Your %1$d entry lives only on this phone. Uninstall the app, switch phones or drop this one in a lake, and it\'s gone for good: no cloud, no undo. Take ten seconds to export a backup and stash it somewhere safe.</item>
+        <item quantity="other">Your %1$d entries live only on this phone. Uninstall the app, switch phones or drop this one in a lake, and they\'re gone for good: no cloud, no undo. Take ten seconds to export a backup and stash it somewhere safe.</item>
+    </plurals>
+    <string name="backup_reminder_go">Back up now</string>
+    <string name="backup_reminder_snooze">Nag me later</string>
+    <string name="ai_copy">Copy</string>
+    <string name="ai_copied">Copied 📋 Check twice where you paste it</string>
+    <string name="settings_lock_now">Lock now</string>
+    <string name="settings_lock_now_desc">Handing your phone to someone? Lock up first</string>
 </resources>

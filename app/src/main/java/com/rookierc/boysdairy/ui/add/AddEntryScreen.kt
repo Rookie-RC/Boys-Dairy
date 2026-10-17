@@ -43,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -81,6 +82,7 @@ import com.rookierc.boysdairy.ui.common.hintRes
 import com.rookierc.boysdairy.ui.common.labelRes
 import com.rookierc.boysdairy.ui.common.labels
 import com.rookierc.boysdairy.ui.common.pleasureTierRes
+import com.rookierc.boysdairy.ui.common.quantityString
 import com.rookierc.boysdairy.ui.common.rememberFormatter
 import com.rookierc.boysdairy.ui.theme.FunTheme
 import com.rookierc.boysdairy.ui.theme.accent
@@ -88,8 +90,10 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 /**
  * Full-screen form to log a new entry or edit an existing one (which one is decided by the
@@ -99,13 +103,18 @@ import kotlin.math.roundToInt
  *
  * @param onClose back / close without saving
  * @param onSaved called after the entry was stored, with a random funny message for the snackbar
- *   (plus a line naming the achievements this save unlocked, if any; [celebrate] is then true)
+ *   (plus a line naming the achievements this save unlocked, if any; [celebrate] is then true).
+ *   Edit mode: `undo` writes the entry back as it was before (null if the save changed nothing).
+ *   It outlives this screen and its ViewModel, so the caller runs it in a scope of its own.
+ * @param onDeleted edit mode: the entry was deleted from the form; close and show the message
+ *   with an "undo" that runs `undo` (stores the entry again, under a new id), like [onSaved]
  * @param onEntryMissing edit mode: the entry no longer exists; close and show the given message
  */
 @Composable
 fun AddEntryScreen(
     onClose: () -> Unit,
-    onSaved: (message: String, celebrate: Boolean) -> Unit,
+    onSaved: (message: String, celebrate: Boolean, undo: EntryUndo?) -> Unit,
+    onDeleted: (message: String, undo: EntryUndo) -> Unit,
     onEntryMissing: (message: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: AddEntryViewModel = viewModel(factory = AddEntryViewModel.Factory),
@@ -118,15 +127,15 @@ fun AddEntryScreen(
 
     fun requestClose() {
         when {
-            // A save is in flight: leaving now could cancel it; the screen closes by itself.
-            state.saving -> Unit
+            // A save / delete is in flight: leaving now could cancel it; the screen closes by itself.
+            state.busy -> Unit
             hasUnsavedChanges -> confirmDiscard = true
             else -> onClose()
         }
     }
 
     // Without changes the back press falls through to the navigation and simply closes the form.
-    BackHandler(enabled = hasUnsavedChanges || state.saving) { requestClose() }
+    BackHandler(enabled = hasUnsavedChanges || state.busy) { requestClose() }
 
     LaunchedEffect(state.entryMissing) {
         if (state.entryMissing) onEntryMissing(missingMessage)
@@ -156,6 +165,7 @@ fun AddEntryScreen(
                 state = state,
                 viewModel = viewModel,
                 onSaved = onSaved,
+                onDeleted = onDeleted,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -182,7 +192,8 @@ fun AddEntryScreen(
 private fun EntryForm(
     state: AddEntryUiState,
     viewModel: AddEntryViewModel,
-    onSaved: (message: String, celebrate: Boolean) -> Unit,
+    onSaved: (message: String, celebrate: Boolean, undo: EntryUndo?) -> Unit,
+    onDeleted: (message: String, undo: EntryUndo) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = FunTheme.colors
@@ -190,6 +201,8 @@ private fun EntryForm(
     val saveToasts = stringArrayResource(
         if (state.isEditing) R.array.edit_save_toasts else R.array.save_toasts,
     )
+    val deleteToasts = stringArrayResource(R.array.delete_toasts)
+    var confirmDelete by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -203,6 +216,7 @@ private fun EntryForm(
         DateTimeSection(
             dateTime = state.dateTime,
             onDateTimeChange = viewModel::setDateTime,
+            onMinutesAgo = viewModel::setMinutesAgo,
         )
 
         FormCard(emoji = "🎮", title = stringResource(R.string.add_type_label)) {
@@ -319,14 +333,16 @@ private fun EntryForm(
             }
         }
 
-        if (state.saveFailed) {
+        if (state.saveFailed || state.deleteFailed) {
             FunCard(
                 modifier = Modifier.fillMaxWidth(),
                 containerColor = colors.danger,
                 contentColor = colors.onAccent,
             ) {
                 Text(
-                    text = stringResource(R.string.add_save_failed),
+                    text = stringResource(
+                        if (state.deleteFailed) R.string.edit_delete_failed else R.string.add_save_failed,
+                    ),
                     style = MaterialTheme.typography.titleSmall,
                 )
             }
@@ -342,8 +358,8 @@ private fun EntryForm(
             ),
             emoji = "💾",
             onClick = {
-                viewModel.save { unlocked ->
-                    onSaved(saveMessage(context.resources, saveToasts.random(), unlocked), unlocked.isNotEmpty())
+                viewModel.save { unlocked, undo ->
+                    onSaved(saveMessage(context.resources, saveToasts.random(), unlocked), unlocked.isNotEmpty(), undo)
                 }
             },
             enabled = state.canSave,
@@ -351,7 +367,38 @@ private fun EntryForm(
             minHeight = 58.dp,
         )
 
+        if (state.isEditing) {
+            // Secondary action: smaller than "save", in the danger colour, always confirmed first.
+            ChunkyButton(
+                text = stringResource(if (state.deleting) R.string.edit_deleting else R.string.edit_delete),
+                emoji = "🗑️",
+                onClick = { confirmDelete = true },
+                enabled = state.canDelete,
+                containerColor = colors.danger,
+                modifier = Modifier.fillMaxWidth(),
+                shadowOffset = 3.dp,
+                minHeight = 48.dp,
+            )
+        }
+
         Spacer(Modifier.height(8.dp))
+    }
+
+    if (confirmDelete) {
+        // Same wording as deleting from the history list.
+        FunConfirmDialog(
+            title = stringResource(R.string.history_delete_title),
+            emoji = "🗑️",
+            message = stringResource(R.string.history_delete_message),
+            confirmText = stringResource(R.string.history_delete_confirm),
+            confirmColor = colors.danger,
+            onConfirm = {
+                confirmDelete = false
+                viewModel.delete { undo -> onDeleted(deleteToasts.random(), undo) }
+            },
+            dismissText = stringResource(R.string.history_delete_keep),
+            onDismiss = { confirmDelete = false },
+        )
     }
 }
 
@@ -470,11 +517,15 @@ private fun MoodChips(
     }
 }
 
-/** Date-time row: tap -> date picker -> time picker. Future points in time are not selectable. */
+/**
+ * Date-time row: tap -> date picker -> time picker. Future points in time are not selectable.
+ * Below it, quick-time chips set the time to "just now / 30 min / 1 h / 2 h ago" in one tap.
+ */
 @Composable
 private fun DateTimeSection(
     dateTime: LocalDateTime,
     onDateTimeChange: (LocalDateTime) -> Unit,
+    onMinutesAgo: (minutesAgo: Int) -> Unit,
 ) {
     val formatter = rememberFormatter(R.string.pattern_date_time)
     var showDatePicker by remember { mutableStateOf(false) }
@@ -494,6 +545,8 @@ private fun DateTimeSection(
                 textAlign = TextAlign.Center,
             )
         }
+        Spacer(Modifier.height(12.dp))
+        QuickTimeChips(dateTime = dateTime, onPick = onMinutesAgo)
     }
 
     if (showDatePicker) {
@@ -541,6 +594,48 @@ private fun DateTimeSection(
             },
         )
     }
+}
+
+/**
+ * "刚刚 / 30 分钟前 / 1 小时前 / 2 小时前". The chip whose time the form shows right now is
+ * highlighted; the clock is re-read every minute, so "just now" lets go once it no longer is.
+ */
+@Composable
+private fun QuickTimeChips(
+    dateTime: LocalDateTime,
+    onPick: (minutesAgo: Int) -> Unit,
+) {
+    val nowMillis by produceState(initialValue = System.currentTimeMillis()) {
+        while (true) {
+            delay(MINUTE_MILLIS - value % MINUTE_MILLIS)
+            value = System.currentTimeMillis()
+        }
+    }
+    val zone = remember { ZoneId.systemDefault() }
+    val highlighted = matchingQuickTime(dateTime, nowMillis, zone)
+
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        QUICK_TIME_OFFSETS_MINUTES.forEach { minutes ->
+            EmojiChip(
+                label = quickTimeLabel(minutes),
+                selected = highlighted == minutes,
+                onClick = { onPick(minutes) },
+            )
+        }
+    }
+}
+
+private const val MINUTE_MILLIS = 60_000L
+
+@Composable
+private fun quickTimeLabel(minutesAgo: Int): String = when {
+    minutesAgo == 0 -> stringResource(R.string.add_quick_time_now)
+    minutesAgo % 60 == 0 -> quantityString(R.plurals.add_quick_time_hours_ago, minutesAgo / 60, minutesAgo / 60)
+    else -> quantityString(R.plurals.add_quick_time_minutes_ago, minutesAgo, minutesAgo)
 }
 
 @Composable

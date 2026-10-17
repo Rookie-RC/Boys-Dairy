@@ -7,6 +7,7 @@ import com.rookierc.boysdairy.millisOf
 import com.rookierc.boysdairy.testEntry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -165,5 +166,80 @@ class EntryFormLogicTest {
     fun changingSomethingBackIsNoChange() {
         val edited = baseline.copy(durationMinutes = 11).copy(durationMinutes = 10)
         assertFalse(edited.differsFrom(baseline))
+    }
+
+    // ---- quick-time chips ---------------------------------------------------------------------
+
+    /** 20:47:38.250 on 17 Oct. */
+    private val quickNow = millisOf(2026, 10, 17, 20, 47) + 38_250
+
+    @Test
+    fun quickTimeOffsetsAreJustNowHalfAnHourOneAndTwoHours() {
+        assertEquals(listOf(0, 30, 60, 120), QUICK_TIME_OFFSETS_MINUTES)
+    }
+
+    @Test
+    fun quickTimeIsNowMinusTheOffsetCutToTheMinute() {
+        assertEquals(LocalDateTime.of(2026, 10, 17, 20, 47), quickTimeDateTime(quickNow, 0, TEST_ZONE))
+        assertEquals(LocalDateTime.of(2026, 10, 17, 20, 17), quickTimeDateTime(quickNow, 30, TEST_ZONE))
+        assertEquals(LocalDateTime.of(2026, 10, 17, 19, 47), quickTimeDateTime(quickNow, 60, TEST_ZONE))
+        assertEquals(LocalDateTime.of(2026, 10, 17, 18, 47), quickTimeDateTime(quickNow, 120, TEST_ZONE))
+    }
+
+    @Test
+    fun quickTimeCrossesMidnightIntoTheDayBefore() {
+        val justAfterMidnight = millisOf(2026, 10, 18, 0, 20) + 59_999
+        assertEquals(LocalDateTime.of(2026, 10, 18, 0, 20), quickTimeDateTime(justAfterMidnight, 0, TEST_ZONE))
+        assertEquals(LocalDateTime.of(2026, 10, 17, 23, 50), quickTimeDateTime(justAfterMidnight, 30, TEST_ZONE))
+        assertEquals(LocalDateTime.of(2026, 10, 17, 22, 20), quickTimeDateTime(justAfterMidnight, 120, TEST_ZONE))
+        // ... and into the previous month / year.
+        val newYear = millisOf(2027, 1, 1, 0, 5)
+        assertEquals(LocalDateTime.of(2026, 12, 31, 23, 5), quickTimeDateTime(newYear, 60, TEST_ZONE))
+    }
+
+    @Test
+    fun quickTimeCountsRealMinutesAcrossADaylightSavingChange() {
+        // Berlin falls back from 03:00 CEST to 02:00 CET on 25 Oct 2026. Two real hours before
+        // 03:30 CET is 02:30 CEST (on the wall clock: 02:30, not 01:30).
+        val berlin = ZoneId.of("Europe/Berlin")
+        val now = millisOf(2026, 10, 25, 3, 30, zone = berlin)
+        val twoHoursAgo = quickTimeDateTime(now, 120, berlin)
+        assertEquals(LocalDateTime.of(2026, 10, 25, 2, 30), twoHoursAgo)
+        // Storing it lands exactly two hours back.
+        assertEquals(now - 2 * 3_600_000L, resolveTimestamp(twoHoursAgo, null, berlin, now))
+    }
+
+    @Test
+    fun matchingQuickTimeFindsTheChipOfTheShownTime() {
+        assertEquals(0, matchingQuickTime(LocalDateTime.of(2026, 10, 17, 20, 47), quickNow, TEST_ZONE))
+        assertEquals(30, matchingQuickTime(LocalDateTime.of(2026, 10, 17, 20, 17), quickNow, TEST_ZONE))
+        assertEquals(120, matchingQuickTime(LocalDateTime.of(2026, 10, 17, 18, 47), quickNow, TEST_ZONE))
+    }
+
+    @Test
+    fun matchingQuickTimeIsNullForAnyOtherTime() {
+        assertNull(matchingQuickTime(LocalDateTime.of(2026, 10, 17, 20, 46), quickNow, TEST_ZONE))
+        assertNull(matchingQuickTime(LocalDateTime.of(2026, 10, 16, 20, 47), quickNow, TEST_ZONE))
+        // A chip tapped a minute ago no longer matches.
+        assertNull(matchingQuickTime(LocalDateTime.of(2026, 10, 17, 20, 17), quickNow + 60_000, TEST_ZONE))
+    }
+
+    // ---- undo after editing -------------------------------------------------------------------
+
+    @Test
+    fun undoOfAnEditWritesBackTheOriginalExactly() {
+        val original = testEntry(timestamp = millisOf(2026, 10, 3, 12, 34) + 56_789, id = 7, note = " hi ")
+        val saved = original.copy(timestamp = millisOf(2026, 10, 3, 13, 0), pleasure = 9, note = "hi there")
+
+        val revert = revertOfEdit(original, saved)
+        assertSame(original, revert)
+        assertEquals(7L, revert?.id)
+        assertEquals(millisOf(2026, 10, 3, 12, 34) + 56_789, revert?.timestamp)
+    }
+
+    @Test
+    fun anEditThatChangedNothingHasNoUndo() {
+        val original = testEntry(timestamp = millisOf(2026, 10, 3, 12, 34) + 56_789, id = 7)
+        assertNull(revertOfEdit(original, original.copy()))
     }
 }
