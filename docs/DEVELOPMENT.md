@@ -115,15 +115,16 @@ PR 模板 `.github/pull_request_template.md` 要求填：变更说明、截图�
 1. 在 `app/src/main/res/values/strings.xml`（中文，默认）加 `<string name="...">`，放在相应的注释分组下；key 以屏幕或功能为前缀（`home_`、`ai_`、`settings_`、`backup_` ……）。
 2. 在 `app/src/main/res/values-en/strings.xml` 加**同名** key 和英文文案（语气一致，不是直译）。`plurals`、`string-array` 也一样；中文 `plurals` 只写 `other`。
 3. 带参数的用位置占位符（`%1$s`、`%2$d`），两种语言都写。
-4. 代码里用 `stringResource(R.string.xxx)`；数量词用 `quantityString(R.plurals.xxx, n, n)`（`ui/common/Formatting.kt`）；数组用 `stringArrayResource`。
-5. 检查两个文件 key 一致（应无输出）：
+4. 代码里用 `stringResource(R.string.xxx)`；数量词用 `quantityString(R.plurals.xxx, n, n)`（`ui/common/Formatting.kt`）；数组用 `stringArrayResource`。这几个都要从 `com.rookierc.boysdairy.ui.common` 导入（按男 / 女生版取文案），不要导入 `androidx.compose.ui.res` 的同名函数；Composable 之外（比如保存回调里拼提示）用 `Resources.editionString` 等扩展并传入捕获的 edition。`EditionResourcesGuardTest` 会拦住漏网的。
+5. 这条文案在女生版要换说法时：再加一条 `<同名>_girl`（中英都加，占位符保持一致），并在 `ui/common/GirlVariants.kt` 对应的表里登记 `R.string.xxx to R.string.xxx_girl`。不需要换就什么都不用做，两版共用。`app_name` 和锁屏的 `lock_*` 不做变体。`GirlVariantsTest` 检查命名、登记和占位符。
+6. 检查两个文件 key 一致（应无输出）：
 
    ```bash
    diff <(grep -o 'name="[^"]*"' app/src/main/res/values/strings.xml | sort) \
         <(grep -o 'name="[^"]*"' app/src/main/res/values-en/strings.xml | sort)
    ```
 
-6. 在模拟器里切到两种语言各看一眼，注意长英文会不会撑破布局。
+7. 在模拟器里切到两种语言各看一眼，注意长英文会不会撑破布局；有女生版变体的，在设置 →「界面版本」切过去也看一眼。
 
 ## 更换 / 升级 AI 模型
 

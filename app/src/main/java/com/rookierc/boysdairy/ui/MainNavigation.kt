@@ -16,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -26,6 +25,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.rookierc.boysdairy.R
+import com.rookierc.boysdairy.data.Edition
 import com.rookierc.boysdairy.ui.add.AddEntryScreen
 import com.rookierc.boysdairy.ui.add.AddEntryViewModel
 import com.rookierc.boysdairy.ui.add.EntryUndo
@@ -33,10 +33,13 @@ import com.rookierc.boysdairy.ui.ai.AiScreen
 import com.rookierc.boysdairy.ui.backup.BackupFlowHost
 import com.rookierc.boysdairy.ui.backup.BackupViewModel
 import com.rookierc.boysdairy.ui.backup.FileActions
+import com.rookierc.boysdairy.ui.common.EditionEmoji
 import com.rookierc.boysdairy.ui.common.FunSnackbarController
 import com.rookierc.boysdairy.ui.common.FunSnackbarHost
+import com.rookierc.boysdairy.ui.common.LocalEdition
 import com.rookierc.boysdairy.ui.common.LocalSnackbar
 import com.rookierc.boysdairy.ui.common.NoInsets
+import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.history.HistoryScreen
 import com.rookierc.boysdairy.ui.home.HomeScreen
 import com.rookierc.boysdairy.ui.insights.InsightsScreen
@@ -76,9 +79,9 @@ object Routes {
 }
 
 /** Left two tabs, then the raised "check in" button, then the right two tabs. */
-private val bottomTabs = listOf(
+private fun bottomTabsFor(edition: Edition) = listOf(
     BottomTab(Routes.HOME, R.string.tab_home, "🏠"),
-    BottomTab(Routes.HISTORY, R.string.tab_history, "📼"),
+    BottomTab(Routes.HISTORY, R.string.tab_history, EditionEmoji.TAPE.of(edition)),
     BottomTab(Routes.AI, R.string.tab_ai, "🤖"),
     BottomTab(Routes.SETTINGS, R.string.tab_settings, "⚙️"),
 )
@@ -99,6 +102,8 @@ fun MainNavigation(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
 
+    val edition = LocalEdition.current
+    val bottomTabs = remember(edition) { bottomTabsFor(edition) }
     val selectedTabRoute = bottomTabs.firstOrNull { tab ->
         currentDestination?.hierarchy?.any { it.route == tab.route } == true
     }?.route

@@ -30,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.FunSurface
+import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.theme.FunShapes
 import com.rookierc.boysdairy.ui.theme.FunTheme
 

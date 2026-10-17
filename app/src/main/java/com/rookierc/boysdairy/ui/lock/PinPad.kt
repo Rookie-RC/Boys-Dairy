@@ -34,7 +34,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -44,6 +43,7 @@ import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.security.PinHasher
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.FunSurface
+import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.theme.FunShapes
 import com.rookierc.boysdairy.ui.theme.FunTheme
 

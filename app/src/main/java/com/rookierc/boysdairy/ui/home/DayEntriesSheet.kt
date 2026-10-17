@@ -20,16 +20,17 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.domain.Entry
 import com.rookierc.boysdairy.ui.common.ChunkyButton
+import com.rookierc.boysdairy.ui.common.EditionEmoji
 import com.rookierc.boysdairy.ui.common.EmptyState
 import com.rookierc.boysdairy.ui.common.EntryCard
 import com.rookierc.boysdairy.ui.common.SectionHeader
 import com.rookierc.boysdairy.ui.common.quantityString
 import com.rookierc.boysdairy.ui.common.rememberFormatter
+import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.theme.FunShapes
 import com.rookierc.boysdairy.ui.theme.FunTheme
 import java.time.LocalDate
@@ -78,7 +79,7 @@ fun DayEntriesSheet(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             SectionHeader(
-                emoji = "📼",
+                emoji = EditionEmoji.TAPE.current,
                 title = stringResource(R.string.day_sheet_title, date.format(dateFormatter)),
             )
             if (entries.isEmpty()) {

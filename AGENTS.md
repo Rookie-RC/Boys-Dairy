@@ -4,7 +4,7 @@
 
 ## 项目概览
 
-Boys Dairy 是一个私人、幽默风格的原生 Android 日记应用：Kotlin 2.1 + Jetpack Compose + Material3，Room + DataStore，单模块 `:app`，包名 `com.rookierc.boysdairy`，minSdk 26 / target 35。启动器名称是「Daily Calc」、图标是计算器（伪装），进入需要 4 位 PIN。用户可见文案默认中文，另有英文。可选功能「AI 锐评」会在用户点按钮时联网，把数据发给用户选的 AI 服务商（DeepSeek 默认，或 Claude）。
+Boys Dairy 是一个私人、幽默风格的原生 Android 日记应用：Kotlin 2.1 + Jetpack Compose + Material3，Room + DataStore，单模块 `:app`，包名 `com.rookierc.boysdairy`，minSdk 26 / target 35。启动器名称是「Daily Calc」、图标是计算器（伪装），进入需要 4 位 PIN。用户可见文案默认中文，另有英文。同一个应用分「男生版 / 女生版」：首次解锁后选一次（设置里可改），两版只在界面文字和装饰 emoji 上不同，布局、配色、数据完全一样。可选功能「AI 锐评」会在用户点按钮时联网，把数据发给用户选的 AI 服务商（DeepSeek 默认，或 Claude）。
 
 深入阅读：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、[docs/PRIVACY.md](docs/PRIVACY.md)、[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 
@@ -46,15 +46,15 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 | `BoysDairyApp.kt` | `Application` + `AppContainer`（手动依赖注入，进程内单例）；在 `ProcessLifecycleOwner` `ON_STOP` 时调用 `lockManager.lock()` |
 | `MainActivity.kt` | `FLAG_SECURE`（由 `BuildConfig.SECURE_SCREEN` 控制）、edge-to-edge |
 | `domain/` | 纯 Kotlin，零 Android 依赖：`Entry`、`Mood`、`EntryType`、`DateLogic`（距今天数、月历网格与每日汇总、分组、搜索 / 筛选）、`Stats`（`computeStats`，AI 提示词也用）、`Insights`（完整战报的周 / 星期 / 时段分布、最长连续、成就） |
-| `data/` | Room（`AppDatabase` / `EntryDao` / `EntryEntity`）、`EntryRepository`、`SettingsRepository`（DataStore `settings`：主题、PIN 哈希、所选 AI 服务商 `aiProvider`） |
+| `data/` | Room（`AppDatabase` / `EntryDao` / `EntryEntity`）、`EntryRepository`、`SettingsRepository`（DataStore `settings`：主题、PIN 哈希、所选 AI 服务商 `aiProvider`、男 / 女生版 `edition`）、`Edition`（`BOY` / `GIRL`） |
 | `data/backup/` | JSON 备份：`BackupCodec`（格式）、`BackupMerge`（去重）、`BackupEngine`（流读写，可纯 JVM 测试）、`BackupManager`（SAF Uri） |
 | `security/` | `PinHasher`（加盐 SHA-256）、`PinAttemptLimiter` + `DataStorePinLockoutStore`（持久化锁定）、`LockManager`（锁状态） |
 | `ai/` | AI 锐评。`AiProvider.kt`：服务商枚举 + `AiProvider.spec`（**固定的**模型、推理强度、展示用主机名）；`AiPromptBuilder`（纯函数，决定发什么）；`AiAnalysisService`（编排）；`ApiKeyStore`（每个服务商一个 Key 槽，Keystore 加密，DataStore `secure`）；`DeepSeekTextGenerator`（OkHttp）与 `ClaudeTextGenerator`（Anthropic Java SDK）及各自的配置常量；`AiModels.kt`（`AiRequest` / `AiResult` / `AiError`）。**唯一允许联网的包** |
-| `ui/AppRoot.kt` `ui/SessionStores.kt` | 锁闸门与每次解锁独立的 ViewModelStore |
+| `ui/AppRoot.kt` `ui/SessionStores.kt` | 锁闸门与每次解锁独立的 ViewModelStore；解锁后版本未选时先显示 `ui/edition/EditionChooserScreen`，选过后在 `MainNavigation` 外提供 `LocalEdition` |
 | `ui/MainNavigation.kt` `ui/FunBottomBar.kt` | 路由与底栏（首页 / 战绩 / 中央打卡 / AI 锐评 / 设置） |
 | `ui/theme/` | `FunColors`、`FunShapes`、Material3 主题（浅色奶油 / 深色暗紫） |
-| `ui/common/` | `Fun*` 设计系统组件：`FunSurface`、`FunCard`、`ChunkyButton`、`Chips`、`FunDialog`、`FunSnackbar`、`FunTextField`、`Headers`、`EntryCard` 等 |
-| `ui/lock/ home/ add/ history/ insights/ ai/ backup/ settings/` | 各屏幕及其 ViewModel；`add/` 同时负责新增和修改（`EntryFormLogic.kt` 是可测试的表单规则） |
+| `ui/common/` | `Fun*` 设计系统组件：`FunSurface`、`FunCard`、`ChunkyButton`、`Chips`、`FunDialog`、`FunSnackbar`、`FunTextField`、`Headers`、`EntryCard` 等；男女版：`EditionResources.kt`（按版本取文案的 `stringResource` 等）、`GirlVariants`（女生版文案映射表）、`EditionEmoji`（两版不同的 emoji） |
+| `ui/lock/ edition/ home/ add/ history/ insights/ ai/ backup/ settings/` | 各屏幕及其 ViewModel；`add/` 同时负责新增和修改（`EntryFormLogic.kt` 是可测试的表单规则） |
 
 测试在 `app/src/test/java/...`，目录结构与主代码镜像。
 
@@ -64,14 +64,17 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 - 所有用户可见字符串都放进 `res/values/strings.xml`（中文，默认）**和** `res/values-en/strings.xml`（英文），key 完全一致（包括 `plurals`、`string-array`）。不要在 Kotlin 里写死用户可见文字；纯装饰 emoji 用 `EmojiText`。
 - 同步检查：`diff <(grep -o 'name="[^"]*"' app/src/main/res/values/strings.xml | sort) <(grep -o 'name="[^"]*"' app/src/main/res/values-en/strings.xml | sort)` 应无输出。
 - `app_name` 必须保持「Daily Calc」（伪装）。
+- **男女版**：代码里只写基础（男生版）资源 id。取文案一律用 `com.rookierc.boysdairy.ui.common` 里的 `stringResource` / `stringArrayResource` / `pluralStringResource` / `quantityString`（与 androidx 同名，按 `LocalEdition` 换成女生版）；Composable 之外（回调）用 `Resources.editionString` / `editionQuantityString` / `editionStringArray`，并传入点击时捕获的 edition。不要 import `androidx.compose.ui.res.stringResource` 等，也不要在 `ui/` 里直接 `getString`——`EditionResourcesGuardTest` 会拦。
+- 女生版文案命名为 `<基础名>_girl`（中英都要有、占位符与基础版一致），并登记进 `GirlVariants`；`_girl` 后缀只用于此。`app_name` 和锁屏的 `lock_*` 不做变体（锁屏在 `LocalEdition` 之外，始终中性）。`GirlVariantsTest` 检查命名、登记和占位符。两版不同的装饰 emoji 只登记在 `EditionEmoji`。
 
 **隐私与安全**
 - `ai/` 之外不得出现任何网络调用；不要新增权限、遥测、崩溃上报、第三方 SDK。`INTERNET` 权限只为 AI 锐评存在。
 - 没有用户的显式点击就不能发请求：预览只读本地，只有 `AiViewModel.analyze()` 这条路径才会真正发送。
 - 不记录日志、不持久化日记内容或 API Key 的明文：不要写 `Log.*` / `println`，异常信息里不要带日记内容或 Key，API Key 只允许以 Keystore 加密后的形式落盘，且只放在请求头里。
 - 备份文件只含战绩；永远不要把 PIN 哈希 / 盐、API Key、设置写进去。
+- AI 提示词保持品牌与性别中性；男 / 女生版是纯界面设置，永远不作为提示词的输入，也不进备份。
 - AI 服务商的模型和推理强度固定在 `AiProvider.spec`，这是产品决定：不要加用户可选的模型 / 参数界面，也不要把模型 id 写到别处。
-- 持久化键不能改名：`AiProvider.id`（`deepseek` / `claude`）、DataStore 键 `aiProvider` 和 `api_key_<id>`、Keystore 别名 `boysdairy_claude_key`（最初为 Claude 创建，现在所有服务商共用）。改了会让用户已存的选择和 Key 失效。
+- 持久化键不能改名：`AiProvider.id`（`deepseek` / `claude`）、`Edition.id`（`boy` / `girl`）、DataStore 键 `aiProvider`、`edition` 和 `api_key_<id>`、Keystore 别名 `boysdairy_claude_key`（最初为 Claude 创建，现在所有服务商共用）。改了会让用户已存的选择和 Key 失效。
 - 每个服务商实现都要：Key 只放请求头；不跟随重定向；不打印请求 / 响应体；错误映射到 `AiError`；`previewPayload()` 展示的两段提示词必须与 `analyze()` 实际发送的一致。新增服务商的步骤见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 - 保留 `FLAG_SECURE` 仅 release 生效的逻辑（`BuildConfig.SECURE_SCREEN`：release = true，debug = false）。不要在 release 里关掉它，也不要让 debug 的放宽泄漏到 release。
 - 保持 `allowBackup="false"` 与 `data_extraction_rules.xml` 排除所有域。

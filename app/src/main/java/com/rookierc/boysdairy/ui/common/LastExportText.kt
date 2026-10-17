@@ -1,7 +1,6 @@
 package com.rookierc.boysdairy.ui.common
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
 import com.rookierc.boysdairy.R
 import java.time.Instant
 import java.time.ZoneId

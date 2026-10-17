@@ -23,8 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.stringArrayResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,8 +35,10 @@ import com.rookierc.boysdairy.domain.computeStats
 import com.rookierc.boysdairy.domain.groupEntriesByDate
 import com.rookierc.boysdairy.domain.shouldRemindBackup
 import com.rookierc.boysdairy.ui.common.ChunkyButton
+import com.rookierc.boysdairy.ui.common.EditionEmoji
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.FunCard
+import com.rookierc.boysdairy.ui.common.LocalEdition
 import com.rookierc.boysdairy.ui.common.ScreenTitle
 import com.rookierc.boysdairy.ui.common.SectionHeader
 import com.rookierc.boysdairy.ui.common.StickerBadge
@@ -46,6 +46,8 @@ import com.rookierc.boysdairy.ui.common.lastExportText
 import com.rookierc.boysdairy.ui.common.quantityString
 import com.rookierc.boysdairy.ui.common.rememberFormatter
 import com.rookierc.boysdairy.ui.common.rememberToday
+import com.rookierc.boysdairy.ui.common.stringArrayResource
+import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.theme.FunColors
 import com.rookierc.boysdairy.ui.theme.FunTheme
 import java.time.Instant
@@ -102,7 +104,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ScreenTitle(
-            emoji = "📒",
+            emoji = EditionEmoji.DIARY.current,
             title = stringResource(R.string.home_title),
             subtitle = stringResource(R.string.home_subtitle),
         )
@@ -240,7 +242,7 @@ private fun CooldownCard(daysSince: Long?, lastEntry: Entry?, today: LocalDate) 
                 )
             }
             Spacer(Modifier.width(8.dp))
-            EmojiText(text = tier.emoji, fontSize = 56.sp)
+            EmojiText(text = tier.emoji(LocalEdition.current), fontSize = 56.sp)
         }
         if (lastEntry != null) {
             Spacer(Modifier.height(12.dp))
@@ -269,7 +271,7 @@ private fun StreakCard(level: StreakLevel, days: Int) {
         containerColor = colors.pinkTint,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            EmojiText(text = level.emoji, fontSize = 40.sp)
+            EmojiText(text = level.emoji(LocalEdition.current), fontSize = 40.sp)
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -318,7 +320,7 @@ private fun StatsRow(last7Days: Int, last30Days: Int, averagePleasure: Double?) 
             modifier = Modifier.weight(1f),
         )
         StatCard(
-            emoji = "🎆",
+            emoji = EditionEmoji.PLEASURE.current,
             value = pleasureText,
             label = stringResource(R.string.stats_avg_pleasure),
             containerColor = colors.lemonTint,

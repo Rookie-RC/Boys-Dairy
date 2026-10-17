@@ -26,8 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringArrayResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -36,11 +34,13 @@ import com.rookierc.boysdairy.domain.Entry
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.filterEntries
 import com.rookierc.boysdairy.domain.groupEntriesByMonth
+import com.rookierc.boysdairy.ui.common.EditionEmoji
 import com.rookierc.boysdairy.ui.common.EmojiChip
 import com.rookierc.boysdairy.ui.common.EmptyState
 import com.rookierc.boysdairy.ui.common.EntryCard
 import com.rookierc.boysdairy.ui.common.FunConfirmDialog
 import com.rookierc.boysdairy.ui.common.FunTextField
+import com.rookierc.boysdairy.ui.common.LocalEdition
 import com.rookierc.boysdairy.ui.common.LocalSnackbar
 import com.rookierc.boysdairy.ui.common.ScreenTitle
 import com.rookierc.boysdairy.ui.common.SectionHeader
@@ -48,6 +48,8 @@ import com.rookierc.boysdairy.ui.common.StickerBadge
 import com.rookierc.boysdairy.ui.common.emoji
 import com.rookierc.boysdairy.ui.common.quantityString
 import com.rookierc.boysdairy.ui.common.rememberFormatter
+import com.rookierc.boysdairy.ui.common.stringArrayResource
+import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.theme.FunTheme
 import com.rookierc.boysdairy.ui.theme.accent
 import java.time.YearMonth
@@ -109,7 +111,7 @@ fun HistoryScreen(
     ) {
         item(key = "title", contentType = "title") {
             ScreenTitle(
-                emoji = "📼",
+                emoji = EditionEmoji.TAPE.current,
                 title = stringResource(R.string.history_title),
                 subtitle = stringResource(R.string.history_subtitle),
                 // Top padding here, not as content padding: a stuck month header sits flush at the top.
@@ -167,7 +169,7 @@ fun HistoryScreen(
             visibleEntries.isEmpty() -> item(key = "empty", contentType = "empty") {
                 if (allEntries.isEmpty()) {
                     EmptyState(
-                        emoji = "🧘",
+                        emoji = EditionEmoji.MEDITATE.current,
                         message = stringResource(R.string.history_empty),
                         hint = stringResource(R.string.history_empty_hint),
                     )
@@ -241,7 +243,7 @@ private fun TypeFilterChips(
         EntryType.entries.forEach { type ->
             EmojiChip(
                 label = stringResource(type.filterLabelRes()),
-                emoji = type.emoji(),
+                emoji = type.emoji(LocalEdition.current),
                 selected = selected == type,
                 onClick = { onSelect(type) },
                 selectedColor = type.accent(),

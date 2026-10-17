@@ -6,11 +6,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringArrayResource
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rookierc.boysdairy.R
+import com.rookierc.boysdairy.ui.common.stringArrayResource
+import com.rookierc.boysdairy.ui.common.stringResource
 import kotlin.random.Random
 
 /** Full-screen PIN screen used for first-run setup and for unlocking. */

@@ -71,16 +71,20 @@ Unlocked ──ProcessLifecycleOwner ON_STOP──► Locked
 BoysDairyRoot
  ├─ Loading ............ 空白
  ├─ NeedsSetup / Locked  LockScreen
- └─ Unlocked ........... MainNavigation (NavHost)
-      ├─ home  history  ai  settings    底栏四个 tab（popUpTo 起点 + saveState/restoreState）
-      ├─ add?entryId={entryId}&date={epochDay}
-      │                                 打卡表单；全屏，无底栏。无参数 = 新增（底栏中央按钮），
-      │                                 entryId = 修改那条（战绩卡片 / 日历面板里点卡片），
-      │                                 date = 新增并把日期预填为那天（日历面板「在这天补一条」）
-      ├─ insights                       首页「查看完整战报」；全屏，无底栏
-      └─ change_pin                     设置 → 改暗号；全屏，无底栏
+ └─ Unlocked
+      ├─ 版本读取中 ........ 空白（不把老用户误当成新用户）
+      ├─ 版本未选 .......... EditionChooserScreen（男生版 / 女生版，写入 SettingsRepository.edition）
+      └─ 已选 .............. LocalEdition provides 所选版本 ⟶ MainNavigation (NavHost)
+           ├─ home  history  ai  settings    底栏四个 tab（popUpTo 起点 + saveState/restoreState）
+           ├─ add?entryId={entryId}&date={epochDay}
+           │                                 打卡表单；全屏，无底栏。无参数 = 新增（底栏中央按钮），
+           │                                 entryId = 修改那条（战绩卡片 / 日历面板里点卡片），
+           │                                 date = 新增并把日期预填为那天（日历面板「在这天补一条」）
+           ├─ insights                       首页「查看完整战报」；全屏，无底栏
+           └─ change_pin                     设置 → 改暗号；全屏，无底栏
 ```
 
+- **男生版 / 女生版**：`Edition`（`data/Edition.kt`）存在 DataStore `settings` 的 `edition`。`RootViewModel.edition` 是 `EditionState`（`Loading` / `Unset` / `Chosen`）。在设置里切换版本只改变 `LocalEdition` 的值，不换分支，所以导航栈和各页状态都保留。锁屏在 provider 之外，始终显示基础文案。代码里永远写基础资源 id，`ui/common/EditionResources.kt` 的同名 `stringResource` / `stringArrayResource` / `pluralStringResource` 按 `LocalEdition` 查 `GirlVariants` 换成 `<name>_girl`，没登记的就两版共用；两版不同的装饰 emoji 集中在 `EditionEmoji`。`EditionResourcesGuardTest` 扫源码，防止有人绕过它直接用 androidx 的版本或 `getString`。
 - 路由字符串用 `Routes.addEntry(entryId, date)` 拼；两个参数都是可选的 `LongType`，缺省值见 `AddEntryViewModel.NO_ENTRY_ID` / `NO_EPOCH_DAY`。`AddEntryViewModel` 只从 `SavedStateHandle` 读这两个参数，从不把表单内容写进去。
 - 修改模式：加载完成前不能保存；那条已被删掉 → 关闭表单并提示。没改时间就**原样保留原 timestamp（毫秒不变）**，只改了首尾空白的笔记也原样保留，这样备份合并的去重键 `(timestamp, type, durationMinutes, note)` 不会因为一次无关修改而变化；时长超过 120 的旧数据不动就原样保存。这些规则是 `ui/add/EntryFormLogic.kt` 里的纯函数，有单元测试。
 - 新增模式：类型和时长默认取最近一条战绩的（用户先动过就不覆盖）。表单有改动时，返回键 / 关闭按钮先弹「放弃确认」。笔记上限 1000 字符（更长的旧笔记不会被截断，只是不能再变长）。
@@ -112,7 +116,7 @@ Room 数据库 `boysdairy.db`，`version = 1`，`exportSchema = true`（schema �
 - 枚举按名字存字符串，不依赖序号；读取时遇到未知名字退回默认值（`SOLO` / `NEUTRAL`）。`EntryEntity` ⇄ `domain.Entry` 的转换在 `EntryEntity.kt`。
 - `EntryRepository`：`entries`（Flow，新到旧，同一时刻按 id 新到旧）、`get(id)`、`add`、`update`（id 必须 > 0；行已不存在时什么也不做）、`delete`、`clearAll`（设置里的「清空所有战绩」）、`snapshot`（一次性读，新到旧）、`addAll`（备份合并）、`replaceAll`（`@Transaction`：先清空再插入，失败整体回滚）。
 - `domain/Stats.kt` 的 `computeStats()` 一次性算出 `EntryStats`（总数 / 单人 / 双人、近 7 / 30 天、距上次天数、连续天数、最长间隔、平均间隔、平均时长 / 愉悦度、事前事后心情分布、最忙的星期几和时段）。首页和 AI 提示词共用它。「天」一律按日历日算。
-- `domain/Insights.kt` 给「完整战报」页补充：`weeklyCounts`（近 N 个周一起始的周，空周也在）、`weekdayCounts` / `hourBucketCounts`（全部键都在）、`longestStreakDays`（历史最长连续）、`busiestKeys`（并列最多的都算），以及成就 `Achievement` / `computeAchievements`（每个成就有 `target`，进度封顶）/ `newlyUnlocked`。成就的名字、描述和 emoji 在 `ui/common/Labels.kt`（`Achievement.labels()`），战报页和保存提示共用。战报页的时间范围是 `InsightsPeriod` + `entriesInPeriod`（「近 N 天」按日历日、含今天，与 `last30DaysCount` 同口径），只作用于总览、星期 / 时段分布和心情；近 12 周柱状图、成就墙和 `monthOverMonth`（本月 vs 上月同期，上月没有这一天时取月末）始终基于全部战绩。不改 `EntryStats`，所以 AI 提示词不受影响。
+- `domain/Insights.kt` 给「完整战报」页补充：`weeklyCounts`（近 N 个周一起始的周，空周也在）、`weekdayCounts` / `hourBucketCounts`（全部键都在）、`longestStreakDays`（历史最长连续）、`busiestKeys`（并列最多的都算），以及成就 `Achievement` / `computeAchievements`（每个成就有 `target`，进度封顶）/ `newlyUnlocked`。成就的名字、描述和 emoji 在 `ui/common/Labels.kt`（`Achievement.labels(edition)`），战报页和保存提示共用。战报页的时间范围是 `InsightsPeriod` + `entriesInPeriod`（「近 N 天」按日历日、含今天，与 `last30DaysCount` 同口径），只作用于总览、星期 / 时段分布和心情；近 12 周柱状图、成就墙和 `monthOverMonth`（本月 vs 上月同期，上月没有这一天时取月末）始终基于全部战绩。不改 `EntryStats`，所以 AI 提示词不受影响。
 - `domain/DateLogic.kt` 另有战绩列表和月历用的 `filterEntries(entries, query, type)`（笔记搜索 + 类型筛选）、`groupEntriesByMonth`（保持输入顺序）、`buildDaySummaries`（每天的类型 + 条数，月历角标用；`buildDayMarkers` 由它派生）。
 - 其他存储（DataStore、Keystore）见 [PRIVACY.md](PRIVACY.md#存储位置)。语言不存 DataStore，由 AppCompat 的 per-app locale 管理。
 

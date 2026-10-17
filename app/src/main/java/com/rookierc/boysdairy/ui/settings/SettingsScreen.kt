@@ -33,8 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringArrayResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -51,6 +49,7 @@ import com.rookierc.boysdairy.BuildConfig
 import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.ai.AiProvider
 import com.rookierc.boysdairy.ai.AiSelection
+import com.rookierc.boysdairy.data.Edition
 import com.rookierc.boysdairy.data.ThemeMode
 import com.rookierc.boysdairy.security.PinHasher
 import com.rookierc.boysdairy.ui.backup.FileActions
@@ -62,13 +61,17 @@ import com.rookierc.boysdairy.ui.common.FunCard
 import com.rookierc.boysdairy.ui.common.FunConfirmDialog
 import com.rookierc.boysdairy.ui.common.FunDialog
 import com.rookierc.boysdairy.ui.common.FunTextField
+import com.rookierc.boysdairy.ui.common.LocalEdition
 import com.rookierc.boysdairy.ui.common.LocalSnackbar
 import com.rookierc.boysdairy.ui.common.ScreenTitle
 import com.rookierc.boysdairy.ui.common.SectionHeader
 import com.rookierc.boysdairy.ui.common.StickerBadge
 import com.rookierc.boysdairy.ui.common.emoji
+import com.rookierc.boysdairy.ui.common.labelRes
 import com.rookierc.boysdairy.ui.common.lastExportText
 import com.rookierc.boysdairy.ui.common.nameRes
+import com.rookierc.boysdairy.ui.common.stringArrayResource
+import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.common.taglineRes
 import com.rookierc.boysdairy.ui.lock.pinMessageText
 import com.rookierc.boysdairy.ui.theme.FunTheme
@@ -91,6 +94,7 @@ fun SettingsScreen(
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val ai by viewModel.ai.collectAsStateWithLifecycle()
     var language by remember { mutableStateOf(currentAppLanguage()) }
+    val edition = LocalEdition.current
     var showKeyDialog by remember { mutableStateOf(false) }
     var showClearKeyConfirm by remember { mutableStateOf(false) }
     val hasEntries by viewModel.hasEntries.collectAsStateWithLifecycle()
@@ -171,6 +175,27 @@ fun SettingsScreen(
                                 applyAppLanguage(option)
                             }
                         },
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.settings_edition),
+                style = MaterialTheme.typography.labelLarge,
+                color = FunTheme.colors.textSecondary,
+            )
+            Spacer(Modifier.height(8.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Edition.entries.forEach { option ->
+                    EmojiChip(
+                        label = stringResource(option.labelRes()),
+                        emoji = option.emoji(),
+                        selected = option == edition,
+                        selectedColor = FunTheme.colors.pink,
+                        onClick = { if (option != edition) viewModel.setEdition(option) },
                     )
                 }
             }

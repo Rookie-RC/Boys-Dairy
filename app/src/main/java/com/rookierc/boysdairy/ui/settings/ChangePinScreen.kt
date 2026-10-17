@@ -10,11 +10,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.ui.common.FunTopBar
+import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.lock.PinEntryContent
 import com.rookierc.boysdairy.ui.lock.pinMessageText
 

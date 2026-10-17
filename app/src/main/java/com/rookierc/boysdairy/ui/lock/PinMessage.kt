@@ -1,9 +1,9 @@
 package com.rookierc.boysdairy.ui.lock
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
 import com.rookierc.boysdairy.R
 import com.rookierc.boysdairy.ui.common.quantityString
+import com.rookierc.boysdairy.ui.common.stringResource
 
 /** Feedback shown under the PIN dots. Resolved to a string resource only at render time. */
 sealed interface PinMessage {

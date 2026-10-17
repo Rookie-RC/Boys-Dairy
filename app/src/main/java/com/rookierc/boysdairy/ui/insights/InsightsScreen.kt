@@ -54,7 +54,6 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -77,11 +76,13 @@ import com.rookierc.boysdairy.domain.Mood
 import com.rookierc.boysdairy.domain.MonthComparison
 import com.rookierc.boysdairy.domain.WeekBucket
 import com.rookierc.boysdairy.domain.busiestKeys
+import com.rookierc.boysdairy.ui.common.EditionEmoji
 import com.rookierc.boysdairy.ui.common.EmojiChip
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.EmptyState
 import com.rookierc.boysdairy.ui.common.FunCard
 import com.rookierc.boysdairy.ui.common.FunTopBar
+import com.rookierc.boysdairy.ui.common.LocalEdition
 import com.rookierc.boysdairy.ui.common.SectionHeader
 import com.rookierc.boysdairy.ui.common.StickerBadge
 import com.rookierc.boysdairy.ui.common.emoji
@@ -90,6 +91,7 @@ import com.rookierc.boysdairy.ui.common.labels
 import com.rookierc.boysdairy.ui.common.quantityString
 import com.rookierc.boysdairy.ui.common.rememberFormatter
 import com.rookierc.boysdairy.ui.common.rememberToday
+import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.theme.FunColors
 import com.rookierc.boysdairy.ui.theme.FunShapes
 import com.rookierc.boysdairy.ui.theme.FunTheme
@@ -372,7 +374,7 @@ private fun OverviewFigures(report: InsightsReport, locale: Locale) {
                 containerColor = colors.soloTint,
             ),
             MiniStatData(
-                emoji = "🎆",
+                emoji = EditionEmoji.PLEASURE.current,
                 value = stats.averagePleasure
                     ?.let { stringResource(R.string.insights_pleasure_value, it.oneDecimal(locale)) }
                     ?: noValue,
@@ -388,7 +390,7 @@ private fun OverviewFigures(report: InsightsReport, locale: Locale) {
                 containerColor = colors.mintTint,
             ),
             MiniStatData(
-                emoji = "🧘",
+                emoji = EditionEmoji.MEDITATE.current,
                 value = stats.longestGapDays?.let { gap ->
                     val days = gap.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
                     quantityString(R.plurals.insights_days_value, days, days)
@@ -1174,7 +1176,7 @@ private fun AchievementWall(achievements: List<AchievementProgress>) {
 @Composable
 private fun AchievementSticker(item: AchievementProgress, index: Int, modifier: Modifier = Modifier) {
     val colors = FunTheme.colors
-    val ui = item.achievement.labels()
+    val ui = item.achievement.labels(LocalEdition.current)
     val (fill, onFill) = if (item.unlocked) colors.stickerFill(index) else colors.disabled to colors.textPrimary
     val secondaryText = if (item.unlocked) onFill else colors.textSecondary
 

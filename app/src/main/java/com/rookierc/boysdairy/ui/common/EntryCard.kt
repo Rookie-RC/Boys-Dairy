@@ -18,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,7 +70,7 @@ fun EntryCard(
                 shadowOffset = 2.dp,
                 contentAlignment = Alignment.Center,
             ) {
-                EmojiText(text = entry.type.emoji(), fontSize = 26.sp)
+                EmojiText(text = entry.type.emoji(LocalEdition.current), fontSize = 26.sp)
             }
 
             Spacer(Modifier.width(12.dp))

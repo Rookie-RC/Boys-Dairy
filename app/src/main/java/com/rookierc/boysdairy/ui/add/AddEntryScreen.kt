@@ -50,8 +50,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringArrayResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -59,9 +57,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rookierc.boysdairy.R
+import com.rookierc.boysdairy.data.Edition
 import com.rookierc.boysdairy.domain.Achievement
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.Mood
+import com.rookierc.boysdairy.ui.common.EditionEmoji
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.ChoiceCard
 import com.rookierc.boysdairy.ui.common.ChunkyButton
@@ -74,9 +74,12 @@ import com.rookierc.boysdairy.ui.common.FunConfirmDialog
 import com.rookierc.boysdairy.ui.common.FunDialog
 import com.rookierc.boysdairy.ui.common.FunTextField
 import com.rookierc.boysdairy.ui.common.FunTopBar
+import com.rookierc.boysdairy.ui.common.LocalEdition
 import com.rookierc.boysdairy.ui.common.SectionHeader
 import com.rookierc.boysdairy.ui.common.StickerBadge
 import com.rookierc.boysdairy.ui.common.durationTierRes
+import com.rookierc.boysdairy.ui.common.editionQuantityString
+import com.rookierc.boysdairy.ui.common.editionString
 import com.rookierc.boysdairy.ui.common.emoji
 import com.rookierc.boysdairy.ui.common.hintRes
 import com.rookierc.boysdairy.ui.common.labelRes
@@ -84,6 +87,8 @@ import com.rookierc.boysdairy.ui.common.labels
 import com.rookierc.boysdairy.ui.common.pleasureTierRes
 import com.rookierc.boysdairy.ui.common.quantityString
 import com.rookierc.boysdairy.ui.common.rememberFormatter
+import com.rookierc.boysdairy.ui.common.stringArrayResource
+import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.theme.FunTheme
 import com.rookierc.boysdairy.ui.theme.accent
 import java.time.Instant
@@ -144,7 +149,7 @@ fun AddEntryScreen(
     Column(modifier = modifier.fillMaxSize()) {
         FunTopBar(
             title = stringResource(if (editing) R.string.edit_title else R.string.add_title),
-            emoji = if (editing) "✏️" else "📼",
+            emoji = if (editing) "✏️" else EditionEmoji.TAPE.current,
             onBack = ::requestClose,
             useCloseIcon = true,
         )
@@ -198,6 +203,7 @@ private fun EntryForm(
 ) {
     val colors = FunTheme.colors
     val context = LocalContext.current
+    val edition = LocalEdition.current
     val saveToasts = stringArrayResource(
         if (state.isEditing) R.array.edit_save_toasts else R.array.save_toasts,
     )
@@ -219,7 +225,7 @@ private fun EntryForm(
             onMinutesAgo = viewModel::setMinutesAgo,
         )
 
-        FormCard(emoji = "🎮", title = stringResource(R.string.add_type_label)) {
+        FormCard(emoji = EditionEmoji.MODE_PICKER.current, title = stringResource(R.string.add_type_label)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -231,7 +237,7 @@ private fun EntryForm(
                         selectedColor = type.accent(),
                         modifier = Modifier.weight(1f),
                     ) {
-                        EmojiText(text = type.emoji(), fontSize = 38.sp)
+                        EmojiText(text = type.emoji(edition), fontSize = 38.sp)
                         Text(
                             text = stringResource(type.labelRes()),
                             style = MaterialTheme.typography.titleMedium,
@@ -359,7 +365,8 @@ private fun EntryForm(
             emoji = "💾",
             onClick = {
                 viewModel.save { unlocked, undo ->
-                    onSaved(saveMessage(context.resources, saveToasts.random(), unlocked), unlocked.isNotEmpty(), undo)
+                    val message = saveMessage(context.resources, edition, saveToasts.random(), unlocked)
+                    onSaved(message, unlocked.isNotEmpty(), undo)
                 }
             },
             enabled = state.canSave,
@@ -404,14 +411,22 @@ private fun EntryForm(
 
 /**
  * The save snackbar text: [toast], plus "🏆 解锁成就：夜猫子、马拉松选手" on a second line when the
- * save unlocked achievements. Built when the save completes, so it reads [resources] then.
+ * save unlocked achievements. Built when the save completes, so it reads [resources] then, in the
+ * [edition] that was showing when "save" was tapped.
  */
-private fun saveMessage(resources: Resources, toast: String, unlocked: List<Achievement>): String {
+private fun saveMessage(
+    resources: Resources,
+    edition: Edition,
+    toast: String,
+    unlocked: List<Achievement>,
+): String {
     if (unlocked.isEmpty()) return toast
-    val names = unlocked.joinToString(separator = resources.getString(R.string.achievement_unlocked_separator)) {
-        resources.getString(it.labels().nameRes)
+    val separator = resources.editionString(R.string.achievement_unlocked_separator, edition)
+    val names = unlocked.joinToString(separator = separator) {
+        resources.editionString(it.labels(edition).nameRes, edition)
     }
-    return toast + "\n" + resources.getQuantityString(R.plurals.achievement_unlocked_toast, unlocked.size, names)
+    return toast + "\n" +
+        resources.editionQuantityString(R.plurals.achievement_unlocked_toast, unlocked.size, edition, names)
 }
 
 /** The "−" / "+" buttons next to the duration slider. */

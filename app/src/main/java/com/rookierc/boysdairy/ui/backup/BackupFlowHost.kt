@@ -12,7 +12,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rookierc.boysdairy.R
@@ -22,6 +21,7 @@ import com.rookierc.boysdairy.ui.common.ChunkyButton
 import com.rookierc.boysdairy.ui.common.FunConfirmDialog
 import com.rookierc.boysdairy.ui.common.FunDialog
 import com.rookierc.boysdairy.ui.common.quantityString
+import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.theme.FunTheme
 
 /**

@@ -3,21 +3,32 @@ package com.rookierc.boysdairy.ui.home
 import androidx.annotation.ArrayRes
 import androidx.annotation.StringRes
 import com.rookierc.boysdairy.R
+import com.rookierc.boysdairy.data.Edition
+import com.rookierc.boysdairy.ui.common.EditionEmoji
 
 /** How long since the last "launch", from "sage mode" to "enlightened monk". */
 enum class CooldownTier(
-    val emoji: String,
     @StringRes val titleRes: Int,
     @ArrayRes val subtitlesRes: Int,
 ) {
-    NONE("😇", R.string.cooldown_none_title, R.array.cooldown_none_subtitles),
-    FRESH("🧘", R.string.cooldown_fresh_title, R.array.cooldown_fresh_subtitles),
-    RECOVERING("🔋", R.string.cooldown_recovering_title, R.array.cooldown_recovering_subtitles),
-    RELOADING("💪", R.string.cooldown_reloading_title, R.array.cooldown_reloading_subtitles),
-    ASCETIC("🧊", R.string.cooldown_ascetic_title, R.array.cooldown_ascetic_subtitles),
-    SERENE("🍵", R.string.cooldown_serene_title, R.array.cooldown_serene_subtitles),
-    MONK("☯️", R.string.cooldown_monk_title, R.array.cooldown_monk_subtitles),
+    NONE(R.string.cooldown_none_title, R.array.cooldown_none_subtitles),
+    FRESH(R.string.cooldown_fresh_title, R.array.cooldown_fresh_subtitles),
+    RECOVERING(R.string.cooldown_recovering_title, R.array.cooldown_recovering_subtitles),
+    RELOADING(R.string.cooldown_reloading_title, R.array.cooldown_reloading_subtitles),
+    ASCETIC(R.string.cooldown_ascetic_title, R.array.cooldown_ascetic_subtitles),
+    SERENE(R.string.cooldown_serene_title, R.array.cooldown_serene_subtitles),
+    MONK(R.string.cooldown_monk_title, R.array.cooldown_monk_subtitles),
     ;
+
+    fun emoji(edition: Edition): String = when (this) {
+        NONE -> "😇"
+        FRESH -> EditionEmoji.MEDITATE.of(edition)
+        RECOVERING -> "🔋"
+        RELOADING -> EditionEmoji.RELOADING.of(edition)
+        ASCETIC -> "🧊"
+        SERENE -> "🍵"
+        MONK -> EditionEmoji.MONK.of(edition)
+    }
 
     companion object {
         /** @param daysSinceLast calendar days since the latest entry, `null` when there are no entries. */
@@ -35,14 +46,19 @@ enum class CooldownTier(
 
 /** Gentle "maybe take a break" warnings for consecutive active days. */
 enum class StreakLevel(
-    val emoji: String,
     @StringRes val titleRes: Int,
     @StringRes val subtitleRes: Int,
 ) {
-    SUPPLIES("🥤", R.string.streak_supplies_title, R.string.streak_supplies_subtitle),
-    SOS("😵", R.string.streak_sos_title, R.string.streak_sos_subtitle),
-    PERPETUAL("⚙️", R.string.streak_perpetual_title, R.string.streak_perpetual_subtitle),
+    SUPPLIES(R.string.streak_supplies_title, R.string.streak_supplies_subtitle),
+    SOS(R.string.streak_sos_title, R.string.streak_sos_subtitle),
+    PERPETUAL(R.string.streak_perpetual_title, R.string.streak_perpetual_subtitle),
     ;
+
+    fun emoji(edition: Edition): String = when (this) {
+        SUPPLIES -> EditionEmoji.SUPPLIES.of(edition)
+        SOS -> "😵"
+        PERPETUAL -> "⚙️"
+    }
 
     companion object {
         /** `null` below two consecutive days: no warning card. */

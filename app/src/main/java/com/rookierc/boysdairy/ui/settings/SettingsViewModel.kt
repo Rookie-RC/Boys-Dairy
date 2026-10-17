@@ -10,6 +10,7 @@ import com.rookierc.boysdairy.ai.AiSelection
 import com.rookierc.boysdairy.ai.ApiKeyStore
 import com.rookierc.boysdairy.ai.aiSelectionFlow
 import com.rookierc.boysdairy.appContainer
+import com.rookierc.boysdairy.data.Edition
 import com.rookierc.boysdairy.data.EntryRepository
 import com.rookierc.boysdairy.data.SettingsRepository
 import com.rookierc.boysdairy.data.ThemeMode
@@ -79,6 +80,11 @@ class SettingsViewModel(
 
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { settings.setThemeMode(mode) }
+    }
+
+    /** Boy / girl edition; the whole unlocked UI switches as soon as it is stored. */
+    fun setEdition(edition: Edition) {
+        viewModelScope.launch { settings.setEdition(edition) }
     }
 
     fun selectProvider(provider: AiProvider) {

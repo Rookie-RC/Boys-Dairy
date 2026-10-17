@@ -35,7 +35,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -54,9 +53,11 @@ import com.rookierc.boysdairy.ui.common.ChunkyButtonSlot
 import com.rookierc.boysdairy.ui.common.ChunkyIconButton
 import com.rookierc.boysdairy.ui.common.EmojiText
 import com.rookierc.boysdairy.ui.common.FunCard
+import com.rookierc.boysdairy.ui.common.LocalEdition
 import com.rookierc.boysdairy.ui.common.emoji
 import com.rookierc.boysdairy.ui.common.quantityString
 import com.rookierc.boysdairy.ui.common.rememberFormatter
+import com.rookierc.boysdairy.ui.common.stringResource
 import com.rookierc.boysdairy.ui.theme.FunTheme
 import com.rookierc.boysdairy.ui.theme.tint
 import java.time.DayOfWeek
@@ -201,14 +202,15 @@ fun CalendarCard(
 
         Spacer(Modifier.height(10.dp))
 
+        val edition = LocalEdition.current
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            LegendItem(emoji = EntryType.SOLO.emoji(), label = stringResource(R.string.home_legend_solo))
+            LegendItem(emoji = EntryType.SOLO.emoji(edition), label = stringResource(R.string.home_legend_solo))
             Spacer(Modifier.width(16.dp))
-            LegendItem(emoji = EntryType.PARTNER.emoji(), label = stringResource(R.string.home_legend_partner))
+            LegendItem(emoji = EntryType.PARTNER.emoji(edition), label = stringResource(R.string.home_legend_partner))
             Spacer(Modifier.width(16.dp))
             LegendItem(
                 emoji = null,
@@ -311,7 +313,7 @@ private fun DayCell(
                 )
                 if (marker != null) {
                     Text(
-                        text = marker.emoji(),
+                        text = marker.emoji(LocalEdition.current),
                         fontSize = 14.sp,
                         lineHeight = 18.sp,
                         modifier = Modifier.clearAndSetSemantics { },

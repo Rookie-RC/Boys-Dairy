@@ -3,6 +3,139 @@
     <!-- Launcher disguise: must stay "Daily Calc" -->
     <string name="app_name">Daily Calc</string>
 
+    <!-- Girl edition variants -->
+    <!-- Shown instead of the original when the girl edition is on. Key = original key + "_girl",
+         registered in ui/common/GirlVariants.kt; format arguments must match the original exactly.
+         Vocabulary: launch → flight / takeoff, sage hour → afterglow, kidneys → glow / beauty sleep,
+         saint / monk → fairy. -->
+    <!-- Girl: Entry types -->
+    <string name="entry_type_solo_hint_girl">Self-care, no plus-one required</string>
+    <string name="entry_type_partner_hint_girl">Player two has joined the party</string>
+
+    <!-- Girl: Reactive labels (duration / pleasure) -->
+    <string name="duration_tier_flash_girl">Instant joy ⚡</string>
+    <string name="duration_tier_standard_girl">Just right 👌</string>
+    <string name="duration_tier_endurance_girl">Slow and steady 🌊</string>
+    <string name="duration_tier_marathon_girl">Joy marathon 🏅</string>
+    <string name="pleasure_tier_great_girl">Swoon-worthy 🌸</string>
+    <string name="pleasure_tier_peak_girl">Cloud nine 🧚</string>
+
+    <!-- Girl: Home -->
+    <string name="home_title_girl">Her Little Black Book</string>
+    <string name="home_subtitle_girl">Every flight deserves a logbook entry</string>
+    <string name="home_cooldown_label_girl">Since last flight</string>
+    <string name="home_last_entry_girl">Last flight: %1$s</string>
+
+    <!-- Girl: Cooldown tiers -->
+    <string name="cooldown_none_title_girl">Blank slate. Are you a fairy?</string>
+    <string name="cooldown_fresh_title_girl">Afterglow</string>
+    <string name="cooldown_reloading_title_girl">Powering up</string>
+    <string name="cooldown_ascetic_title_girl">Unbothered Era</string>
+    <string name="cooldown_monk_title_girl">Fairy Godmother</string>
+    <string-array name="cooldown_none_subtitles_girl">
+        <item>Not a single entry. Fairyland is expecting your report 😇</item>
+        <item>Your logbook is as fresh as a brand-new planner 📒</item>
+        <item>Either a fairy living on dewdrops or you forgot to log. Pick one 🤔</item>
+    </string-array>
+    <string-array name="cooldown_fresh_subtitles_girl">
+        <item>Just landed. Perfect time to burrito yourself in a blanket 🧸</item>
+        <item>Afterglow: soft, floaty, everyone seems lovely (for about five minutes) ☁️</item>
+        <item>Sip some water, then a quick bathroom trip. Tiny habit, big payoff (not medical advice) 💧</item>
+    </string-array>
+    <string-array name="cooldown_recovering_subtitles_girl">
+        <item>Restoring your glow. Please don\'t rush the process 🔋</item>
+        <item>Battery in the red, cozy-charging, do not disturb 🔌</item>
+        <item>Still savoring it. Let the good vibes float a little longer ⏳</item>
+    </string-array>
+    <string-array name="cooldown_reloading_subtitles_girl">
+        <item>Powering up. Patience, darling ✨</item>
+        <item>Charging up. Could take flight again any moment 🎈</item>
+        <item>Wings out, just waiting for the right breeze 🦋</item>
+    </string-array>
+    <string-array name="cooldown_ascetic_subtitles_girl">
+        <item>A whole week. Which secret fairy spell are you studying? 🧊</item>
+        <item>Calm as a lake. Your TV shows have more drama than your logbook 📺</item>
+        <item>Unbothered buff fully stacked. Keep it going 🛡️</item>
+    </string-array>
+    <string-array name="cooldown_serene_subtitles_girl">
+        <item>Herbal tea, soft music, inner peace 🌼</item>
+        <item>Two weeks and counting. You\'ve probably taken up flower arranging 💐</item>
+        <item>Ginger tea and a hot water bottle on standby. Wellness lecture, anyone? 🍵</item>
+    </string-array>
+    <string-array name="cooldown_monk_subtitles_girl">
+        <item>Thirty days minimum. Your fairy license is ready for pickup 📜</item>
+        <item>You have transcended. Mortal joys no longer concern you ☯️</item>
+        <item>A month or more. Time to open a fairy retreat in the mountains 🏔️</item>
+    </string-array>
+
+    <!-- Girl: Streak warning -->
+    <string name="streak_supplies_title_girl">Back-to-back flights. Stock up on supplies</string>
+    <string name="streak_supplies_subtitle_girl">Sip warm water, don\'t push it, and get to bed early tonight (not medical advice).</string>
+    <string name="streak_sos_title_girl">Your glow: SOS! Maybe some warm ginger tea?</string>
+    <string name="streak_perpetual_title_girl">Joy machine certified. Beauty sleep. Now.</string>
+
+    <!-- Girl: Daily tip -->
+    <string-array name="daily_tips_girl">
+        <item>A mug of warm ginger tea is self-love you can drink 🍵</item>
+        <item>One extra hour of sleep beats a drawer full of skincare (not medical advice) 🌙</item>
+        <item>Sitting all day is a slow quest. Stand up, take two steps 🚶</item>
+        <item>Sip warm water. Your body will quietly send a thank-you card (still not medical advice) 💧</item>
+        <item>Keep the phone away from the bed. Save the pillow for sweet dreams, not short videos 📱</item>
+        <item>Exercise is the best supplement. Dance it out and come back in a better mood 💃</item>
+        <item>A warm foot soak beats an hour of doomscrolling 🛁</item>
+        <item>Today\'s quest: one less late night, two more glasses of water 🥛</item>
+        <item>Sheet masks at 2 AM are folklore, sleep is science 😴</item>
+        <item>Wellness step one: swap the iced drink for something warm and cozy ☕</item>
+        <item>Don\'t bottle it up. A long chat with your bestie fixes more than you think 💬</item>
+        <item>In moderation: great. Beyond that… well, you read the room 🧐</item>
+        <item>Stand up and stretch. Your spine just gave you a thumbs up 🧘</item>
+        <item>A quick bathroom trip afterwards: tiny habit, big payoff (not medical advice) 🚻</item>
+        <item>Clean hands before and after. Basic manners 🧼</item>
+        <item>Not feeling it? Stop. How you feel always comes first 💗</item>
+        <item>Around your period, be extra kind to yourself: hot water bottle on duty (not medical advice) 🧣</item>
+        <item>Breathable cotton underwear wins: comfort over cute (not medical advice) 👚</item>
+        <item>Feeling low? Go stand in some sunlight ☀️</item>
+        <item>A decent pillow beats any supplement 🛏️</item>
+        <item>You\'re here to enjoy life, not to hit KPIs. Take it slow 🐢</item>
+        <item>Ten minutes of stretching beats an hour of worrying about stats 🤸</item>
+        <item>Eat breakfast. Your energy bar is stuck in the red 🍳</item>
+        <item>Time to tidy up that e-book shelf. You know the one 📚</item>
+        <item>Scroll less, brunch with your besties more. Joy is the real supplement 👯</item>
+        <item>A calm mind is the best tonic. Stop fighting yourself 🌿</item>
+    </string-array>
+
+    <!-- Girl: Add entry -->
+    <string name="add_mood_after_label_girl">Mood after (afterglow)</string>
+    <string name="add_pick_time_title_girl">What time was takeoff?</string>
+    <string-array name="save_toasts_girl">
+        <item>Logged. Roll the tape 📼</item>
+        <item>Saved. Afterglow: take your time savoring it ✨</item>
+        <item>Data +1, beauty sleep -1 (kidding) 😏</item>
+        <item>Another little secret archived 🔒</item>
+        <item>Saved! Sip some warm water 💧</item>
+        <item>Logbook updated. Be extra nice to yourself today 💗</item>
+    </string-array>
+
+    <!-- Girl: AI roast -->
+    <string-array name="ai_loading_messages_girl">
+        <item>The AI is trying not to laugh…</item>
+        <item>Calculating your glow level…</item>
+        <item>The AI is reading your diary, one eyebrow raised…</item>
+        <item>Sharpening the roast material…</item>
+        <item>The AI takes a deep breath, mic check…</item>
+        <item>Consulting the fairy next door…</item>
+    </string-array>
+
+    <!-- Girl: Insights -->
+    <string name="achievement_gap_30_desc_girl">Thirty days apart. Were you off reporting back to Fairyland?</string>
+    <string name="achievement_marathon_name_girl">Joy Marathon</string>
+    <string name="achievement_peak_pleasure_name_girl">Cloud Nine</string>
+    <string name="achievement_sage_mode_name_girl">Glow Getter</string>
+    <string name="achievement_sage_mode_desc_girl">Felt relaxed afterwards 10 times. Peak afterglow, soft as a cloud.</string>
+
+    <!-- Girl: Insights round 3 -->
+    <string name="insights_range_empty_girl">Nothing logged in this range. Soft life mode? 🌼 Try a wider one.</string>
+
     <!-- Navigation -->
     <string name="tab_home">Home</string>
     <string name="tab_history">Replay</string>
@@ -559,7 +692,7 @@
     <string name="clear_all_button">Delete all entries</string>
     <string name="clear_all_empty">Already empty. Nothing to delete 🫙</string>
     <string name="clear_all_confirm_title">Delete every single entry?</string>
-    <string name="clear_all_confirm_message">All entries will be deleted for good. There is no undo and no way to get them back. Only entries go: your secret code, theme, language and API keys stay as they are. Consider using \"Export backup\" above first.</string>
+    <string name="clear_all_confirm_message">All entries will be deleted for good. There is no undo and no way to get them back. Only entries go: your secret code, theme, language, edition and API keys stay as they are. Consider using \"Export backup\" above first.</string>
     <string name="clear_all_confirm_next">I\'m sure, next step</string>
     <string name="clear_all_keep">Never mind, keep them</string>
     <string name="clear_all_pin_title">Last check: your secret code</string>
@@ -598,4 +731,17 @@
     <string name="ai_copied">Copied 📋 Check twice where you paste it</string>
     <string name="settings_lock_now">Lock now</string>
     <string name="settings_lock_now_desc">Handing your phone to someone? Lock up first</string>
+
+    <!-- Edition (boy / girl) -->
+    <!-- Chooser shown once after unlocking (ui/edition) and the Settings row. Never on the lock screen.
+         Names ending in _girl are reserved for girl-edition variants (wired up in ui/common/GirlVariants.kt). -->
+    <string name="edition_chooser_title">Boy or girl edition?</string>
+    <string name="edition_chooser_subtitle">Pick a door so your little book knows how to talk to you</string>
+    <string name="edition_boy_name">Boy edition</string>
+    <string name="edition_boy_tagline">Launches, cooldowns, sage mode. You know the drill.</string>
+    <string name="edition_girl_name">Girl edition</string>
+    <string name="edition_girl_tagline">A secret diary with main-character energy</string>
+    <string name="edition_chooser_note">You can switch anytime in Settings. It only changes the wording and icons; your entries stay exactly as they are.</string>
+    <string name="edition_chooser_confirm">That\'s me</string>
+    <string name="settings_edition">Edition</string>
 </resources>

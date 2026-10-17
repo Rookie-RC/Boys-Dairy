@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.rookierc.boysdairy.appContainer
+import com.rookierc.boysdairy.data.Edition
 import com.rookierc.boysdairy.data.SettingsRepository
 import com.rookierc.boysdairy.data.ThemeMode
 import com.rookierc.boysdairy.data.backup.BackupManager
@@ -35,12 +36,26 @@ import com.rookierc.boysdairy.security.LockManager
 import com.rookierc.boysdairy.security.LockState
 import com.rookierc.boysdairy.ui.backup.BackupViewModel
 import com.rookierc.boysdairy.ui.backup.FileActions
+import com.rookierc.boysdairy.ui.common.LocalEdition
+import com.rookierc.boysdairy.ui.edition.EditionChooserScreen
 import com.rookierc.boysdairy.ui.lock.LockScreen
 import com.rookierc.boysdairy.ui.theme.BoysDairyTheme
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
+
+/** The stored boy / girl edition as the unlocked UI sees it. */
+sealed interface EditionState {
+    /** Not read yet: show nothing rather than mistake a returning user for a new one. */
+    data object Loading : EditionState
+
+    /** Never chosen: the edition chooser comes before the main UI. */
+    data object Unset : EditionState
+
+    data class Chosen(val edition: Edition) : EditionState
+}
 
 class RootViewModel(
     settings: SettingsRepository,
@@ -53,6 +68,15 @@ class RootViewModel(
         started = SharingStarted.Eagerly,
         initialValue = null,
     )
+
+    /** [EditionState.Loading] until the stored edition has been read (same idea as [themeMode]). */
+    val edition: StateFlow<EditionState> = settings.edition
+        .map { stored -> if (stored == null) EditionState.Unset else EditionState.Chosen(stored) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = EditionState.Loading,
+        )
 
     val lockState: StateFlow<LockState> = lockManager.state
 
@@ -70,6 +94,9 @@ class RootViewModel(
  * Lock gate: unless the app is [LockState.Unlocked] only the lock screen is composed, so no
  * navigation graph, view model or screen content of the main UI exists while locked.
  *
+ * Once unlocked, the edition chooser comes first while no boy / girl edition is stored; after
+ * that the main navigation runs with [LocalEdition] provided (only there, never on the lock screen).
+ *
  * Three things deliberately live *here* (outside the unlocked session) so they survive a lock:
  *  - the system file-picker launchers: the picker backgrounds the app, which locks it and tears
  *    the main UI down. A launcher registered inside it would be unregistered by the time the
@@ -85,6 +112,7 @@ fun BoysDairyRoot(
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val lockState by viewModel.lockState.collectAsStateWithLifecycle()
+    val editionState by viewModel.edition.collectAsStateWithLifecycle()
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument(BackupManager.MIME_TYPE),
@@ -121,12 +149,22 @@ fun BoysDairyRoot(
         ) {
             when (lockState) {
                 LockState.Loading -> Unit
+                // Outside the LocalEdition provider below: the lock screen (a disguise) always shows
+                // the shared base copy and never hints at the chosen edition.
                 LockState.NeedsSetup, LockState.Locked -> LockScreen()
                 LockState.Unlocked -> UnlockedSession(sessionStores) {
-                    MainNavigation(
-                        backupViewModel = backupViewModel,
-                        fileActions = fileActions,
-                    )
+                    when (val state = editionState) {
+                        EditionState.Loading -> Unit
+                        EditionState.Unset -> EditionChooserScreen()
+                        // Switching editions keeps this branch (and the navigation state); only the
+                        // provided value changes, so every edition-aware lookup below recomposes.
+                        is EditionState.Chosen -> CompositionLocalProvider(LocalEdition provides state.edition) {
+                            MainNavigation(
+                                backupViewModel = backupViewModel,
+                                fileActions = fileActions,
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -53,6 +53,19 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     }
 
     /**
+     * The boy / girl edition of the interface; `null` until the user picks one (an unknown stored
+     * value counts as not picked). A UI preference, not diary content: never written into a
+     * backup, never sent to an AI provider, and "delete all entries" leaves it alone.
+     */
+    val edition: Flow<Edition?> = preferences
+        .map { prefs -> Edition.fromId(prefs[KEY_EDITION]) }
+        .distinctUntilChanged()
+
+    suspend fun setEdition(edition: Edition) {
+        dataStore.edit { prefs -> prefs[KEY_EDITION] = edition.id }
+    }
+
+    /**
      * When the diary was last exported successfully (epoch millis, wall clock); `null` = never.
      * A setting that drives the backup reminder, not diary content: never written into a backup.
      */
@@ -100,6 +113,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val KEY_PIN_SALT = stringPreferencesKey("pinSalt")
         val KEY_PIN_HASH = stringPreferencesKey("pinHash")
         val KEY_THEME_MODE = stringPreferencesKey("themeMode")
+
+        // Holds an Edition.id; a persistence key that must never be renamed.
+        val KEY_EDITION = stringPreferencesKey("edition")
 
         // Backup reminder; both are persistence keys and must never be renamed.
         val KEY_LAST_EXPORT_AT = longPreferencesKey("lastExportAt")

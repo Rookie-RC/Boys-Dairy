@@ -207,6 +207,22 @@ class AiPromptBuilderTest {
     }
 
     @Test
+    fun promptsAreBrandAndGenderNeutral() {
+        // The boy / girl edition is never sent: both editions share one prompt that names no
+        // brand and assumes no gender.
+        val entries = listOf(dayEntry(0, note = "ok"), dayEntry(3))
+        for (options in listOf(withNotes, AiOptions(languageTag = "zh-CN", roastLevel = RoastLevel.GENTLE))) {
+            val system = AiPromptBuilder.systemPrompt(options)
+            val user = message(entries, options)
+            for (needle in listOf("Boys", "boy", "girl", "Diary\"", "男", "女")) {
+                assertFalse("system prompt mentions $needle", system.contains(needle, ignoreCase = true))
+                assertFalse("user message mentions $needle", user.contains(needle, ignoreCase = true))
+            }
+        }
+        assertTrue(AiPromptBuilder.BASE_SYSTEM_PROMPT.contains("gender-neutral"))
+    }
+
+    @Test
     fun systemPromptFollowsTheRoastLevel() {
         val spicy = AiPromptBuilder.systemPrompt(AiOptions(languageTag = "en", roastLevel = RoastLevel.SPICY))
         val gentle = AiPromptBuilder.systemPrompt(AiOptions(languageTag = "en", roastLevel = RoastLevel.GENTLE))

@@ -2,6 +2,7 @@ package com.rookierc.boysdairy.ui.common
 
 import androidx.annotation.StringRes
 import com.rookierc.boysdairy.R
+import com.rookierc.boysdairy.data.Edition
 import com.rookierc.boysdairy.domain.Achievement
 import com.rookierc.boysdairy.domain.EntryType
 import com.rookierc.boysdairy.domain.Mood
@@ -18,9 +19,27 @@ fun EntryType.hintRes(): Int = when (this) {
     EntryType.PARTNER -> R.string.entry_type_partner_hint
 }
 
-fun EntryType.emoji(): String = when (this) {
-    EntryType.SOLO -> "🕹️"
+fun EntryType.emoji(edition: Edition): String = when (this) {
+    EntryType.SOLO -> EditionEmoji.SOLO.of(edition)
     EntryType.PARTNER -> "💞"
+}
+
+@StringRes
+fun Edition.labelRes(): Int = when (this) {
+    Edition.BOY -> R.string.edition_boy_name
+    Edition.GIRL -> R.string.edition_girl_name
+}
+
+@StringRes
+fun Edition.taglineRes(): Int = when (this) {
+    Edition.BOY -> R.string.edition_boy_tagline
+    Edition.GIRL -> R.string.edition_girl_tagline
+}
+
+/** The edition's own face (chooser, Settings): the same whichever edition is active. */
+fun Edition.emoji(): String = when (this) {
+    Edition.BOY -> "👦"
+    Edition.GIRL -> "👧"
 }
 
 @StringRes
@@ -71,7 +90,7 @@ fun pleasureTierRes(score: Int): Int = when {
 /** Sticker emoji, name and description of an [Achievement] (achievement wall, unlock snackbar). */
 internal class AchievementLabels(val emoji: String, @StringRes val nameRes: Int, @StringRes val descRes: Int)
 
-internal fun Achievement.labels(): AchievementLabels = when (this) {
+internal fun Achievement.labels(edition: Edition): AchievementLabels = when (this) {
     Achievement.FIRST_ENTRY -> AchievementLabels(
         "🐣", R.string.achievement_first_entry_name, R.string.achievement_first_entry_desc,
     )
@@ -91,7 +110,9 @@ internal fun Achievement.labels(): AchievementLabels = when (this) {
         "📅", R.string.achievement_streak_7_name, R.string.achievement_streak_7_desc,
     )
     Achievement.GAP_7 -> AchievementLabels(
-        "🧘", R.string.achievement_gap_7_name, R.string.achievement_gap_7_desc,
+        EditionEmoji.MEDITATE.of(edition),
+        R.string.achievement_gap_7_name,
+        R.string.achievement_gap_7_desc,
     )
     Achievement.GAP_30 -> AchievementLabels(
         "🏔️", R.string.achievement_gap_30_name, R.string.achievement_gap_30_desc,
@@ -103,13 +124,19 @@ internal fun Achievement.labels(): AchievementLabels = when (this) {
         "🦉", R.string.achievement_night_owl_name, R.string.achievement_night_owl_desc,
     )
     Achievement.EARLY_BIRD -> AchievementLabels(
-        "🐓", R.string.achievement_early_bird_name, R.string.achievement_early_bird_desc,
+        EditionEmoji.EARLY_BIRD.of(edition),
+        R.string.achievement_early_bird_name,
+        R.string.achievement_early_bird_desc,
     )
     Achievement.MARATHON -> AchievementLabels(
-        "🏃", R.string.achievement_marathon_name, R.string.achievement_marathon_desc,
+        EditionEmoji.RUNNER.of(edition),
+        R.string.achievement_marathon_name,
+        R.string.achievement_marathon_desc,
     )
     Achievement.PEAK_PLEASURE -> AchievementLabels(
-        "🎆", R.string.achievement_peak_pleasure_name, R.string.achievement_peak_pleasure_desc,
+        EditionEmoji.PLEASURE.of(edition),
+        R.string.achievement_peak_pleasure_name,
+        R.string.achievement_peak_pleasure_desc,
     )
     Achievement.SAGE_MODE -> AchievementLabels(
         "🔮", R.string.achievement_sage_mode_name, R.string.achievement_sage_mode_desc,

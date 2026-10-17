@@ -3,6 +3,138 @@
     <!-- Launcher disguise: must stay "Daily Calc" -->
     <string name="app_name">Daily Calc</string>
 
+    <!-- Girl edition variants -->
+    <!-- Shown instead of the original when the girl edition is on. Key = original key + "_girl",
+         registered in ui/common/GirlVariants.kt; format arguments must match the original exactly.
+         Vocabulary: 发射 → 放飞, 贤者时刻 → 余韵时刻, 肾 → 气血, 圣人 / 高僧 → 仙女 / 仙子. -->
+    <!-- Girl: Entry types -->
+    <string name="entry_type_solo_hint_girl">自己宠自己，快乐不求人</string>
+    <string name="entry_type_partner_hint_girl">有人陪着，快乐加倍</string>
+
+    <!-- Girl: Reactive labels (duration / pleasure) -->
+    <string name="duration_tier_flash_girl">速溶快乐 ⚡</string>
+    <string name="duration_tier_standard_girl">刚刚好 👌</string>
+    <string name="duration_tier_endurance_girl">细水长流 🌊</string>
+    <string name="duration_tier_marathon_girl">快乐马拉松 🏅</string>
+    <string name="pleasure_tier_great_girl">心花怒放 🌸</string>
+    <string name="pleasure_tier_peak_girl">原地成仙 🧚</string>
+
+    <!-- Girl: Home -->
+    <string name="home_title_girl">女孩的小本本</string>
+    <string name="home_subtitle_girl">每一次放飞，都值得被记录</string>
+    <string name="home_cooldown_label_girl">距离上次放飞</string>
+    <string name="home_last_entry_girl">上次放飞：%1$s</string>
+
+    <!-- Girl: Cooldown tiers -->
+    <string name="cooldown_none_title_girl">一片空白，你是仙女吗？</string>
+    <string name="cooldown_fresh_title_girl">余韵模式</string>
+    <string name="cooldown_reloading_title_girl">元气充能中</string>
+    <string name="cooldown_ascetic_title_girl">清冷系选手</string>
+    <string name="cooldown_monk_title_girl">得道仙子</string>
+    <string-array name="cooldown_none_subtitles_girl">
+        <item>一条记录都没有，可以直接回天庭报到了 😇</item>
+        <item>你的小本本干净得像刚拆封的手账 📒</item>
+        <item>要么是喝露水的仙女，要么是忘了记账——请选择一个 🤔</item>
+    </string-array>
+    <string-array name="cooldown_fresh_subtitles_girl">
+        <item>刚刚放飞完，适合裹着被子发会儿呆 🧸</item>
+        <item>余韵时刻：整个人软乎乎的，看什么都顺眼（大概五分钟）☁️</item>
+        <item>先喝口温水，再去趟洗手间，小习惯很加分（非医嘱）💧</item>
+    </string-array>
+    <string-array name="cooldown_recovering_subtitles_girl">
+        <item>气血回升中，请勿催促 🔋</item>
+        <item>元气见底，正在躺平充电，请勿打扰 🔌</item>
+        <item>还在回味，别急，让快乐再飘一会儿 ⏳</item>
+    </string-array>
+    <string-array name="cooldown_reloading_subtitles_girl">
+        <item>元气充能中，请耐心等待 ✨</item>
+        <item>蓄力中，随时可能再次放飞 🎈</item>
+        <item>小翅膀已经扑棱起来了，就差一阵东风 🦋</item>
+    </string-array>
+    <string-array name="cooldown_ascetic_subtitles_girl">
+        <item>已经一周了，是在闭关修炼什么仙术吗？🧊</item>
+        <item>心如止水，追的剧都比你的小本本热闹 📺</item>
+        <item>清冷 Buff 已叠满，请继续保持 🛡️</item>
+    </string-array>
+    <string-array name="cooldown_serene_subtitles_girl">
+        <item>花茶一泡，岁月静好 🌼</item>
+        <item>两周以上了，你大概已经开始研究插花了 💐</item>
+        <item>红枣桂圆已就位，随时开讲养生课 🍵</item>
+    </string-array>
+    <string-array name="cooldown_monk_subtitles_girl">
+        <item>三十天起步，天庭的仙籍可以办下来了 📜</item>
+        <item>你已超脱，凡间的快乐与你无关 ☯️</item>
+        <item>一个月以上，建议上山开个仙女修炼营 🏔️</item>
+    </string-array>
+
+    <!-- Girl: Streak warning -->
+    <string name="streak_supplies_title_girl">连续放飞，注意补给</string>
+    <string name="streak_supplies_subtitle_girl">多喝温水，别硬撑，今晚早点睡（非医嘱）。</string>
+    <string name="streak_sos_title_girl">气血：救救我！建议红枣枸杞泡水</string>
+    <string name="streak_perpetual_title_girl">快乐永动机认证，现在立刻去睡美容觉</string>
+
+    <!-- Girl: Daily tip -->
+    <string-array name="daily_tips_girl">
+        <item>红枣枸杞泡一杯，是对自己最温柔的宠爱 🍵</item>
+        <item>早睡一小时，胜过一抽屉保养品（此条非医嘱）🌙</item>
+        <item>久坐伤身，起来走两步 🚶</item>
+        <item>多喝温水，身体会悄悄感谢你的（依然不是医嘱）💧</item>
+        <item>手机放远点，枕头留给好梦，别留给短视频 📱</item>
+        <item>运动是最好的补品：跳完一节操，心情都亮了 💃</item>
+        <item>睡前泡个脚，比刷短视频更养生 🛁</item>
+        <item>今天的目标：少熬一次夜，多喝两杯水 🥛</item>
+        <item>熬夜敷面膜是玄学，早点睡才是科学 😴</item>
+        <item>养生第一步：把冰饮换成一杯热乎的红枣茶 ☕</item>
+        <item>别憋着，有心事就找闺蜜聊聊，比什么都灵 💬</item>
+        <item>适度有益，过度……你自己品，你细品 🧐</item>
+        <item>站起来伸个懒腰，你的脊椎在给你点赞 🧘</item>
+        <item>事后记得去趟洗手间，小习惯，大作用（非医嘱）🚻</item>
+        <item>讲卫生是基本礼貌：事前事后都洗洗手 🧼</item>
+        <item>不舒服就喊停，你的感受永远排第一 💗</item>
+        <item>生理期前后对自己好一点，暖宝宝和热水袋安排上（非医嘱）🧣</item>
+        <item>贴身衣物选纯棉透气的，舒服比好看重要（非医嘱）👚</item>
+        <item>心情不好别硬撑，出去晒晒太阳 ☀️</item>
+        <item>给自己买个好点的枕头，比任何补品都实在 🛏️</item>
+        <item>你是来享受生活的，不是来冲 KPI 的，慢慢来 🐢</item>
+        <item>每天十分钟拉伸，比盯着数据焦虑强多了 🤸</item>
+        <item>记得吃早饭，不然元气条一直亮红灯 🍳</item>
+        <item>手机里的小说书架该整理一下了，你懂的 📚</item>
+        <item>少刷朋友圈，多约姐妹吃顿饭，快乐比什么都养人 👯</item>
+        <item>心态平和最补，别和自己较劲 🌿</item>
+    </string-array>
+
+    <!-- Girl: Add entry -->
+    <string name="add_mood_after_label_girl">事后心情（余韵时刻）</string>
+    <string name="add_pick_time_title_girl">几点放飞的？</string>
+    <string-array name="save_toasts_girl">
+        <item>战绩已存档 📼</item>
+        <item>已记录，余韵时刻请慢慢回味 ✨</item>
+        <item>数据 +1，气血 -1（开玩笑的）😏</item>
+        <item>又一个小秘密入库，保密到底 🔒</item>
+        <item>存档成功！记得喝口温水 💧</item>
+        <item>小本本已更新，今天也要好好爱自己 💗</item>
+    </string-array>
+
+    <!-- Girl: AI roast -->
+    <string-array name="ai_loading_messages_girl">
+        <item>AI 正在憋笑……</item>
+        <item>正在计算你的气血值……</item>
+        <item>AI 在翻你的小本本，嘴角越扬越高……</item>
+        <item>正在组织毒舌语言……</item>
+        <item>AI 深吸一口气，准备开麦……</item>
+        <item>正在请教隔壁的仙女……</item>
+    </string-array>
+
+    <!-- Girl: Insights -->
+    <string name="achievement_gap_30_desc_girl">一隔就是 30 天，你是回天庭述职了吗？</string>
+    <string name="achievement_marathon_name_girl">快乐马拉松</string>
+    <string name="achievement_peak_pleasure_name_girl">原地成仙</string>
+    <string name="achievement_sage_mode_name_girl">余韵绕梁</string>
+    <string name="achievement_sage_mode_desc_girl">事后心情「放松」10 次，余韵拉满，整个人软成一朵云。</string>
+
+    <!-- Girl: Insights round 3 -->
+    <string name="insights_range_empty_girl">这个范围里一条战绩都没有，岁月静好中 🌼 换个范围看看？</string>
+
     <!-- Navigation -->
     <string name="tab_home">首页</string>
     <string name="tab_history">战绩</string>
@@ -539,7 +671,7 @@
     <string name="clear_all_button">清空所有战绩</string>
     <string name="clear_all_empty">本来就是空的，没什么可清的 🫙</string>
     <string name="clear_all_confirm_title">真的要清空所有战绩吗？</string>
-    <string name="clear_all_confirm_message">所有战绩会被永久删除，无法恢复，也没有撤销。只清战绩：暗号、主题、语言和 API Key 都不受影响。建议先在上面「导出备份」留一份。</string>
+    <string name="clear_all_confirm_message">所有战绩会被永久删除，无法恢复，也没有撤销。只清战绩：暗号、主题、语言、界面版本和 API Key 都不受影响。建议先在上面「导出备份」留一份。</string>
     <string name="clear_all_confirm_next">想好了，下一步</string>
     <string name="clear_all_keep">算了，留着</string>
     <string name="clear_all_pin_title">最后一关：输入暗号</string>
@@ -576,4 +708,17 @@
     <string name="ai_copied">已复制 📋 粘贴前看清发给谁</string>
     <string name="settings_lock_now">立刻上锁</string>
     <string name="settings_lock_now_desc">要把手机递给别人？先一键锁上再说</string>
+
+    <!-- Edition (boy / girl) -->
+    <!-- Chooser shown once after unlocking (ui/edition) and the Settings row. Never on the lock screen.
+         Names ending in _girl are reserved for girl-edition variants (wired up in ui/common/GirlVariants.kt). -->
+    <string name="edition_chooser_title">男生版还是女生版？</string>
+    <string name="edition_chooser_subtitle">先认个门，小本本好换个口吻跟你唠嗑</string>
+    <string name="edition_boy_name">男生版</string>
+    <string name="edition_boy_tagline">发射、冷却、贤者时间，懂的都懂</string>
+    <string name="edition_girl_name">女生版</string>
+    <string name="edition_girl_tagline">小仙女的私密手账，每次心动都记下</string>
+    <string name="edition_chooser_note">以后可以在设置里改，只影响界面文字和图标，你的战绩不受影响。</string>
+    <string name="edition_chooser_confirm">就这个了</string>
+    <string name="settings_edition">界面版本</string>
 </resources>
