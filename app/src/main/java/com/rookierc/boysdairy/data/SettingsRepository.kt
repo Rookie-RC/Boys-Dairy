@@ -54,6 +54,19 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     }
 
     /**
+     * Whether an AI roast also sends the user's notes; off until the user turns it on in Settings,
+     * since notes are the most personal part of the diary. Read when the roast button is tapped. A
+     * setting, not diary content: never written into a backup, and "delete all entries" leaves it alone.
+     */
+    val aiIncludeNotes: Flow<Boolean> = preferences
+        .map { prefs -> prefs[KEY_AI_INCLUDE_NOTES] ?: false }
+        .distinctUntilChanged()
+
+    suspend fun setAiIncludeNotes(include: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_AI_INCLUDE_NOTES] = include }
+    }
+
+    /**
      * The boy / girl edition of the interface; `null` until the user picks one (an unknown stored
      * value counts as not picked). A UI preference, not diary content: never written into a
      * backup, never sent to an AI provider, and "delete all entries" leaves it alone.
@@ -124,6 +137,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private companion object {
         // Holds an AiProvider.id, which is a stable persistence key.
         val KEY_AI_PROVIDER = stringPreferencesKey("aiProvider")
+
+        // "Send my notes too" on / off; a persistence key that must never be renamed.
+        val KEY_AI_INCLUDE_NOTES = booleanPreferencesKey("aiIncludeNotes")
 
         val KEY_PIN_SALT = stringPreferencesKey("pinSalt")
         val KEY_PIN_HASH = stringPreferencesKey("pinHash")

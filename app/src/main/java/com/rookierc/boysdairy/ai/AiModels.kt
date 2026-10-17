@@ -52,7 +52,7 @@ data class AiRequest(
             "system=<${system.length} chars>, user=<${user.length} chars>)"
 }
 
-/** Both prompts exactly as [AiAnalysisService.analyze] would send them, for the transparency preview. */
+/** Both prompts exactly as [AiAnalysisService.analyze] would send them (see [AiAnalysisService.previewPayload]). */
 data class AiPreview(val system: String, val user: String)
 
 /** Abstraction over the model call so [AiAnalysisService] can be unit-tested with a fake. */

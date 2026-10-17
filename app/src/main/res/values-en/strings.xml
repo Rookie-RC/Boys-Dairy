@@ -216,7 +216,7 @@
         <item quantity="other">days</item>
     </plurals>
     <string name="home_last_entry">Last launch: %1$s</string>
-    <string name="home_empty_hint">Hit the ➕ below to log your first entry</string>
+    <string name="home_empty_hint">Hit the ✈️ below to log your first entry</string>
     <string name="home_prev_month">Previous month</string>
     <string name="home_next_month">Next month</string>
     <string name="home_legend_solo">Solo Quest</string>
@@ -420,7 +420,6 @@
         <item>Some days only ask for a good meal and a good night\'s sleep.</item>
         <item>You deserve kindness, including your own.</item>
     </string-array>
-    <string name="almanac_disclaimer">Just for fun. Not medical advice.</string>
 
     <!-- Home stats -->
     <string name="stats_last7">Last 7 days</string>
@@ -522,8 +521,13 @@
 
     <!-- Entry card (history list, day sheet) -->
     <string name="entry_when">%1$s · %2$s</string>
-    <string name="entry_duration_line">%1$d min · %2$s</string>
-    <string name="entry_pleasure_line">Pleasure %1$d/10 · %2$s</string>
+    <!-- %1$s = entry type name, %2$d = minutes (the quantity). -->
+    <plurals name="entry_type_duration">
+        <item quantity="one">%1$s · %2$d min</item>
+        <item quantity="other">%1$s · %2$d min</item>
+    </plurals>
+    <!-- Screen reader text of the pleasure bar. %1$d = pleasure, 1–10. -->
+    <string name="entry_pleasure_cd">Pleasure: %1$d (out of 10)</string>
 
     <!-- History -->
     <string name="history_title">Replay</string>
@@ -535,9 +539,8 @@
     <string name="history_search_hint">Search notes or keywords</string>
     <string name="history_search_clear">Clear search</string>
     <string name="history_empty">Blank record. Are you cultivating immortality?</string>
-    <string name="history_empty_hint">Hit the ➕ below and start your legend</string>
+    <string name="history_empty_hint">Hit the ✈️ below and start your legend</string>
     <string name="history_no_results">Nothing found. Maybe you deleted it 🤔</string>
-    <string name="history_mood_transition">%1$s → %2$s</string>
     <string name="history_delete_cd">Delete entry</string>
     <string name="history_delete_title">Destroy this piece of dark history?</string>
     <string name="history_delete_message">Gone is gone, though you\'ll get a few seconds to change your mind.</string>
@@ -606,9 +609,7 @@
     <!-- AI roast -->
     <string name="ai_title">AI Roast</string>
     <string name="ai_subtitle">Let an AI read your stats and have opinions</string>
-    <string name="ai_intro">An AI glances at your stats and roasts (or comforts) you in a few lines. Data is only sent when you tap the big button below. The rest of the time, not a single byte leaves your phone.</string>
     <string name="ai_provider_label">Who\'s roasting</string>
-    <string name="ai_provider_hint">Tap above to switch.</string>
     <string name="ai_provider_deepseek">DeepSeek</string>
     <string name="ai_provider_claude">Claude</string>
     <string name="ai_provider_deepseek_tagline">Budget-friendly</string>
@@ -618,21 +619,12 @@
     <string name="ai_roast_gentle_hint">Compliments only, emotional support included</string>
     <string name="ai_roast_spicy">Savage roast</string>
     <string name="ai_roast_spicy_hint">No mercy, no refunds</string>
-    <string name="ai_include_notes">Send my notes too</string>
-    <string name="ai_notes_off_note">Your notes are not sent by default, only stats plus the time, duration, moods and pleasure of recent entries. Open the preview below to see exactly what would go out.</string>
-    <string name="ai_notes_on_note">On: your notes will be sent as written to the AI (%1$s). If a note holds secrets, leave this off.</string>
-    <string name="ai_preview_title">See what would be sent</string>
-    <string name="ai_preview_hint">Tap to peek. Word for word.</string>
-    <string name="ai_preview_loading">Putting it together…</string>
-    <string name="ai_preview_empty">No entries yet, so there\'s nothing to send</string>
-    <string name="ai_preview_system_label">① Instructions for the AI (fixed persona and rules)</string>
-    <string name="ai_preview_user_label">② Your stats summary (the actual data)</string>
-    <string name="ai_preview_footer">↑ This is everything the AI would receive (instructions + summary), word for word. Nothing is sent until you tap the roast button.</string>
     <string name="ai_no_key_title">No %1$s API key yet</string>
     <string name="ai_no_key_body">%1$s speaks with your own API key. Add one in Settings.</string>
     <string name="ai_go_set_key">Go set the key</string>
     <string name="ai_run">Roast me, AI</string>
-    <string name="ai_privacy_footer">Nothing is sent to %1$s (%2$s) until you tap this button.</string>
+    <!-- Under the big button. %1$s = the selected provider's name. -->
+    <string name="ai_privacy_footer">Sent to %1$s only when you tap. No tap, no send.</string>
     <string-array name="ai_loading_messages">
         <item>The AI is trying not to laugh…</item>
         <item>Calculating your kidney score…</item>
@@ -691,7 +683,10 @@
     <string name="settings_ai_key_clear_title">Remove the %1$s API key?</string>
     <string name="settings_ai_key_clear_message">The %1$s roast stops working until you enter a key again.</string>
     <string name="settings_ai_key_clear_confirm">Remove</string>
-    <string name="settings_ai_note">The key is stored encrypted on this phone. A summary of your log (stats + recent entries) is only sent to %1$s when you hit the roast button.</string>
+    <string name="settings_ai_note">Your key stays encrypted on this phone and only gets used when you hit roast.</string>
+    <!-- Settings → AI → "send my notes too" switch (stored as aiIncludeNotes, off by default). -->
+    <string name="settings_ai_include_notes">Send my notes too</string>
+    <string name="settings_ai_include_notes_desc">Off by default. Turn it on and every roast takes your notes along, word for word.</string>
     <string name="settings_key_dialog_title">Enter your %1$s API key</string>
     <string name="settings_key_dialog_body">Create a key on the %1$s developer platform and paste it here. It is only stored, encrypted, on this phone.</string>
     <string name="settings_key_placeholder">sk-…</string>
@@ -702,7 +697,7 @@
     <string name="settings_version">Version %1$s</string>
     <string name="settings_about_joke">Contains zero actual calculations and a moderate amount of joy. Any resemblance to a calculator is purely coincidental.</string>
 
-    <!-- Fingerprint unlock & collapsible appearance -->
+    <!-- Fingerprint unlock & collapsible settings cards -->
     <!-- Lock screen + the system fingerprint prompt are part of the disguise: keep them neutral
          (no diary / entry wording); lock_* strings never get _girl variants. -->
     <string name="lock_biometric_key_cd">Unlock with fingerprint</string>
@@ -714,20 +709,27 @@
     <!-- Settings → Security → fingerprint unlock row; the prompt subtitle is shown by the system. -->
     <string name="settings_biometric">Fingerprint unlock</string>
     <string name="settings_biometric_desc">One touch on the lock screen and you\'re in. Changing the code and deleting all entries still need the code.</string>
-    <string name="settings_biometric_note">Turns itself off when a new fingerprint is added to the phone, and you turn it back on after unlocking with your code. That way nobody can sneak their own finger in.</string>
+    <string name="settings_biometric_note">Adding a new fingerprint to the phone turns this off. Unlock with your code to switch it back on.</string>
     <string name="settings_biometric_needs_enrollment">No fingerprint on this phone yet. Add one in the system settings first.</string>
     <string name="settings_biometric_prompt_subtitle">Confirm it\'s you to use your fingerprint on the lock screen</string>
     <string name="settings_biometric_enabled">Fingerprint unlock is on 👆 Next time, just a touch.</string>
     <string name="settings_biometric_enable_failed">Couldn\'t turn on fingerprint unlock 🤔 Try again in a bit.</string>
-    <!-- Settings → Appearance card, collapsed by default. The summary joins the theme, language and
-         edition labels with the separator. -->
-    <!-- %1$s = setting name (settings_theme / settings_language), %2$s = its current value. -->
+    <!-- Settings cards, all collapsed by default. While collapsed, each shows a one-line summary
+         whose items are joined with the separator (e.g. Theme: System · Language: English · Girl edition). -->
+    <!-- %1$s = setting name (settings_theme / settings_language / settings_biometric / settings_ai_summary_key), %2$s = its current value. -->
     <string name="settings_appearance_summary_item">%1$s: %2$s</string>
     <string name="settings_appearance_summary_separator">" · "</string>
-    <string name="settings_appearance_expanded">Expanded</string>
-    <string name="settings_appearance_collapsed">Collapsed</string>
-    <string name="settings_appearance_expand">Expand</string>
-    <string name="settings_appearance_collapse">Collapse</string>
+    <!-- Value of the fingerprint item in the Security summary. -->
+    <string name="settings_summary_on">On</string>
+    <string name="settings_summary_off">Off</string>
+    <!-- AI summary: provider name · Key: Set ✅ / Not set, plus the notes item only while notes are sent. -->
+    <string name="settings_ai_summary_key">Key</string>
+    <string name="settings_ai_summary_notes_on">Notes: sent</string>
+    <!-- Accessibility state / action of a collapsible card's header. -->
+    <string name="settings_section_expanded">Expanded</string>
+    <string name="settings_section_collapsed">Collapsed</string>
+    <string name="settings_section_expand">Expand</string>
+    <string name="settings_section_collapse">Collapse</string>
     <!-- Picking the other edition in Settings asks first. %1$s = the target edition's name (edition_boy_name / edition_girl_name). -->
     <string name="settings_edition_switch_title">Switch to the %1$s?</string>
     <string name="settings_edition_switch_message">To be clear: the edition is meant to be picked once and kept. Switching to the %1$s changes all the wording and icons in the app; your entries stay exactly as they are.\nIt\'s a bit more than a new paint job, so think it over 🙈</string>

@@ -6,15 +6,12 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
 import android.os.PersistableBundle
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,19 +19,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,11 +36,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,7 +56,6 @@ import com.rookierc.boysdairy.ui.common.FunCard
 import com.rookierc.boysdairy.ui.common.LocalSnackbar
 import com.rookierc.boysdairy.ui.common.ScreenTitle
 import com.rookierc.boysdairy.ui.common.SectionHeader
-import com.rookierc.boysdairy.ui.common.StickerBadge
 import com.rookierc.boysdairy.ui.common.emoji
 import com.rookierc.boysdairy.ui.common.nameRes
 import com.rookierc.boysdairy.ui.common.stringArrayResource
@@ -77,8 +65,8 @@ import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 /**
- * "AI 锐评" tab. Nothing is sent anywhere until the big button is tapped; the preview section
- * shows exactly what would be sent (verbatim from the service).
+ * "AI 锐评" tab: who answers, how harsh, and the big button. Nothing is sent anywhere until that
+ * button is tapped. Whether notes go along is a switch in Settings (off by default), not shown here.
  *
  * @param onOpenAiKeySettings opens Settings with the API-key dialog
  */
@@ -95,11 +83,6 @@ fun AiScreen(
     val colors = FunTheme.colors
     val providerOrDefault = selection?.provider ?: AiProvider.DEFAULT
     val providerName = stringResource(providerOrDefault.nameRes())
-
-    // Keep the preview in sync while it is open (still nothing is sent).
-    LaunchedEffect(state.previewExpanded, state.includeNotes, state.roastLevel, languageTag) {
-        if (state.previewExpanded) viewModel.refreshPreview(languageTag)
-    }
 
     // Bring a fresh result / error into view.
     val phaseKey = when (state.phase) {
@@ -128,16 +111,6 @@ fun AiScreen(
             title = stringResource(R.string.ai_title),
             subtitle = stringResource(R.string.ai_subtitle),
         )
-
-        FunCard(
-            modifier = Modifier.fillMaxWidth(),
-            containerColor = colors.grapeTint,
-        ) {
-            Text(
-                text = stringResource(R.string.ai_intro),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        }
 
         // Who answers: a shortcut for the setting that lives in Settings.
         ProviderCard(
@@ -174,57 +147,6 @@ fun AiScreen(
             }
         }
 
-        // Notes switch + privacy note
-        FunCard(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .toggleable(
-                        value = state.includeNotes,
-                        role = Role.Switch,
-                        onValueChange = viewModel::setIncludeNotes,
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                EmojiText(text = "📝", fontSize = 22.sp)
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = stringResource(R.string.ai_include_notes),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
-                Switch(
-                    checked = state.includeNotes,
-                    onCheckedChange = null,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = colors.onAccent,
-                        checkedTrackColor = colors.pink,
-                        checkedBorderColor = colors.ink,
-                        uncheckedThumbColor = colors.ink,
-                        uncheckedTrackColor = colors.surfaceAlt,
-                        uncheckedBorderColor = colors.ink,
-                    ),
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = if (state.includeNotes) {
-                    stringResource(R.string.ai_notes_on_note, stringResource(providerOrDefault.nameRes()))
-                } else {
-                    stringResource(R.string.ai_notes_off_note)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-        }
-
-        // "What will be sent" preview
-        PreviewCard(
-            expanded = state.previewExpanded,
-            preview = state.preview,
-            onToggle = { viewModel.setPreviewExpanded(!state.previewExpanded) },
-        )
-
         if (selection?.hasKey == false) {
             FunCard(
                 modifier = Modifier.fillMaxWidth(),
@@ -257,11 +179,7 @@ fun AiScreen(
                     minHeight = 64.dp,
                 )
                 Text(
-                    text = stringResource(
-                        R.string.ai_privacy_footer,
-                        providerName,
-                        providerOrDefault.spec.endpointHost,
-                    ),
+                    text = stringResource(R.string.ai_privacy_footer, providerName),
                     style = MaterialTheme.typography.labelMedium,
                     color = colors.textSecondary,
                     textAlign = TextAlign.Center,
@@ -273,7 +191,6 @@ fun AiScreen(
 
             is AiPhase.Result -> ResultCard(
                 text = phase.text,
-                model = phase.model,
                 onAgain = { viewModel.analyze(languageTag) },
                 onDone = viewModel::reset,
             )
@@ -297,7 +214,6 @@ private fun ProviderCard(
     selection: AiSelection?,
     onSelect: (AiProvider) -> Unit,
 ) {
-    val colors = FunTheme.colors
     FunCard(modifier = Modifier.fillMaxWidth()) {
         SectionHeader(emoji = "🎤", title = stringResource(R.string.ai_provider_label))
         Spacer(Modifier.height(12.dp))
@@ -314,14 +230,6 @@ private fun ProviderCard(
                     modifier = Modifier.weight(1f),
                 )
             }
-        }
-        if (selection != null) {
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = stringResource(R.string.ai_provider_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textSecondary,
-            )
         }
     }
 }
@@ -352,107 +260,6 @@ private fun RoastChoice(
             text = hint,
             style = MaterialTheme.typography.labelSmall,
             textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-private fun PreviewCard(
-    expanded: Boolean,
-    preview: PreviewState,
-    onToggle: () -> Unit,
-) {
-    val colors = FunTheme.colors
-    FunCard(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(role = Role.Button, onClick = onToggle)
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            EmojiText(text = "👀", fontSize = 22.sp)
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.ai_preview_title),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = stringResource(R.string.ai_preview_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.textSecondary,
-                )
-            }
-            Text(text = if (expanded) "▴" else "▾", fontSize = 20.sp)
-        }
-        AnimatedVisibility(visible = expanded) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                when (preview) {
-                    PreviewState.Idle, PreviewState.Loading -> Text(
-                        text = stringResource(R.string.ai_preview_loading),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textSecondary,
-                    )
-
-                    is PreviewState.Ready -> {
-                        val payload = preview.preview
-                        if (payload == null) {
-                            Text(
-                                text = stringResource(R.string.ai_preview_empty),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        } else {
-                            PreviewBlock(
-                                label = stringResource(R.string.ai_preview_system_label),
-                                text = payload.system,
-                            )
-                            PreviewBlock(
-                                label = stringResource(R.string.ai_preview_user_label),
-                                text = payload.user,
-                            )
-                            Text(
-                                text = stringResource(R.string.ai_preview_footer),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = colors.textSecondary,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** One labelled, scrollable, selectable monospace box of the preview. */
-@Composable
-private fun PreviewBlock(label: String, text: String) {
-    val colors = FunTheme.colors
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelLarge,
-        color = colors.textSecondary,
-    )
-    SelectionContainer {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            fontFamily = FontFamily.Monospace,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 260.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(colors.surfaceAlt)
-                .verticalScroll(rememberScrollState())
-                .padding(12.dp),
         )
     }
 }
@@ -511,7 +318,6 @@ private fun LoadingCard(onCancel: () -> Unit) {
 @Composable
 private fun ResultCard(
     text: String,
-    model: String,
     onAgain: () -> Unit,
     onDone: () -> Unit,
 ) {
@@ -520,11 +326,7 @@ private fun ResultCard(
     val snackbar = LocalSnackbar.current
     val copiedMessage = stringResource(R.string.ai_copied)
     FunCard(modifier = Modifier.fillMaxWidth()) {
-        SectionHeader(
-            emoji = "🔥",
-            title = stringResource(R.string.ai_result_title),
-            trailing = { StickerBadge(text = model, containerColor = colors.grapeTint, contentColor = colors.textPrimary) },
-        )
+        SectionHeader(emoji = "🔥", title = stringResource(R.string.ai_result_title))
         Spacer(Modifier.height(12.dp))
         SelectionContainer {
             Text(

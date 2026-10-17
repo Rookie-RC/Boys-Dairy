@@ -14,7 +14,7 @@ import java.util.Locale
 
 /**
  * Builds the two prompts sent to the model. Pure and deterministic so it can be unit-tested and
- * so the transparency preview shows exactly what [AiAnalysisService.analyze] sends.
+ * so [AiAnalysisService.previewPayload] returns exactly what [AiAnalysisService.analyze] sends.
  *
  * Privacy: the user message contains aggregate statistics plus one compact line per recent entry
  * (date, type, duration, moods, pleasure). It never contains row ids, the PIN, or settings, and

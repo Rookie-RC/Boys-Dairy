@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -94,10 +95,12 @@ import com.rookierc.boysdairy.ui.lock.pinMessageText
 import com.rookierc.boysdairy.ui.theme.FunTheme
 
 /**
- * Settings tab.
+ * Settings tab: five cards (appearance, security, data, AI, about), all collapsed by default with a
+ * one-line summary of where things stand.
  *
  * @param fileActions system-picker launchers owned by the root composable (see BackupViewModel)
  * @param openKeyDialogRequest set by the AI tab's "go set the key" button; opens the key dialog
+ *   and unfolds the AI card
  */
 @Composable
 fun SettingsScreen(
@@ -121,8 +124,15 @@ fun SettingsScreen(
     val clearedMessages = stringArrayResource(R.array.clear_all_done_toasts)
     val biometric by viewModel.biometric.collectAsStateWithLifecycle()
     val pendingEdition by viewModel.pendingEdition.collectAsStateWithLifecycle()
-    // Collapsed by default so a stray tap cannot flip the theme / language / edition. Not persisted.
+    val aiIncludeNotes by viewModel.aiIncludeNotes.collectAsStateWithLifecycle()
+    // Every card starts collapsed: the page reads at a glance and a stray tap cannot flip a setting.
+    // Each card has its own saved UI state; none of it is persisted.
     var appearanceExpanded by rememberSaveable { mutableStateOf(false) }
+    var securityExpanded by rememberSaveable { mutableStateOf(false) }
+    var dataExpanded by rememberSaveable { mutableStateOf(false) }
+    var aiExpanded by rememberSaveable { mutableStateOf(false) }
+    var aboutExpanded by rememberSaveable { mutableStateOf(false) }
+    val summarySeparator = stringResource(R.string.settings_appearance_summary_separator)
 
     // The device may have gained / lost fingerprints since the last look.
     LifecycleStartEffect(viewModel) {
@@ -140,6 +150,7 @@ fun SettingsScreen(
 
     LaunchedEffect(openKeyDialogRequest) {
         if (openKeyDialogRequest) {
+            aiExpanded = true
             showKeyDialog = true
             onKeyDialogRequestConsumed()
         }
@@ -159,7 +170,7 @@ fun SettingsScreen(
             subtitle = stringResource(R.string.settings_subtitle),
         )
 
-        // Appearance (collapsible)
+        // Appearance
         // "主题：跟随系统 · 语言：中文 · 女生版": theme and language are prefixed, since both can read
         // "follow system"; the edition's label names itself.
         val appearanceSummary = listOf(
@@ -174,7 +185,7 @@ fun SettingsScreen(
                 stringResource(language.labelRes()),
             ),
             stringResource(edition.labelRes()),
-        ).joinToString(separator = stringResource(R.string.settings_appearance_summary_separator))
+        ).joinToString(separator = summarySeparator)
         CollapsibleSettingsSection(
             emoji = "🎨",
             title = stringResource(R.string.settings_appearance),
@@ -251,8 +262,26 @@ fun SettingsScreen(
             }
         }
 
-        // Security
-        SettingsSection(emoji = "🔐", title = stringResource(R.string.settings_security)) {
+        // Security: "指纹解锁：开" where the device has a fingerprint sensor, else what the card offers.
+        val securitySummary = if (biometric.row != BiometricSettingRow.HIDDEN) {
+            stringResource(
+                R.string.settings_appearance_summary_item,
+                stringResource(R.string.settings_biometric),
+                stringResource(if (biometric.checked) R.string.settings_summary_on else R.string.settings_summary_off),
+            )
+        } else {
+            listOf(
+                stringResource(R.string.settings_change_pin),
+                stringResource(R.string.settings_lock_now),
+            ).joinToString(separator = summarySeparator)
+        }
+        CollapsibleSettingsSection(
+            emoji = "🔐",
+            title = stringResource(R.string.settings_security),
+            summary = securitySummary,
+            expanded = securityExpanded,
+            onToggle = { securityExpanded = !securityExpanded },
+        ) {
             SettingsRow(
                 emoji = "🔑",
                 title = stringResource(R.string.settings_change_pin),
@@ -272,14 +301,21 @@ fun SettingsScreen(
             )
         }
 
-        // Data
-        SettingsSection(emoji = "💾", title = stringResource(R.string.settings_data)) {
+        // Data: "上次导出：…" / "还没导出过" (empty until the first read, so "never" does not flash).
+        val dataSummary = lastExport?.let { lastExportText(it.atMillis) }
+        CollapsibleSettingsSection(
+            emoji = "💾",
+            title = stringResource(R.string.settings_data),
+            summary = dataSummary,
+            expanded = dataExpanded,
+            onToggle = { dataExpanded = !dataExpanded },
+        ) {
             SettingsRow(
                 emoji = "📤",
                 title = stringResource(R.string.settings_export),
                 subtitle = stringResource(R.string.settings_export_desc),
                 onClick = fileActions.launchExport,
-                detail = lastExport?.let { lastExportText(it.atMillis) },
+                detail = dataSummary,
             )
             RowDivider()
             SettingsRow(
@@ -297,22 +333,48 @@ fun SettingsScreen(
             DangerZone(hasEntries = hasEntries, onClearAll = viewModel::startClearAll)
         }
 
-        // AI
-        SettingsSection(emoji = "🤖", title = stringResource(R.string.settings_ai)) {
+        // AI: "DeepSeek · Key：已设置 ✅", plus "笔记：发送" only while notes are being sent.
+        val aiSummary = ai?.let { selection ->
+            listOfNotNull(
+                stringResource(selection.provider.nameRes()),
+                stringResource(
+                    R.string.settings_appearance_summary_item,
+                    stringResource(R.string.settings_ai_summary_key),
+                    stringResource(if (selection.hasKey) R.string.settings_ai_key_set else R.string.settings_ai_key_unset),
+                ),
+                if (aiIncludeNotes == true) stringResource(R.string.settings_ai_summary_notes_on) else null,
+            ).joinToString(separator = summarySeparator)
+        }
+        CollapsibleSettingsSection(
+            emoji = "🤖",
+            title = stringResource(R.string.settings_ai),
+            summary = aiSummary,
+            expanded = aiExpanded,
+            onToggle = { aiExpanded = !aiExpanded },
+        ) {
             ai?.let { selection ->
                 AiSettingsContent(
                     selection = selection,
+                    includeNotes = aiIncludeNotes,
                     onSelectProvider = viewModel::selectProvider,
                     onSetKey = { showKeyDialog = true },
                     onClearKey = { showClearKeyConfirm = true },
+                    onIncludeNotesChange = viewModel::setAiIncludeNotes,
                 )
             }
         }
 
         // About
-        SettingsSection(emoji = "🧮", title = stringResource(R.string.settings_about)) {
+        val versionText = stringResource(R.string.settings_version, BuildConfig.VERSION_NAME)
+        CollapsibleSettingsSection(
+            emoji = "🧮",
+            title = stringResource(R.string.settings_about),
+            summary = versionText,
+            expanded = aboutExpanded,
+            onToggle = { aboutExpanded = !aboutExpanded },
+        ) {
             Text(
-                text = stringResource(R.string.settings_version, BuildConfig.VERSION_NAME),
+                text = versionText,
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.height(6.dp))
@@ -500,13 +562,18 @@ private fun ClearAllPinDialog(
     }
 }
 
-/** Provider picker, then the selected provider's key, then where data goes. */
+/**
+ * Provider picker, then the selected provider's key, then the "send my notes too" switch.
+ * [includeNotes] is `null` until read; the switch stays hidden meanwhile.
+ */
 @Composable
 private fun AiSettingsContent(
     selection: AiSelection,
+    includeNotes: Boolean?,
     onSelectProvider: (AiProvider) -> Unit,
     onSetKey: () -> Unit,
     onClearKey: () -> Unit,
+    onIncludeNotesChange: (Boolean) -> Unit,
 ) {
     val colors = FunTheme.colors
     val provider = selection.provider
@@ -592,45 +659,47 @@ private fun AiSettingsContent(
 
     Spacer(Modifier.height(12.dp))
     Text(
-        text = stringResource(R.string.settings_ai_note, provider.spec.endpointHost),
+        text = stringResource(R.string.settings_ai_note),
         style = MaterialTheme.typography.bodyMedium,
         color = colors.textSecondary,
     )
-}
 
-@Composable
-private fun SettingsSection(
-    emoji: String,
-    title: String,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    FunCard(modifier = Modifier.fillMaxWidth()) {
-        SectionHeader(emoji = emoji, title = title)
-        Spacer(Modifier.height(12.dp))
-        content()
+    if (includeNotes != null) {
+        Spacer(Modifier.height(16.dp))
+        RowDivider()
+        Spacer(Modifier.height(6.dp))
+        SettingsSwitchRow(
+            emoji = "📝",
+            title = stringResource(R.string.settings_ai_include_notes),
+            subtitle = stringResource(R.string.settings_ai_include_notes_desc),
+            checked = includeNotes,
+            onToggle = onIncludeNotesChange,
+            checkedTrackColor = colors.pink,
+        )
     }
 }
 
 /**
- * [SettingsSection] whose body folds away. The whole header (title, arrow and, while collapsed, a
- * one-line [summary] of the current values) is one button that toggles it; accessibility services
- * hear the state ("expanded" / "collapsed") and the action ("expand" / "collapse").
+ * A settings card whose body folds away. The whole header (title, arrow and, while collapsed, a
+ * one-line [summary] of the current values; `null` = nothing to show yet) is one button that
+ * toggles it; accessibility services hear the state ("expanded" / "collapsed") and the action
+ * ("expand" / "collapse").
  */
 @Composable
 private fun CollapsibleSettingsSection(
     emoji: String,
     title: String,
-    summary: String,
+    summary: String?,
     expanded: Boolean,
     onToggle: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = FunTheme.colors
     val stateText = stringResource(
-        if (expanded) R.string.settings_appearance_expanded else R.string.settings_appearance_collapsed,
+        if (expanded) R.string.settings_section_expanded else R.string.settings_section_collapsed,
     )
     val actionText = stringResource(
-        if (expanded) R.string.settings_appearance_collapse else R.string.settings_appearance_expand,
+        if (expanded) R.string.settings_section_collapse else R.string.settings_section_expand,
     )
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
@@ -660,9 +729,9 @@ private fun CollapsibleSettingsSection(
                     )
                 },
             )
-            AnimatedVisibility(visible = !expanded) {
+            AnimatedVisibility(visible = !expanded && summary != null) {
                 Text(
-                    text = summary,
+                    text = summary.orEmpty(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                     modifier = Modifier.padding(top = 6.dp),
@@ -686,35 +755,62 @@ private fun BiometricSettingsRow(
     state: BiometricSettingUiState,
     onToggle: (Boolean) -> Unit,
 ) {
-    val colors = FunTheme.colors
     val needsEnrollment = state.row == BiometricSettingRow.NEEDS_ENROLLMENT
+    SettingsSwitchRow(
+        emoji = "👆",
+        title = stringResource(R.string.settings_biometric),
+        subtitle = stringResource(
+            if (needsEnrollment) R.string.settings_biometric_needs_enrollment else R.string.settings_biometric_desc,
+        ),
+        note = if (needsEnrollment) null else stringResource(R.string.settings_biometric_note),
+        checked = state.checked,
+        enabled = state.toggleEnabled,
+        onToggle = onToggle,
+        checkedTrackColor = FunTheme.colors.mint,
+    )
+}
+
+/**
+ * A row with a switch on the right; the whole row is one toggle (Switch role), so a tap anywhere
+ * flips it. [note] is an optional smaller line under the [subtitle].
+ */
+@Composable
+private fun SettingsSwitchRow(
+    emoji: String,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onToggle: (Boolean) -> Unit,
+    checkedTrackColor: Color,
+    enabled: Boolean = true,
+    note: String? = null,
+) {
+    val colors = FunTheme.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .toggleable(
-                value = state.checked,
-                enabled = state.toggleEnabled,
+                value = checked,
+                enabled = enabled,
                 role = Role.Switch,
                 onValueChange = onToggle,
             )
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        EmojiText(text = "👆", fontSize = 24.sp)
+        EmojiText(text = emoji, fontSize = 24.sp)
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = stringResource(R.string.settings_biometric), style = MaterialTheme.typography.titleMedium)
+            Text(text = title, style = MaterialTheme.typography.titleMedium)
             Text(
-                text = stringResource(
-                    if (needsEnrollment) R.string.settings_biometric_needs_enrollment else R.string.settings_biometric_desc,
-                ),
+                text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            if (!needsEnrollment) {
+            if (note != null) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = stringResource(R.string.settings_biometric_note),
+                    text = note,
                     style = MaterialTheme.typography.labelMedium,
                     color = colors.textSecondary,
                 )
@@ -722,12 +818,12 @@ private fun BiometricSettingsRow(
         }
         Spacer(Modifier.width(12.dp))
         Switch(
-            checked = state.checked,
+            checked = checked,
             onCheckedChange = null,
-            enabled = state.toggleEnabled,
+            enabled = enabled,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = colors.onAccent,
-                checkedTrackColor = colors.mint,
+                checkedTrackColor = checkedTrackColor,
                 checkedBorderColor = colors.ink,
                 uncheckedThumbColor = colors.ink,
                 uncheckedTrackColor = colors.surfaceAlt,

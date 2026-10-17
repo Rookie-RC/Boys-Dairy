@@ -213,7 +213,7 @@
         <item quantity="other">天</item>
     </plurals>
     <string name="home_last_entry">上次发射：%1$s</string>
-    <string name="home_empty_hint">点下面的 ➕ 打卡，写下第一条战绩</string>
+    <string name="home_empty_hint">点下面的 ✈️ 打卡，写下第一条战绩</string>
     <string name="home_prev_month">上个月</string>
     <string name="home_next_month">下个月</string>
     <string name="home_legend_solo">单人副本</string>
@@ -413,7 +413,6 @@
         <item>有些日子，只需要好好吃饭，好好睡觉。</item>
         <item>你值得被温柔对待，包括被你自己。</item>
     </string-array>
-    <string name="almanac_disclaimer">仅供一乐，非医嘱</string>
 
     <!-- Home stats -->
     <string name="stats_last7">近 7 天</string>
@@ -512,8 +511,12 @@
 
     <!-- Entry card (history list, day sheet) -->
     <string name="entry_when">%1$s · %2$s</string>
-    <string name="entry_duration_line">%1$d 分钟 · %2$s</string>
-    <string name="entry_pleasure_line">愉悦度 %1$d/10 · %2$s</string>
+    <!-- %1$s = entry type name, %2$d = minutes (the quantity). -->
+    <plurals name="entry_type_duration">
+        <item quantity="other">%1$s · %2$d 分钟</item>
+    </plurals>
+    <!-- Screen reader text of the pleasure bar. %1$d = pleasure, 1–10. -->
+    <string name="entry_pleasure_cd">愉悦度 %1$d 分，满分 10 分</string>
 
     <!-- History -->
     <string name="history_title">战绩回放</string>
@@ -524,9 +527,8 @@
     <string name="history_search_hint">按备注或关键词搜索</string>
     <string name="history_search_clear">清除搜索</string>
     <string name="history_empty">战绩一片空白，是在修仙吗？</string>
-    <string name="history_empty_hint">点下面的 ➕ 打卡，开启你的传奇</string>
+    <string name="history_empty_hint">点下面的 ✈️ 打卡，开启你的传奇</string>
     <string name="history_no_results">没搜到，可能被你删了 🤔</string>
-    <string name="history_mood_transition">%1$s → %2$s</string>
     <string name="history_delete_cd">销毁这条记录</string>
     <string name="history_delete_title">确定要销毁这条黑历史吗？</string>
     <string name="history_delete_message">毁了就是毁了，不过刚毁完你还有几秒钟可以后悔。</string>
@@ -591,9 +593,7 @@
     <!-- AI roast -->
     <string name="ai_title">AI 锐评</string>
     <string name="ai_subtitle">让 AI 看看你的战绩，再替你嘴上复盘一遍</string>
-    <string name="ai_intro">AI 会看一眼你的战绩统计，然后毒舌（或温柔）地点评几句。只有你点下面的大按钮时才会发送数据，平时一个字节都不会出门。</string>
     <string name="ai_provider_label">谁来锐评</string>
-    <string name="ai_provider_hint">想换人就点上面。</string>
     <string name="ai_provider_deepseek">DeepSeek</string>
     <string name="ai_provider_claude">Claude</string>
     <string name="ai_provider_deepseek_tagline">性价比之选</string>
@@ -603,21 +603,12 @@
     <string name="ai_roast_gentle_hint">夸夸模式，主打情绪价值</string>
     <string name="ai_roast_spicy">狠狠锐评</string>
     <string name="ai_roast_spicy_hint">不留情面，后果自负</string>
-    <string name="ai_include_notes">把笔记也发给 AI</string>
-    <string name="ai_notes_off_note">默认不发笔记原文，只发统计和最近几条记录的时间、时长、心情、愉悦度。点开下面的预览，看看具体会发什么。</string>
-    <string name="ai_notes_on_note">已开启：你写的笔记原文也会发给 AI（%1$s）。笔记里有不想让别人看到的内容，就别开哦。</string>
-    <string name="ai_preview_title">看看会发送什么</string>
-    <string name="ai_preview_hint">点开预览，一字不差</string>
-    <string name="ai_preview_loading">正在整理……</string>
-    <string name="ai_preview_empty">还没有战绩，没什么可发送的</string>
-    <string name="ai_preview_system_label">① 给 AI 的指令（固定的人设和规则）</string>
-    <string name="ai_preview_user_label">② 你的战绩摘要（真正的数据）</string>
-    <string name="ai_preview_footer">↑ 这就是会发给 AI 的全部内容（指令 + 摘要），一字不差。你点下锐评按钮之前，不会发送任何东西。</string>
     <string name="ai_no_key_title">还没设置 %1$s 的 API Key</string>
     <string name="ai_no_key_body">要让 %1$s 开口，得用你自己的 API Key。去设置里填一个吧。</string>
     <string name="ai_go_set_key">去设置 Key</string>
     <string name="ai_run">让 AI 锐评一下</string>
-    <string name="ai_privacy_footer">点下按钮才会把上面的内容发送到 %1$s（%2$s），不点就不发。</string>
+    <!-- Under the big button. %1$s = the selected provider's name. -->
+    <string name="ai_privacy_footer">点了才会发给 %1$s，不点不发</string>
     <string-array name="ai_loading_messages">
         <item>AI 正在憋笑……</item>
         <item>正在计算你的肾值……</item>
@@ -676,7 +667,10 @@
     <string name="settings_ai_key_clear_title">清除 %1$s 的 API Key？</string>
     <string name="settings_ai_key_clear_message">清除后 %1$s 的 AI 锐评将无法使用，直到你重新填写。</string>
     <string name="settings_ai_key_clear_confirm">清除</string>
-    <string name="settings_ai_note">Key 加密保存在本机。只在你点锐评时，才会把战绩摘要（统计 + 最近记录）发送到 %1$s。</string>
+    <string name="settings_ai_note">Key 只加密存在这台手机上，点锐评时才会用到。</string>
+    <!-- Settings → AI → "send my notes too" switch (stored as aiIncludeNotes, off by default). -->
+    <string name="settings_ai_include_notes">把笔记也发给 AI</string>
+    <string name="settings_ai_include_notes_desc">默认关闭。打开后，每次锐评都会把你写的笔记原文一起发给 AI。</string>
     <string name="settings_key_dialog_title">填写 %1$s API Key</string>
     <string name="settings_key_dialog_body">到 %1$s 的开放平台创建一个 Key，然后粘贴到这里。它只会加密保存在这台手机上。</string>
     <string name="settings_key_placeholder">sk-…</string>
@@ -687,7 +681,7 @@
     <string name="settings_version">版本 %1$s</string>
     <string name="settings_about_joke">本软件不含任何计算功能，仅含少量快乐。如有雷同，纯属巧合（才怪）。</string>
 
-    <!-- Fingerprint unlock & collapsible appearance -->
+    <!-- Fingerprint unlock & collapsible settings cards -->
     <!-- Lock screen + the system fingerprint prompt are part of the disguise: keep them neutral
          (no diary / entry wording); lock_* strings never get _girl variants. -->
     <string name="lock_biometric_key_cd">用指纹解锁</string>
@@ -699,20 +693,27 @@
     <!-- Settings → Security → fingerprint unlock row; the prompt subtitle is shown by the system. -->
     <string name="settings_biometric">指纹解锁</string>
     <string name="settings_biometric_desc">锁屏上摸一下指纹就能进。改暗号、清空战绩还是只认暗号。</string>
-    <string name="settings_biometric_note">手机里新录入指纹后会自动关闭，得用暗号进来重新开：防止有人偷偷往手机里加自己的指纹。</string>
+    <string name="settings_biometric_note">手机里新录了指纹，这里会自动关掉，用暗号进来重新打开就行。</string>
     <string name="settings_biometric_needs_enrollment">这台手机还没录指纹，先去系统设置里录一个再来开</string>
     <string name="settings_biometric_prompt_subtitle">确认是本人，之后在锁屏上就能用指纹解锁</string>
     <string name="settings_biometric_enabled">指纹解锁已开启 👆 下次锁屏摸一下就行</string>
     <string name="settings_biometric_enable_failed">指纹解锁没开成 🤔 过会儿再试试</string>
-    <!-- Settings → Appearance card, collapsed by default. The summary joins the theme, language and
-         edition labels with the separator. -->
-    <!-- %1$s = setting name (settings_theme / settings_language), %2$s = its current value. -->
+    <!-- Settings cards, all collapsed by default. While collapsed, each shows a one-line summary
+         whose items are joined with the separator (e.g. 主题：跟随系统 · 语言：中文 · 女生版). -->
+    <!-- %1$s = setting name (settings_theme / settings_language / settings_biometric / settings_ai_summary_key), %2$s = its current value. -->
     <string name="settings_appearance_summary_item">%1$s：%2$s</string>
     <string name="settings_appearance_summary_separator">" · "</string>
-    <string name="settings_appearance_expanded">已展开</string>
-    <string name="settings_appearance_collapsed">已收起</string>
-    <string name="settings_appearance_expand">展开</string>
-    <string name="settings_appearance_collapse">收起</string>
+    <!-- Value of the fingerprint item in the Security summary. -->
+    <string name="settings_summary_on">开</string>
+    <string name="settings_summary_off">关</string>
+    <!-- AI summary: provider name · Key：已设置 ✅ / 未设置, plus the notes item only while notes are sent. -->
+    <string name="settings_ai_summary_key">Key</string>
+    <string name="settings_ai_summary_notes_on">笔记：发送</string>
+    <!-- Accessibility state / action of a collapsible card's header. -->
+    <string name="settings_section_expanded">已展开</string>
+    <string name="settings_section_collapsed">已收起</string>
+    <string name="settings_section_expand">展开</string>
+    <string name="settings_section_collapse">收起</string>
     <!-- Picking the other edition in Settings asks first. %1$s = the target edition's name (edition_boy_name / edition_girl_name). -->
     <string name="settings_edition_switch_title">确定换成%1$s吗？</string>
     <string name="settings_edition_switch_message">先说清楚：界面版本原则上选定就不改了。换成%1$s后，全部界面文字和图标都会跟着换；你的战绩一条不少，原样保留。\n这可不是换个皮肤那么简单，想好了再点 🙈</string>

@@ -41,8 +41,9 @@ class AiAnalysisService internal constructor(
     )
 
     /**
-     * Exactly the system prompt and user message [analyze] would send, for a transparency preview.
-     * Null when there are no entries. Independent of the provider and of any key.
+     * Exactly the system prompt and user message [analyze] would send; the app no longer shows it,
+     * but tests use it to check what goes out. Null when there are no entries. Independent of the
+     * provider and of any key.
      */
     suspend fun previewPayload(options: AiOptions): AiPreview? {
         val entries = loadEntries()

@@ -131,6 +131,20 @@ class SettingsViewModel(
         viewModelScope.launch { apiKeyStore.clear(provider) }
     }
 
+    /**
+     * "Send my notes too" for the AI roast (off by default); `null` until the first read, so the
+     * switch does not flash. The AI tab reads the same setting when the roast button is tapped.
+     */
+    val aiIncludeNotes: StateFlow<Boolean?> = settings.aiIncludeNotes.stateIn<Boolean?>(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = null,
+    )
+
+    fun setAiIncludeNotes(include: Boolean) {
+        viewModelScope.launch { settings.setAiIncludeNotes(include) }
+    }
+
     /** Shown under "Export backup"; `null` until the first read so "never" does not flash. */
     val lastExport: StateFlow<LastExport?> = settings.lastExportAt
         .map { LastExport(it) }

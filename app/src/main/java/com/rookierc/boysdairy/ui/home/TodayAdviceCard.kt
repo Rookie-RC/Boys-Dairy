@@ -57,8 +57,9 @@ private val SEAL_SHADOW = 3.dp
 /**
  * "📜 Today's almanac" card of the home screen: a stamp with the verdict, the verdict itself with a
  * quip of the day, two 宜 and two 忌 everyday items and then, set apart in a quieter, more formal
- * style, one calm sentence. [advice] comes from [HomeViewModel]; its [TodayAdvice.day] picks
- * everything "of the day", so the whole card stays put all day and changes at midnight.
+ * style, one calm sentence that closes the card (no footer line under it, to keep the card light).
+ * [advice] comes from [HomeViewModel]; its [TodayAdvice.day] picks everything "of the day", so the
+ * whole card stays put all day and changes at midnight.
  */
 @Composable
 internal fun TodayAdviceCard(advice: TodayAdvice, modifier: Modifier = Modifier) {
@@ -90,12 +91,6 @@ internal fun TodayAdviceCard(advice: TodayAdvice, modifier: Modifier = Modifier)
         HorizontalDivider(color = colors.ink.copy(alpha = 0.15f), thickness = 1.dp)
         Spacer(Modifier.height(14.dp))
         CalmLine(text = calmLines[pickByDay(epochDay, calmLines.size)])
-        Spacer(Modifier.height(14.dp))
-        Text(
-            text = stringResource(R.string.almanac_disclaimer),
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.textSecondary,
-        )
     }
 }
 

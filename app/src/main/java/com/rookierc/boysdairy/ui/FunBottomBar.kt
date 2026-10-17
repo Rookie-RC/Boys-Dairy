@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.rounded.Flight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -157,6 +158,7 @@ fun FunBottomBar(
     }
 }
 
+/** Raised "check in" button: a little plane tilted to the upper right, as if taking off. Same in both editions. */
 @Composable
 private fun AddBump(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = FunTheme.colors
@@ -172,9 +174,12 @@ private fun AddBump(onClick: () -> Unit, modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = Icons.Filled.Add,
+            imageVector = Icons.Rounded.Flight,
             contentDescription = stringResource(R.string.add_entry_cd),
-            modifier = Modifier.size(34.dp),
+            // The glyph points straight up; 45° clockwise turns it toward the upper right.
+            modifier = Modifier
+                .size(34.dp)
+                .rotate(45f),
         )
     }
 }

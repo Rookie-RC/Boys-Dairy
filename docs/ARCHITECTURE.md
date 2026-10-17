@@ -175,15 +175,15 @@ AiScreen -> AiViewModel (会话 store) -> AiAnalysisService -> generators[provid
 | DeepSeek（默认） | `deepseek-v4-flash` | high | `DeepSeekTextGenerator`（OkHttp） | `POST https://api.deepseek.com/chat/completions`（OpenAI 兼容） |
 | Claude | `claude-haiku-5-5` | high | `ClaudeTextGenerator`（官方 Anthropic Java SDK，beta messages） | SDK 默认地址 `api.anthropic.com` |
 
-`endpointHost` 只用来在界面里告诉用户数据发往哪里；真正的请求地址在各自的实现里（`DeepSeekConfig.BASE_URL`；Claude 用 SDK 默认），改地址时两处要一起改。
+`endpointHost` 记录这家服务商的请求主机名（`AiProviderTest` 校验它，隐私文档引用它），界面上不显示；真正的请求地址在各自的实现里（`DeepSeekConfig.BASE_URL`；Claude 用 SDK 默认），改地址时两处要一起改。
 
 **一次锐评：**
 
 1. **选择服务商**：设置页 AI 卡片里的两张卡片，或 AI 页的「谁来锐评」快捷切换，都写同一个设置（`SettingsRepository.setAiProvider`）。`aiSelectionFlow(settings, apiKeyStore)` 把「所选服务商」和「它有没有 Key」合成 `AiSelection`，供两个页面共用。
-2. **预览（不联网）**：展开「看看会发送什么」时，`AiAnalysisService.previewPayload(options)` 返回 `AiPreview(system, user)`，界面把两段都原样显示：① 固定指令（系统提示词，随语气和语言变化），② 你的战绩摘要（用户消息）。它与服务商和 Key 无关，没有战绩时返回 `null`。
+2. **预览（不联网，界面不显示）**：`AiAnalysisService.previewPayload(options)` 返回与 `analyze` 同源的 `AiPreview(system, user)`：① 固定指令（系统提示词，随语气和语言变化），② 你的战绩摘要（用户消息）。它与服务商和 Key 无关，没有战绩时返回 `null`；AI 页已不再展示它，保留它是为了让单元测试核对实际发送的内容。
 3. **发送**：用户点下大按钮 → `AiViewModel.analyze(languageTag)` → `AiAnalysisService.analyze(options)`：没有战绩 → `NO_DATA`；读取所选服务商，取它的 Key，没有 → `NO_API_KEY`；否则用同一套 `AiPromptBuilder` 提示词和 `provider.spec` 组装 `AiRequest(apiKey, model, effort, system, user)`，交给 `generators[provider].generate(request)`。`AiRequest.toString()` 不会打印 Key 和提示词。
-4. **提示词内容**由 `AiPromptBuilder` 决定，所有服务商一样：统计摘要 + 最近至多 `MAX_RECENT_ENTRIES`（30）条精简记录；只有 `AiOptions.includeNotes` 为真（默认关）才附上至多 `MAX_NOTES`（20）条笔记，每条压成一行并截到 `MAX_NOTE_CHARS`（200）字符。具体字段见 [PRIVACY.md](PRIVACY.md#会离开设备的东西)。
-5. **结果**：`AiResult.Success(text, model)`（`model` 是实际应答的模型，界面用贴纸徽章显示）或 `AiResult.Failure(AiError)`。`AiPhase.Failed` 还记着当时问的是哪个服务商，所以即使之后切换了服务商，报错文案点的名也是对的。
+4. **提示词内容**由 `AiPromptBuilder` 决定，所有服务商一样：统计摘要 + 最近至多 `MAX_RECENT_ENTRIES`（30）条精简记录；只有 `AiOptions.includeNotes` 为真才附上至多 `MAX_NOTES`（20）条笔记，每条压成一行并截到 `MAX_NOTE_CHARS`（200）字符。具体字段见 [PRIVACY.md](PRIVACY.md#会离开设备的东西)。`includeNotes` 来自设置 →「AI」里的持久化开关（`SettingsRepository`，DataStore 键 `aiIncludeNotes`，默认关），`AiViewModel.analyze()` 发送前现读。
+5. **结果**：`AiResult.Success(text, model)`（`model` 是实际应答的模型，界面不显示）或 `AiResult.Failure(AiError)`。`AiPhase.Failed` 还记着当时问的是哪个服务商，所以即使之后切换了服务商，报错文案点的名也是对的。
 6. **取消与上锁**：请求跑在 IO 调度器上且可中断；点「算了，不问了」或上锁（会话 store 被清空，`viewModelScope` 取消）都会中止进行中的请求。
 
 **DeepSeek 实现**（`ai/DeepSeekTextGenerator.kt`）：

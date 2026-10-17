@@ -68,7 +68,7 @@ fun Mood.emoji(): String = when (this) {
     Mood.ENERGETIC -> "⚡"
 }
 
-/** Reactive label for the duration slider (and history cards). */
+/** Reactive label for the duration slider. */
 @StringRes
 fun durationTierRes(minutes: Int): Int = when {
     minutes <= 3 -> R.string.duration_tier_flash
@@ -77,7 +77,7 @@ fun durationTierRes(minutes: Int): Int = when {
     else -> R.string.duration_tier_marathon
 }
 
-/** Reactive label for the pleasure slider (and history cards). */
+/** Reactive label for the pleasure slider. */
 @StringRes
 fun pleasureTierRes(score: Int): Int = when {
     score <= 2 -> R.string.pleasure_tier_meh

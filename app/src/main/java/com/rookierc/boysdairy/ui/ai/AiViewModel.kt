@@ -8,7 +8,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.rookierc.boysdairy.ai.AiAnalysisService
 import com.rookierc.boysdairy.ai.AiError
 import com.rookierc.boysdairy.ai.AiOptions
-import com.rookierc.boysdairy.ai.AiPreview
 import com.rookierc.boysdairy.ai.AiProvider
 import com.rookierc.boysdairy.ai.AiResult
 import com.rookierc.boysdairy.ai.AiSelection
@@ -23,24 +22,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-/** What the "see what will be sent" section currently shows. */
-sealed interface PreviewState {
-    data object Idle : PreviewState
-    data object Loading : PreviewState
-
-    /** [preview] is `null` when there is nothing to send (no entries yet). */
-    data class Ready(val preview: AiPreview?) : PreviewState
-}
 
 /** Where the analysis currently is. */
 sealed interface AiPhase {
     data object Idle : AiPhase
     data object Loading : AiPhase
-    data class Result(val text: String, val model: String) : AiPhase
+    data class Result(val text: String) : AiPhase
 
     /** [provider] is the one that was asked, so the message names the right service even if the selection changes later. */
     data class Failed(val error: AiError, val provider: AiProvider) : AiPhase
@@ -48,16 +39,14 @@ sealed interface AiPhase {
 
 data class AiUiState(
     val roastLevel: RoastLevel = RoastLevel.SPICY,
-    /** Defaults to OFF: notes are the most personal part of the diary. */
-    val includeNotes: Boolean = false,
-    val previewExpanded: Boolean = false,
-    val preview: PreviewState = PreviewState.Idle,
     val phase: AiPhase = AiPhase.Idle,
 )
 
 /**
  * Lives in the per-unlock session store, so a roast that is on screen disappears when the app
  * locks and any request still in flight is cancelled. Nothing is sent before [analyze] is called.
+ * Whether notes go along is not chosen here: it is the "send my notes too" switch in Settings
+ * ([SettingsRepository.aiIncludeNotes], off by default), read at the moment of the tap.
  */
 class AiViewModel(
     private val service: AiAnalysisService,
@@ -78,7 +67,6 @@ class AiViewModel(
         initialValue = null,
     )
 
-    private var previewJob: Job? = null
     private var analyzeJob: Job? = null
 
     /** Same setting as in Settings, which stays the source of truth. */
@@ -88,35 +76,22 @@ class AiViewModel(
 
     fun setRoastLevel(level: RoastLevel) = _uiState.update { it.copy(roastLevel = level) }
 
-    fun setIncludeNotes(include: Boolean) = _uiState.update { it.copy(includeNotes = include) }
-
-    fun setPreviewExpanded(expanded: Boolean) = _uiState.update { it.copy(previewExpanded = expanded) }
-
-    /** Asks the service what it would send (nothing leaves the device here). */
-    fun refreshPreview(languageTag: String) {
-        previewJob?.cancel()
-        val options = currentOptions(languageTag)
-        _uiState.update { it.copy(preview = PreviewState.Loading) }
-        previewJob = viewModelScope.launch {
-            val preview = try {
-                service.previewPayload(options)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                null
-            }
-            _uiState.update { it.copy(preview = PreviewState.Ready(preview)) }
-        }
-    }
-
-    /** The only place where data is actually sent: called when the user taps the big button. */
+    /**
+     * The only place where data is actually sent: called when the user taps the big button. The
+     * notes switch is read from Settings right now, so the request matches what Settings shows.
+     */
     fun analyze(languageTag: String) {
         if (_uiState.value.phase is AiPhase.Loading) return
-        val options = currentOptions(languageTag)
+        val roastLevel = _uiState.value.roastLevel
         val provider = selection.value?.provider ?: AiProvider.DEFAULT
         _uiState.update { it.copy(phase = AiPhase.Loading) }
         analyzeJob = viewModelScope.launch {
             val result = try {
+                val options = AiOptions(
+                    includeNotes = settings.aiIncludeNotes.first(),
+                    languageTag = languageTag,
+                    roastLevel = roastLevel,
+                )
                 service.analyze(options)
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -124,7 +99,7 @@ class AiViewModel(
                 AiResult.Failure(AiError.UNKNOWN)
             }
             val phase = when (result) {
-                is AiResult.Success -> AiPhase.Result(text = result.text, model = result.model)
+                is AiResult.Success -> AiPhase.Result(text = result.text)
                 is AiResult.Failure -> AiPhase.Failed(result.error, provider)
             }
             _uiState.update { it.copy(phase = phase) }
@@ -141,15 +116,6 @@ class AiViewModel(
     /** Clears a finished result / error. */
     fun reset() {
         _uiState.update { it.copy(phase = AiPhase.Idle) }
-    }
-
-    private fun currentOptions(languageTag: String): AiOptions {
-        val state = _uiState.value
-        return AiOptions(
-            includeNotes = state.includeNotes,
-            languageTag = languageTag,
-            roastLevel = state.roastLevel,
-        )
     }
 
     companion object {
